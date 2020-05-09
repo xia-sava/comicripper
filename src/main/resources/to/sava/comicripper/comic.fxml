@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<fx:root type="javafx.scene.layout.VBox"
+         xmlns="http://javafx.com/javafx"
+         xmlns:fx="http://javafx.com/fxml"
+         prefHeight="128.0"
+         minHeight="128.0" minWidth="128.0"
+         maxHeight="Infinity" maxWidth="Infinity"
+>
+    <Label fx:id="label" minHeight="24" prefHeight="24" />
+    <HBox fx:id="imagesPane" minHeight="128" minWidth="640">
+        <Region minWidth="16"/>
+    </HBox>
+
+</fx:root>
