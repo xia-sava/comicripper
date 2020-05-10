@@ -10,12 +10,11 @@
 >
     <top>
         <ToolBar prefHeight="40.0" BorderPane.alignment="CENTER">
-            <Button mnemonicParsing="false" text="Button"/>
+            <Button mnemonicParsing="false" text="Button" fx:id="button"/>
+            <Label fx:id="label"/>
         </ToolBar>
     </top>
     <center>
-        <ScrollPane>
-            <VBox fx:id="comicsList" BorderPane.alignment="CENTER"/>
-        </ScrollPane>
+        <FlowPane fx:id="comicList" BorderPane.alignment="CENTER" hgap="2" vgap="2"/>
     </center>
 </BorderPane>

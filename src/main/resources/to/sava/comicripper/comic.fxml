@@ -3,16 +3,24 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<fx:root type="javafx.scene.layout.VBox"
-         xmlns="http://javafx.com/javafx"
-         xmlns:fx="http://javafx.com/fxml"
-         prefHeight="128.0"
-         minHeight="128.0" minWidth="128.0"
-         maxHeight="Infinity" maxWidth="Infinity"
->
-    <Label fx:id="label" minHeight="24" prefHeight="24" />
-    <HBox fx:id="imagesPane" minHeight="128" minWidth="640">
-        <Region minWidth="16"/>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.geometry.Insets?>
+<VBox xmlns="http://javafx.com/javafx/10.0.2-internal"
+          xmlns:fx="http://javafx.com/fxml/1"
+          fx:controller="to.sava.comicripper.controller.ComicController"
+          fx:id="pane"
+          style="-fx-border-width: 1; -fx-border-color: silver">
+
+    <padding>
+        <Insets top="2" right="2" bottom="2" left="2"/>
+    </padding>
+
+    <Label fx:id="label" minHeight="24" prefHeight="24"/>
+    <HBox fx:id="imagesPane">
+        <ImageView fx:id="coverFront"/>
+        <ImageView fx:id="coverAll"/>
+        <ImageView fx:id="coverBelt"/>
+        <ImageView fx:id="pages"/>
     </HBox>
 
-</fx:root>
+</VBox>

@@ -1,29 +1,22 @@
 package to.sava.comicripper
 
 import javafx.application.Application
-import javafx.fxml.FXMLLoader
 import javafx.scene.Scene
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import kotlinx.coroutines.*
+import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.repository.ComicRepository
 
 class Main: Application(), CoroutineScope {
-    override val coroutineContext = Dispatchers.Main + Job()
-    private val comicRepos = ComicRepository()
+    private val job = Job()
+    override val coroutineContext get() = Dispatchers.Main + job
 
     override fun start(primaryStage: Stage?) {
         checkNotNull(primaryStage)
+        val (rootPane, rootController) = loadFxml<BorderPane, MainController>("main.fxml")
 
-        val loader = FXMLLoader(javaClass.getResource("main.fxml"))
-        val rootPane = loader.load<BorderPane>()
-        val controller = loader.getController<MainController>()
-
-        launch {
-            controller.updateComics(comicRepos.exampleListComic())
-        }
-
+        rootController.initStage(primaryStage)
         primaryStage.apply {
             scene = Scene(rootPane)
             width = Setting.windowWidth
@@ -34,6 +27,6 @@ class Main: Application(), CoroutineScope {
 
     override fun stop() {
         super.stop()
-        coroutineContext.cancel()
+        job.cancel()
     }
 }
