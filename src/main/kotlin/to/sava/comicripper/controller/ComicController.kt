@@ -1,14 +1,17 @@
 package to.sava.comicripper.controller
 
+import javafx.beans.property.SimpleObjectProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.Label
-import javafx.scene.image.Image
 import javafx.scene.image.ImageView
+import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
+import to.sava.comicripper.ext.fitImage
+import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.model.Comic
-import tornadofx.*
+import tornadofx.onChange
 import java.net.URL
 import java.util.*
 
@@ -37,14 +40,23 @@ class ComicController : VBox(), Initializable {
     @FXML
     private lateinit var pages: ImageView
 
-    private var comic: Comic? = null
+    val comicProperty = SimpleObjectProperty<Comic?>(null)
+    private val comic get() = comicProperty.value
 
     private val clickListeners = mutableListOf<() -> Unit>()
-
+    private val doubleClickListeners = mutableListOf<() -> Unit>()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        pane.onLeftClick {
-            invokeClickListener()
+        pane.setOnMouseClicked { event ->
+            if (event.button == MouseButton.PRIMARY) {
+                when (event.clickCount) {
+                    1 -> invokeClickListener()
+                    2 -> invokeDoubleClickListener()
+                }
+            }
+        }
+        comicProperty.onChange {
+            it?.let { setComic(it) }
         }
     }
 
@@ -52,8 +64,7 @@ class ComicController : VBox(), Initializable {
         clickListeners.clear()
     }
 
-    fun setComic(comic: Comic) {
-        this.comic = comic
+    private fun setComic(comic: Comic) {
         updateComic()
         comic.addListener {
             updateComic()
@@ -64,12 +75,15 @@ class ComicController : VBox(), Initializable {
         val comic = this.comic ?: return
         author.text = comic.author
         title.text = comic.title
-        coverAll.apply {
-            imageProperty().set(Image(comic.coverAll, false))
-            prefHeight = 128.0
-            prefWidth = image.width * (128 / image.height)
-            fitHeight = prefHeight
-            fitWidth = prefWidth
+
+        comic.coverFrontImage?.let {
+            coverFront.fitImage(it, 128.0, 128.0)
+        }
+        comic.coverAllImage?.let {
+            coverAll.fitImage(it, 320.0, 128.0)
+        }
+        comic.coverBeltImage?.let {
+            coverBelt.fitImage(it, 128.0, 128.0)
         }
 
         pane.layoutBoundsProperty().onChange {
@@ -87,6 +101,20 @@ class ComicController : VBox(), Initializable {
 
     private fun invokeClickListener() {
         clickListeners.forEach {
+            it()
+        }
+    }
+
+    fun addDoubleClickListener(listener: () -> Unit) {
+        doubleClickListeners.add(listener)
+    }
+
+    fun removeDoubleClickListener(listener: () -> Unit) {
+        doubleClickListeners.remove(listener)
+    }
+
+    private fun invokeDoubleClickListener() {
+        doubleClickListeners.forEach {
             it()
         }
     }

@@ -9,3 +9,18 @@
     -fx-border-width: 1;
     -fx-background-color: antiquewhite;
 }
+
+.limitLine .outerLine {
+    -fx-border-color: black;
+    -fx-border-width: 0.5;
+    -fx-border-style: dashed;
+}
+.limitLine .innerLine {
+    -fx-border-color: white;
+    -fx-border-width: 0.5;
+    -fx-border-style: dashed;
+}
+.limitLine .triangle {
+    -fx-stroke: white;
+    -fx-fill: black;
+}

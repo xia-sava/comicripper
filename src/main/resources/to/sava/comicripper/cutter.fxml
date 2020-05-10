@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<?import javafx.scene.Group?>
+<BorderPane xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="to.sava.comicripper.controller.CutterController"
+            fx:id="pane"
+            stylesheets="@common.css"
+>
+    <top>
+        <VBox prefHeight="40.0" BorderPane.alignment="CENTER">
+            <Label text="作者:"/>
+            <Slider fx:id="leftLimit"/>
+            <Slider fx:id="rightLimit"/>
+        </VBox>
+    </top>
+    <center>
+        <StackPane fx:id="back">
+            <ImageView fx:id="imageView"/>
+            <Group fx:id="leftLine" styleClass="limitLine">
+                <HBox>
+                    <Region maxWidth="0" styleClass="outerLine"/>
+                    <Region maxWidth="0" styleClass="innerLine"/>
+                    <Group>
+                        <Polygon points="0,0,0,30,10,15" styleClass="triangle"/>
+                    </Group>
+                </HBox>
+            </Group>
+            <Group fx:id="rightLine" styleClass="limitLine">
+                <HBox>
+                    <Group>
+<!--                        <Polygon points="0,0,0,30,-10,15" styleClass="outerTriangle"/>-->
+                        <Polygon points="10,0,10,30,0,15" styleClass="triangle"/>
+                    </Group>
+                    <Region maxWidth="0" styleClass="innerLine"/>
+                    <Region maxWidth="0" styleClass="outerLine"/>
+                </HBox>
+            </Group>
+        </StackPane>
+    </center>
+    <bottom>
+        <BorderPane>
+            <center>
+                <Button fx:id="button" text="決定"/>
+            </center>
+        </BorderPane>
+    </bottom>
+</BorderPane>

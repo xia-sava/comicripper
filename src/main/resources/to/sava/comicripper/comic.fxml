@@ -26,6 +26,7 @@
     </HBox>
     <HBox fx:id="imagesPane">
         <ImageView fx:id="coverFront"/>
+        <Region prefWidth="8"/>
         <ImageView fx:id="coverAll"/>
         <ImageView fx:id="coverBelt"/>
         <ImageView fx:id="pages"/>

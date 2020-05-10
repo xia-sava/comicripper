@@ -50,5 +50,5 @@ tasks {
 
 javafx {
     version = "13"
-    modules = listOf("javafx.controls", "javafx.fxml")
+    modules = listOf("javafx.controls", "javafx.fxml", "javafx.swing")
 }

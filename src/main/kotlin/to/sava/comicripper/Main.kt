@@ -25,15 +25,15 @@ class Main : Application(), CoroutineScope {
         mainController.initStage(primaryStage)
         primaryStage.apply {
             scene = Scene(mainPane)
-            width = Setting.windowWidth
-            height = Setting.windowHeight
+            width = Setting.mainWindowWidth
+            height = Setting.mainWindowHeight
             title = "comicripper 0.0.1"
 
             show()
         }
 
         launch {
-            comicRepos.exampleListComic().forEach { comic ->
+            comicRepos.listComicFiles().forEach { comic ->
                 comics.add(comic)
                 mainController.comicListProperty.add(comic)
             }
