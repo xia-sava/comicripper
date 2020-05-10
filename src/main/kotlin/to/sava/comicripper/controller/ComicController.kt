@@ -2,7 +2,6 @@ package to.sava.comicripper.controller
 
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
-import javafx.scene.control.Alert
 import javafx.scene.control.Label
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
@@ -14,13 +13,14 @@ import java.net.URL
 import java.util.*
 
 class ComicController : VBox(), Initializable {
-    var comic: Comic? = null
-
     @FXML
     private lateinit var pane: VBox
 
     @FXML
-    private lateinit var label: Label
+    private lateinit var author: Label
+
+    @FXML
+    private lateinit var title: Label
 
     @FXML
     private lateinit var imagesPane: HBox
@@ -37,13 +37,33 @@ class ComicController : VBox(), Initializable {
     @FXML
     private lateinit var pages: ImageView
 
+    private var comic: Comic? = null
+
+    private val clickListeners = mutableListOf<() -> Unit>()
+
+
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        this.onLeftClick { alert(Alert.AlertType.CONFIRMATION, "click", "${comic?.coverAll}") }
+        pane.onLeftClick {
+            invokeClickListener()
+        }
     }
 
-    fun updateComic(comic: Comic) {
+    fun destroy() {
+        clickListeners.clear()
+    }
+
+    fun setComic(comic: Comic) {
         this.comic = comic
-        label.text = comic.coverAll
+        updateComic()
+        comic.addListener {
+            updateComic()
+        }
+    }
+
+    private fun updateComic() {
+        val comic = this.comic ?: return
+        author.text = comic.author
+        title.text = comic.title
         coverAll.apply {
             imageProperty().set(Image(comic.coverAll, false))
             prefHeight = 128.0
@@ -54,6 +74,20 @@ class ComicController : VBox(), Initializable {
 
         pane.layoutBoundsProperty().onChange {
             pane.minWidth = it?.width ?: 0.0
+        }
+    }
+
+    fun addClickListener(listener: () -> Unit) {
+        clickListeners.add(listener)
+    }
+
+    fun removeClickListener(listener: () -> Unit) {
+        clickListeners.remove(listener)
+    }
+
+    private fun invokeClickListener() {
+        clickListeners.forEach {
+            it()
         }
     }
 }

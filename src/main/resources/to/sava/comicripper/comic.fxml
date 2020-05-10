@@ -6,16 +6,24 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.geometry.Insets?>
 <VBox xmlns="http://javafx.com/javafx/10.0.2-internal"
-          xmlns:fx="http://javafx.com/fxml/1"
-          fx:controller="to.sava.comicripper.controller.ComicController"
-          fx:id="pane"
-          style="-fx-border-width: 1; -fx-border-color: silver">
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="to.sava.comicripper.controller.ComicController"
+      fx:id="pane"
+      styleClass="comic"
+      stylesheets="@common.css"
+>
 
     <padding>
         <Insets top="2" right="2" bottom="2" left="2"/>
     </padding>
 
-    <Label fx:id="label" minHeight="24" prefHeight="24"/>
+    <HBox minHeight="24" prefHeight="24">
+        <Label text="作者:"/>
+        <Label fx:id="author" style="-fx-font-weight: bold"/>
+        <Region prefWidth="16"/>
+        <Label text="題名:"/>
+        <Label fx:id="title" style="-fx-font-weight: bold"/>
+    </HBox>
     <HBox fx:id="imagesPane">
         <ImageView fx:id="coverFront"/>
         <ImageView fx:id="coverAll"/>

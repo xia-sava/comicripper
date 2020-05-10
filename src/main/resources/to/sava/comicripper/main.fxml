@@ -10,6 +10,12 @@
 >
     <top>
         <ToolBar prefHeight="40.0" BorderPane.alignment="CENTER">
+            <Label text="作者:"/>
+            <TextField fx:id="author" prefWidth="160"/>
+            <Region prefWidth="8"/>
+            <Label text="題名:"/>
+            <TextField fx:id="title" prefWidth="256"/>
+            <Region prefWidth="16"/>
             <Button mnemonicParsing="false" text="Button" fx:id="button"/>
             <Label fx:id="label"/>
         </ToolBar>

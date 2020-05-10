@@ -1,0 +1,11 @@
+
+.comic {
+    -fx-border-color: silver;
+    -fx-border-width: 1;
+}
+
+.comic.selected {
+    -fx-border-color: black;
+    -fx-border-width: 1;
+    -fx-background-color: antiquewhite;
+}

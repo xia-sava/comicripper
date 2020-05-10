@@ -1,27 +1,24 @@
 package to.sava.comicripper
 
 import javafx.beans.property.SimpleDoubleProperty
+import javafx.beans.property.SimpleListProperty
+import javafx.beans.property.SimpleObjectProperty
+import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.control.Button
 import javafx.scene.control.Label
+import javafx.scene.control.TextField
 import javafx.scene.layout.*
 import javafx.stage.Stage
-import kotlinx.coroutines.*
 import to.sava.comicripper.controller.ComicController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
-import to.sava.comicripper.repository.ComicRepository
 import tornadofx.*
 import java.net.URL
 import java.util.*
-import kotlin.math.max
 
-class MainController: Initializable, CoroutineScope {
-    private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
-    private val comicRepos = ComicRepository()
-
+class MainController : Initializable {
     @FXML
     private lateinit var comicList: FlowPane
 
@@ -29,26 +26,49 @@ class MainController: Initializable, CoroutineScope {
     private lateinit var pane: BorderPane
 
     @FXML
+    private lateinit var author: TextField
+
+    @FXML
+    private lateinit var title: TextField
+
+    @FXML
     private lateinit var button: Button
 
     @FXML
     private lateinit var label: Label
 
-    private val minWidthProperty = SimpleDoubleProperty(0.0)
+    val minWidthProperty = SimpleDoubleProperty(0.0)
+
+    val comicObjs = mutableMapOf<Comic, Pair<ComicController, VBox>>()
+
+    val comicListProperty = SimpleListProperty<Comic>(observableListOf())
+
+    val selectedComicProperty = SimpleObjectProperty<Comic?>(null)
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        selectedComicProperty.onChange {
+            it?.let {
+                author.text = it.author
+                title.text = it.title
+            }
+        }
+        author.textProperty().onChange {
+            selectedComicProperty.value?.author = it ?: ""
+        }
+        title.textProperty().onChange {
+            selectedComicProperty.value?.title = it ?: ""
+        }
         button.setOnAction {
-            label.text = "stage:${stage?.width} pane:${pane.prefWidth} cLmin:${comicList.minWidth}"
+            println(1)
         }
-
-        launch {
-            val comics = comicRepos.exampleListComic()
-            updateComics(comics)
+        comicListProperty.addListener { change: ListChangeListener.Change<out Comic> ->
+            while (change.next()) {
+                when {
+                    change.wasAdded() -> change.addedSubList.forEach { addComic(it) }
+                    change.wasRemoved() -> change.removed.forEach { removeComic(it) }
+                }
+            }
         }
-    }
-
-    fun stop() {
-        job.cancel()
     }
 
     private var stage: Stage? = null
@@ -57,15 +77,34 @@ class MainController: Initializable, CoroutineScope {
         stage.minWidthProperty().bind(minWidthProperty)
     }
 
-    private fun updateComics(comics: List<Comic>) {
-        comicList.clear()
-        comics.forEach {
-            val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
-            controller.apply { updateComic(it) }
-            pane.minWidthProperty().onChange {
-                minWidthProperty.value = max(minWidthProperty.value, it)
-            }
-            comicList.add(pane)
+    fun addComic(comic: Comic) {
+        val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
+        controller.setComic(comic)
+        controller.addClickListener {
+            selectComic(comic)
         }
+        pane.minWidthProperty().onChange {
+            minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+        }
+        comicList.add(pane)
+        comicObjs[comic] = Pair(controller, pane)
+    }
+
+    fun removeComic(comic: Comic) {
+        comicObjs[comic]?.let {
+            val (controller, pane) = it
+            comicList.children.remove(pane)
+            controller.destroy()
+            comicObjs.remove(comic)
+        }
+    }
+
+    fun selectComic(comic: Comic) {
+        val (controller, pane) = comicObjs[comic] ?: return
+        if ("selected" !in pane.styleClass) {
+            comicList.children.forEach { it.styleClass.remove("selected") }
+            pane.styleClass.add("selected")
+        }
+        selectedComicProperty.value = comic
     }
 }
