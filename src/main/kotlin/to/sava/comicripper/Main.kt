@@ -10,6 +10,7 @@ import net.contentobjects.jnotify.JNotifyListener
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
+import to.sava.comicripper.repository.ComicStorage
 
 class Main : Application(), CoroutineScope {
     private val job = Job()
@@ -53,7 +54,11 @@ class Main : Application(), CoroutineScope {
                     override fun fileRenamed(wd: Int, rootPath: String?, oldName: String?, newName: String?) {}
                     override fun fileDeleted(wd: Int, rootPath: String?, name: String?) {}
                     override fun fileCreated(wd: Int, rootPath: String?, name: String?) {
-                        println(name)
+                        launch {
+                            ComicStorage[mainController.selectedComicId]?.let {
+                                repos.reScanFiles(it)
+                            } ?: repos.loadFiles()
+                        }
                     }
                 }
             )

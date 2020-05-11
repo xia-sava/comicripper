@@ -14,18 +14,26 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import to.sava.comicripper.controller.ComicController
 import to.sava.comicripper.controller.CutterController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
+import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
 import tornadofx.*
 import java.net.URL
 import java.util.*
 
 
-class MainController : Initializable {
+class MainController : Initializable, CoroutineScope {
+    private val job = Job()
+    override val coroutineContext get() = Dispatchers.Main + job
+
     @FXML
     private lateinit var comicList: FlowPane
 
@@ -42,9 +50,14 @@ class MainController : Initializable {
     private lateinit var button: Button
 
     @FXML
+    private lateinit var reload: Button
+
+    @FXML
     private lateinit var label: Label
 
     private var stage: Stage? = null
+
+    private val repos = ComicRepository()
 
     private val minWidthProperty = SimpleDoubleProperty(0.0)
 
@@ -65,6 +78,13 @@ class MainController : Initializable {
         }
         title.textProperty().onChange {
             ComicStorage[selectedComicId]?.let { comic -> comic.title = it ?: "" }
+        }
+        reload.setOnAction {
+            launch {
+                ComicStorage[selectedComicId]?.let {
+                    repos.reScanFiles(it)
+                } ?: repos.loadFiles()
+            }
         }
         button.setOnAction {
             println(1)
@@ -150,19 +170,15 @@ class MainController : Initializable {
                 event.isDropCompleted = false
                 if (event.dragboard.hasString()) {
                     ComicStorage[event.dragboard.string]?.let { src ->
-                        var doMerge = true
                         if (comic.mergeConflict(src)) {
                             alert(Alert.AlertType.CONFIRMATION, "コンフリクト", "このマージは情報が上書きされます．マージしてよろしいですか？") {
                                 if (it.buttonData != ButtonBar.ButtonData.OK_DONE) {
-                                    alert(Alert.AlertType.WARNING, "a", "b")
-                                    doMerge = false
+                                    return@setOnDragDropped
                                 }
                             }
                         }
-                        if (doMerge) {
-                            comic.merge(src)
-                            event.isDropCompleted = true
-                        }
+                        comic.merge(src)
+                        event.isDropCompleted = true
                     }
                 }
             }

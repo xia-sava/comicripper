@@ -18,11 +18,27 @@ import javax.imageio.ImageIO
 class ComicRepository {
 
     suspend fun loadFiles() {
+        scanFiles {
+            ComicStorage.add(it)
+        }
+    }
+
+    suspend fun reScanFiles(rootComic: Comic) {
+        scanFiles {
+            if (!rootComic.mergeConflict(it)) {
+                rootComic.merge(it)
+            } else {
+                ComicStorage.add(it)
+            }
+        }
+    }
+
+    private suspend inline fun scanFiles(block: (Comic) -> Unit) {
         val dir = File(Setting.workDirectory)
-        val structured = ComicStorage.files
+        val structuredFiles = ComicStorage.files
         dir.listFiles { file -> file.name.endsWith(".jpg") }?.map {
-            if (it.name !in structured) {
-                ComicStorage.add(Comic(it.name))
+            if (it.name !in structuredFiles) {
+                block(Comic(it.name))
             }
             yield()
         }
