@@ -8,7 +8,7 @@ plugins {
     id("com.github.johnrengelman.shadow") version "5.2.0"
 }
 
-group = "to.sava.kdsl"
+group = "to.sava.comicripper"
 version = "0.1"
 
 repositories {
