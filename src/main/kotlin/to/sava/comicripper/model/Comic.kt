@@ -95,6 +95,12 @@ class Comic(filename: String = "") {
         }
     }
 
+    fun mergeConflict(src: Comic): Boolean {
+        return ((src.coverFront != "" && coverFront != "") ||
+                (src.coverAll != "" && coverAll != "") ||
+                (src.coverBelt != "" && coverBelt != ""))
+    }
+
     private fun loadImage(filename: String): Image {
         return Image(File("${Setting.workDirectory}/$filename").toURI().toURL().toString(), false)
     }

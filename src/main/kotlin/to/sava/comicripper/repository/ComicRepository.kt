@@ -48,7 +48,7 @@ class ComicRepository {
         val outputFile = File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
         ImageIO.write(newImage, "jpeg", outputFile)
 
-        comic.coverFront = outputFile.toURI().toURL().toString()
+        comic.coverFront = outputFile.name
     }
 
     /**
@@ -102,7 +102,12 @@ class ComicRepository {
             props.propertyNames().toList().map { it as String }.filterNot { it.startsWith("_") }.forEach { filename ->
                 val comic = Comic(filename)
                 val comicId = props.getProperty(filename)
-                ComicStorage[comicId]?.merge(comic)
+                val baseComic = ComicStorage[comicId]
+                if (baseComic != null) {
+                    baseComic.merge(comic)
+                } else {
+                    ComicStorage.add(comic)
+                }
                 yield()
             }
             true
@@ -121,6 +126,12 @@ object ComicStorage {
 
     fun add(vararg comics: Comic) {
         storage.addAll(comics)
+    }
+
+    fun delete(vararg comics: Comic) {
+        comics.forEach { comic ->
+            storage.remove(comic)
+        }
     }
 
     operator fun get(id: String?): Comic? {

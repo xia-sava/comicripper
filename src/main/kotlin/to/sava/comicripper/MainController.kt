@@ -7,10 +7,7 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
 import javafx.scene.Scene
-import javafx.scene.control.Alert
-import javafx.scene.control.Button
-import javafx.scene.control.Label
-import javafx.scene.control.TextField
+import javafx.scene.control.*
 import javafx.scene.input.ClipboardContent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.BorderPane
@@ -54,6 +51,7 @@ class MainController : Initializable {
     private val comicObjs = mutableMapOf<String, Pair<ComicController, VBox>>()
 
     private val selectedComicProperty = SimpleObjectProperty<String?>(null)
+    val selectedComicId get() = selectedComicProperty.value
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         selectedComicProperty.onChange { id ->
@@ -63,10 +61,10 @@ class MainController : Initializable {
             }
         }
         author.textProperty().onChange {
-            ComicStorage[it]?.let { comic -> comic.author = it ?: "" }
+            ComicStorage[selectedComicId]?.let { comic -> comic.author = it ?: "" }
         }
         title.textProperty().onChange {
-            ComicStorage[it]?.let { comic -> comic.title = it ?: "" }
+            ComicStorage[selectedComicId]?.let { comic -> comic.title = it ?: "" }
         }
         button.setOnAction {
             println(1)
@@ -105,6 +103,10 @@ class MainController : Initializable {
         }
         comicList.add(pane)
         comicObjs[comic.id] = Pair(controller, pane)
+
+        if (comicObjs.size == 1) {
+            selectComic(comic)
+        }
     }
 
     private fun removeComic(comic: Comic) {
@@ -147,15 +149,30 @@ class MainController : Initializable {
             setOnDragDropped { event ->
                 event.isDropCompleted = false
                 if (event.dragboard.hasString()) {
-                    // TODO: Comic をマージする処理をここに
-                    alert(Alert.AlertType.ERROR, "a", event.dragboard.string)
-                    event.isDropCompleted = true
+                    ComicStorage[event.dragboard.string]?.let { src ->
+                        var doMerge = true
+                        if (comic.mergeConflict(src)) {
+                            alert(Alert.AlertType.CONFIRMATION, "コンフリクト", "このマージは情報が上書きされます．マージしてよろしいですか？") {
+                                if (it.buttonData != ButtonBar.ButtonData.OK_DONE) {
+                                    alert(Alert.AlertType.WARNING, "a", "b")
+                                    doMerge = false
+                                }
+                            }
+                        }
+                        if (doMerge) {
+                            comic.merge(src)
+                            event.isDropCompleted = true
+                        }
+                    }
                 }
             }
             // ドラッグ完了
-            setOnDragDone {
+            setOnDragDone { event ->
                 scene.cursor = Cursor.DEFAULT
                 styleClass.remove("dragged")
+                if (event.isAccepted) {
+                    ComicStorage.delete(comic)
+                }
             }
         }
     }
