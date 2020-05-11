@@ -1,26 +1,44 @@
 
+.main {
+    -fx-background-color: gray;
+}
+
 .comic {
+    -fx-background-color: white;
     -fx-border-color: silver;
     -fx-border-width: 1;
 }
 
 .comic.selected {
+    -fx-background-color: antiquewhite;
     -fx-border-color: black;
     -fx-border-width: 1;
-    -fx-background-color: antiquewhite;
 }
 
-.limitLine .outerLine {
+#cutterScene Button {
+    -fx-pref-width: 150.0;
+}
+
+#cutterScene #cutterScreen {
+    -fx-background-color: gray;
+}
+
+#cutterScene .limitLine .outerLine {
     -fx-border-color: black;
     -fx-border-width: 0.5;
     -fx-border-style: dashed;
 }
-.limitLine .innerLine {
+#cutterScene .limitLine .innerLine {
     -fx-border-color: white;
     -fx-border-width: 0.5;
     -fx-border-style: dashed;
 }
-.limitLine .triangle {
+#cutterScene .limitLine .triangle {
     -fx-stroke: white;
     -fx-fill: black;
+}
+
+.bordered {
+    -fx-border-color: red;
+    -fx-border-width: 1.0;
 }

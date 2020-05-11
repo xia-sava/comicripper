@@ -22,12 +22,17 @@ class Main : Application(), CoroutineScope {
         checkNotNull(primaryStage)
         val (mainPane, mainController) = loadFxml<BorderPane, MainController>("main.fxml")
 
+        Setting.load()
+
         mainController.initStage(primaryStage)
         primaryStage.apply {
             scene = Scene(mainPane)
             width = Setting.mainWindowWidth
             height = Setting.mainWindowHeight
             title = "comicripper 0.0.1"
+
+            Setting.mainWindowWidthProperty.bind(primaryStage.widthProperty())
+            Setting.mainWindowHeightProperty.bind(primaryStage.heightProperty())
 
             show()
         }
@@ -43,5 +48,6 @@ class Main : Application(), CoroutineScope {
     override fun stop() {
         super.stop()
         job.cancel()
+        Setting.save()
     }
 }

@@ -9,7 +9,6 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import to.sava.comicripper.ext.fitImage
-import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.model.Comic
 import tornadofx.onChange
 import java.net.URL
@@ -17,7 +16,7 @@ import java.util.*
 
 class ComicController : VBox(), Initializable {
     @FXML
-    private lateinit var pane: VBox
+    private lateinit var comicScene: VBox
 
     @FXML
     private lateinit var author: Label
@@ -47,7 +46,7 @@ class ComicController : VBox(), Initializable {
     private val doubleClickListeners = mutableListOf<() -> Unit>()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        pane.setOnMouseClicked { event ->
+        comicScene.setOnMouseClicked { event ->
             if (event.button == MouseButton.PRIMARY) {
                 when (event.clickCount) {
                     1 -> invokeClickListener()
@@ -86,8 +85,8 @@ class ComicController : VBox(), Initializable {
             coverBelt.fitImage(it, 128.0, 128.0)
         }
 
-        pane.layoutBoundsProperty().onChange {
-            pane.minWidth = it?.width ?: 0.0
+        comicScene.layoutBoundsProperty().onChange {
+            comicScene.minWidth = it?.width ?: 0.0
         }
     }
 

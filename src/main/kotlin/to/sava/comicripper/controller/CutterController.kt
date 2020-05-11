@@ -2,19 +2,14 @@ package to.sava.comicripper.controller
 
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
-import javafx.geometry.Rectangle2D
 import javafx.scene.Group
-import javafx.scene.SnapshotParameters
-import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.Slider
 import javafx.scene.image.ImageView
-import javafx.scene.image.WritableImage
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Region
 import javafx.scene.layout.StackPane
-import javafx.scene.paint.Color
 import javafx.stage.Stage
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -27,7 +22,7 @@ class CutterController : BorderPane(), Initializable {
     private val comicRepos = ComicRepository()
 
     @FXML
-    private lateinit var pane: BorderPane
+    private lateinit var cutterScene: BorderPane
 
     @FXML
     private lateinit var imageView: ImageView
@@ -47,16 +42,21 @@ class CutterController : BorderPane(), Initializable {
     @FXML
     private lateinit var button: Button
 
+    @FXML
+    private lateinit var cancel: Button
+
     private var comic: Comic? = null
 
     private var stage: Stage? = null
 
     @FXML
-    private lateinit var back: StackPane
+    private lateinit var cutterScreen: StackPane
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         leftLimit.value = Setting.cutterLeftPercent
         rightLimit.value = Setting.cutterRightPercent
+        Setting.cutterLeftPercentProperty.bind(leftLimit.valueProperty())
+        Setting.cutterRightPercentProperty.bind(rightLimit.valueProperty())
 
         leftLimit.valueProperty().onChange {
             rescaleLimiter()
@@ -68,6 +68,9 @@ class CutterController : BorderPane(), Initializable {
             comic?.let { comic ->
                 comicRepos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
             }
+            stage?.close()
+        }
+        cancel.setOnAction {
             stage?.close()
         }
     }
@@ -95,15 +98,15 @@ class CutterController : BorderPane(), Initializable {
         if (comic == null) {
             return
         }
-        val width = pane.width
+        val width = cutterScene.width
         imageView.apply {
             prefWidth = width
             prefHeight = image.height * (width / image.width)
             fitHeight = prefHeight
             fitWidth = prefWidth
         }
-        ((leftLine.children[0] as HBox).children.first {it is Region} as Region).minHeight = pane.height - 100.0
-        ((rightLine.children[0] as HBox).children.first {it is Region} as Region).minHeight = pane.height - 100.0
+        ((leftLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0
+        ((rightLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0
         rescaleLimiter()
     }
 

@@ -8,7 +8,7 @@
 <VBox xmlns="http://javafx.com/javafx/10.0.2-internal"
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="to.sava.comicripper.controller.ComicController"
-      fx:id="pane"
+      fx:id="comicScene"
       styleClass="comic"
       stylesheets="@common.css"
 >

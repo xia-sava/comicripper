@@ -27,7 +27,7 @@ class MainController : Initializable {
     private lateinit var comicList: FlowPane
 
     @FXML
-    private lateinit var pane: BorderPane
+    private lateinit var mainScene: BorderPane
 
     @FXML
     private lateinit var author: TextField
@@ -108,7 +108,7 @@ class MainController : Initializable {
     }
 
     private fun selectComic(comic: Comic) {
-        val (controller, pane) = comicObjs[comic] ?: return
+        val (_, pane) = comicObjs[comic] ?: return
         if ("selected" !in pane.styleClass) {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
@@ -128,6 +128,10 @@ class MainController : Initializable {
             width = Setting.cutterWindowWidth
             height = Setting.cutterWindowHeight
             title = "${comic.title} ${comic.author} - comicripper 0.0.1"
+
+            Setting.cutterWindowWidthProperty.bind(widthProperty())
+            Setting.cutterWindowHeightProperty.bind(heightProperty())
+
             show()
         }
         cutterController.setComic(comic)

@@ -8,7 +8,7 @@
 <?import javafx.scene.Group?>
 <BorderPane xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="to.sava.comicripper.controller.CutterController"
-            fx:id="pane"
+            fx:id="cutterScene"
             stylesheets="@common.css"
 >
     <top>
@@ -19,23 +19,18 @@
         </VBox>
     </top>
     <center>
-        <StackPane fx:id="back">
+        <StackPane fx:id="cutterScreen">
             <ImageView fx:id="imageView"/>
             <Group fx:id="leftLine" styleClass="limitLine">
                 <HBox>
                     <Region maxWidth="0" styleClass="outerLine"/>
                     <Region maxWidth="0" styleClass="innerLine"/>
-                    <Group>
-                        <Polygon points="0,0,0,30,10,15" styleClass="triangle"/>
-                    </Group>
+                    <Polygon points="0,0,0,30,10,15" styleClass="triangle"/>
                 </HBox>
             </Group>
             <Group fx:id="rightLine" styleClass="limitLine">
                 <HBox>
-                    <Group>
-<!--                        <Polygon points="0,0,0,30,-10,15" styleClass="outerTriangle"/>-->
-                        <Polygon points="10,0,10,30,0,15" styleClass="triangle"/>
-                    </Group>
+                    <Polygon points="10,0,10,30,0,15" styleClass="triangle"/>
                     <Region maxWidth="0" styleClass="innerLine"/>
                     <Region maxWidth="0" styleClass="outerLine"/>
                 </HBox>
@@ -43,10 +38,9 @@
         </StackPane>
     </center>
     <bottom>
-        <BorderPane>
-            <center>
-                <Button fx:id="button" text="決定"/>
-            </center>
-        </BorderPane>
+        <TilePane prefHeight="36.0" alignment="CENTER" hgap="8.0">
+            <Button fx:id="button" text="決定" />
+            <Button fx:id="cancel" text="キャンセル"/>
+        </TilePane>
     </bottom>
 </BorderPane>
