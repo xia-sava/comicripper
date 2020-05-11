@@ -1,7 +1,6 @@
 package to.sava.comicripper
 
 import javafx.beans.property.SimpleDoubleProperty
-import javafx.beans.property.SimpleListProperty
 import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
@@ -23,6 +22,7 @@ import to.sava.comicripper.controller.CutterController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
+import to.sava.comicripper.repository.ComicStorage
 import tornadofx.*
 import java.net.URL
 import java.util.*
@@ -51,29 +51,27 @@ class MainController : Initializable {
 
     private val minWidthProperty = SimpleDoubleProperty(0.0)
 
-    private val comicObjs = mutableMapOf<Comic, Pair<ComicController, VBox>>()
+    private val comicObjs = mutableMapOf<String, Pair<ComicController, VBox>>()
 
-    val comicListProperty = SimpleListProperty<Comic>(observableListOf())
-
-    private val selectedComicProperty = SimpleObjectProperty<Comic?>(null)
+    private val selectedComicProperty = SimpleObjectProperty<String?>(null)
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        selectedComicProperty.onChange {
-            it?.let {
-                author.text = it.author
-                title.text = it.title
+        selectedComicProperty.onChange { id ->
+            ComicStorage[id]?.let { comic ->
+                author.text = comic.author
+                title.text = comic.title
             }
         }
         author.textProperty().onChange {
-            selectedComicProperty.value?.author = it ?: ""
+            ComicStorage[it]?.let { comic -> comic.author = it ?: "" }
         }
         title.textProperty().onChange {
-            selectedComicProperty.value?.title = it ?: ""
+            ComicStorage[it]?.let { comic -> comic.title = it ?: "" }
         }
         button.setOnAction {
             println(1)
         }
-        comicListProperty.addListener { change: ListChangeListener.Change<out Comic> ->
+        ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
             while (change.next()) {
                 when {
                     change.wasAdded() -> change.addedSubList.forEach { addComic(it) }
@@ -106,15 +104,15 @@ class MainController : Initializable {
             setDragAndDrop(this, comic)
         }
         comicList.add(pane)
-        comicObjs[comic] = Pair(controller, pane)
+        comicObjs[comic.id] = Pair(controller, pane)
     }
 
     private fun removeComic(comic: Comic) {
-        comicObjs[comic]?.let {
+        comicObjs[comic.id]?.let {
             val (controller, pane) = it
             comicList.children.remove(pane)
             controller.destroy()
-            comicObjs.remove(comic)
+            comicObjs.remove(comic.id)
         }
     }
 
@@ -123,7 +121,7 @@ class MainController : Initializable {
             // ドラッグ開始
             setOnDragDetected {
                 startDragAndDrop(TransferMode.LINK)
-                    .setContent(ClipboardContent().apply {putString(comic.id)})
+                    .setContent(ClipboardContent().apply { putString(comic.id) })
                 styleClass.add("dragged")
                 scene.cursor = Cursor.CLOSED_HAND
                 startFullDrag()
@@ -163,12 +161,12 @@ class MainController : Initializable {
     }
 
     private fun selectComic(comic: Comic) {
-        val (_, pane) = comicObjs[comic] ?: return
+        val (_, pane) = comicObjs[comic.id] ?: return
         if ("selected" !in pane.styleClass) {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
         }
-        selectedComicProperty.value = comic
+        selectedComicProperty.value = comic.id
     }
 
     private fun executeComicAction(comic: Comic) {

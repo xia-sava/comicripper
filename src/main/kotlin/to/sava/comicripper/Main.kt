@@ -8,7 +8,6 @@ import kotlinx.coroutines.*
 import net.contentobjects.jnotify.JNotify
 import net.contentobjects.jnotify.JNotifyListener
 import to.sava.comicripper.ext.loadFxml
-import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 
@@ -16,9 +15,7 @@ class Main : Application(), CoroutineScope {
     private val job = Job()
     override val coroutineContext get() = Dispatchers.Main + job
 
-    private val comicRepos = ComicRepository()
-
-    private val comics = mutableListOf<Comic>()
+    private val repos = ComicRepository()
 
     private var jNotifyWatcher: Int = -1
 
@@ -42,10 +39,8 @@ class Main : Application(), CoroutineScope {
         }
 
         launch {
-            comicRepos.listComicFiles().forEach { comic ->
-                comics.add(comic)
-                mainController.comicListProperty.add(comic)
-            }
+            repos.loadStructure()
+            repos.loadFiles()
         }
 
         try {
@@ -72,5 +67,6 @@ class Main : Application(), CoroutineScope {
         super.stop()
         job.cancel()
         Setting.save()
+        repos.saveStructure()
     }
 }

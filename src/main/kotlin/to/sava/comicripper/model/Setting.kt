@@ -80,6 +80,7 @@ object Setting {
         }
 
     private val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
+    val structureFile get() = File("${workDirectory}/.comicripperStructure")
 
     private val propFields get() = javaClass.declaredFields.filter { it.name.endsWith("Property") }
 
@@ -87,8 +88,8 @@ object Setting {
         val props = Properties()
         propFields.forEach {
             props.setProperty(
-                    it.name.replace("Property", ""),
-                    (it.get(this) as Property<*>).value.toString()
+                it.name.replace("Property", ""),
+                (it.get(this) as Property<*>).value.toString()
             )
         }
         settingFile.outputStream().use {
@@ -99,7 +100,9 @@ object Setting {
     fun load(): Boolean {
         return try {
             val props = Properties()
-            props.load(settingFile.inputStream())
+            settingFile.inputStream().use {
+                props.load(it)
+            }
             propFields.forEach {
                 val field = it.get(this)
                 val value = props.getProperty(it.name.replace("Property", ""))
