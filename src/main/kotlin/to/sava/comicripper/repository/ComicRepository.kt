@@ -5,18 +5,11 @@ import javafx.geometry.Rectangle2D
 import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
-import javafx.scene.paint.Color
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import java.awt.image.BufferedImage
 import java.io.File
-import javax.imageio.IIOImage
 import javax.imageio.ImageIO
-import javax.imageio.ImageWriteParam
-
-
-
-
 
 class ComicRepository {
     companion object {

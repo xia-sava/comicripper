@@ -4,8 +4,11 @@ import javafx.beans.property.SimpleListProperty
 import javafx.collections.ListChangeListener
 import javafx.scene.image.Image
 import tornadofx.*
+import java.util.*
 
 class Comic(filename: String) {
+    val id = UUID.randomUUID().toString()
+
     var author = filename.replace(".jpg", "")
         set(value) {
             field = value

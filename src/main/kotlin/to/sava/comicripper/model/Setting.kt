@@ -65,7 +65,19 @@ object Setting {
             cutterRightPercentProperty.value = value
         }
 
-    var workDirectory = "C:/tmp/C"
+    val workDirectoryProperty = SimpleStringProperty("C:/tmp/C")
+    var workDirectory: String
+        get() = workDirectoryProperty.value
+        set(value) {
+            workDirectoryProperty.value = value
+        }
+
+    val storeDirectoryProperty = SimpleStringProperty("C:/tmp/B")
+    var storeDirectory: String
+        get() = storeDirectoryProperty.value
+        set(value) {
+            storeDirectoryProperty.value = value
+        }
 
     private val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
 

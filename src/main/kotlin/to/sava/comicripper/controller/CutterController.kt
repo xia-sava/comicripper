@@ -40,7 +40,7 @@ class CutterController : BorderPane(), Initializable {
     private lateinit var rightLine: Group
 
     @FXML
-    private lateinit var button: Button
+    private lateinit var doCutting: Button
 
     @FXML
     private lateinit var cancel: Button
@@ -64,7 +64,7 @@ class CutterController : BorderPane(), Initializable {
         rightLimit.valueProperty().onChange {
             rescaleLimiter()
         }
-        button.setOnAction {
+        doCutting.setOnAction {
             comic?.let { comic ->
                 comicRepos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
             }

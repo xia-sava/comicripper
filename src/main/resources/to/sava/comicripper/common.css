@@ -15,6 +15,14 @@
     -fx-border-width: 1;
 }
 
+.comic.dragged {
+    -fx-border-color: blue;
+}
+
+.comic.dragover {
+    -fx-border-color: red;
+}
+
 #cutterScene Button {
     -fx-pref-width: 150.0;
 }

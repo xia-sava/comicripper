@@ -6,12 +6,17 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.Cursor
 import javafx.scene.Scene
 import javafx.scene.control.Alert
 import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.TextField
-import javafx.scene.layout.*
+import javafx.scene.input.ClipboardContent
+import javafx.scene.input.TransferMode
+import javafx.scene.layout.BorderPane
+import javafx.scene.layout.FlowPane
+import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import to.sava.comicripper.controller.ComicController
 import to.sava.comicripper.controller.CutterController
@@ -21,6 +26,7 @@ import to.sava.comicripper.model.Setting
 import tornadofx.*
 import java.net.URL
 import java.util.*
+
 
 class MainController : Initializable {
     @FXML
@@ -84,15 +90,20 @@ class MainController : Initializable {
 
     private fun addComic(comic: Comic) {
         val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
-        controller.comicProperty.set(comic)
-        controller.addClickListener {
-            selectComic(comic)
+        controller.apply {
+            comicProperty.set(comic)
+            addClickListener {
+                selectComic(comic)
+            }
+            addDoubleClickListener {
+                executeComicAction(comic)
+            }
         }
-        controller.addDoubleClickListener {
-            executeComicAction(comic)
-        }
-        pane.minWidthProperty().onChange {
-            minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+        pane.apply {
+            minWidthProperty().onChange {
+                minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+            }
+            setDragAndDrop(this, comic)
         }
         comicList.add(pane)
         comicObjs[comic] = Pair(controller, pane)
@@ -104,6 +115,50 @@ class MainController : Initializable {
             comicList.children.remove(pane)
             controller.destroy()
             comicObjs.remove(comic)
+        }
+    }
+
+    private fun setDragAndDrop(pane: VBox, comic: Comic) {
+        pane.apply {
+            // ドラッグ開始
+            setOnDragDetected {
+                startDragAndDrop(TransferMode.LINK)
+                    .setContent(ClipboardContent().apply {putString(comic.id)})
+                styleClass.add("dragged")
+                scene.cursor = Cursor.CLOSED_HAND
+                startFullDrag()
+            }
+            // ドラッグ相手が hover する前に受け入れ可能かどうかを確認する
+            setOnDragOver { event ->
+                label.text = comic.id
+                if (event.gestureSource != this && event.dragboard.hasString()) {
+                    event.acceptTransferModes(TransferMode.LINK);
+                }
+            }
+            // ドラッグ相手が hover した状態
+            setOnDragEntered { event ->
+                if (event.gestureSource != this && event.dragboard.hasString()) {
+                    styleClass.add("dragover")
+                }
+            }
+            // ドラッグ相手が mouseout した状態
+            setOnDragExited {
+                styleClass.remove("dragover")
+            }
+            // ドラッグ相手を受け取る処理
+            setOnDragDropped { event ->
+                event.isDropCompleted = false
+                if (event.dragboard.hasString()) {
+                    // TODO: Comic をマージする処理をここに
+                    alert(Alert.AlertType.ERROR, "a", event.dragboard.string)
+                    event.isDropCompleted = true
+                }
+            }
+            // ドラッグ完了
+            setOnDragDone {
+                scene.cursor = Cursor.DEFAULT
+                styleClass.remove("dragged")
+            }
         }
     }
 
