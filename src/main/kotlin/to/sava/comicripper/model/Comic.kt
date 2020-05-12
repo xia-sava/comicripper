@@ -1,9 +1,6 @@
 package to.sava.comicripper.model
 
-import javafx.beans.property.SimpleListProperty
-import javafx.collections.ListChangeListener
 import javafx.scene.image.Image
-import tornadofx.*
 import java.io.File
 import java.util.*
 
@@ -53,28 +50,55 @@ class Comic(filename: String = "") {
         }
     var coverBeltImage: Image? = null
 
-    val pagesProperty = SimpleListProperty<String>(observableListOf())
-    val pages get() = pagesProperty.value.toMutableList()
+    private val pagesList = mutableListOf<String>()
+    val pages get() = pagesList.toList().sorted()
+
+    private val pageImagesMap = mutableMapOf<String, Image>()
+    val pageImages get() = pageImagesMap.toSortedMap().values
 
     val files: List<String>
-        get() {
-            return (listOf(coverFront, coverAll, coverBelt) + pages).filter { it != "" }
-        }
+        get() = (listOf(coverFront, coverAll, coverBelt) + pages).filter { it != "" }
+
+    val images: List<Image>
+        get() = (listOf(coverFrontImage, coverAllImage, coverBeltImage) + pageImages).filterNotNull()
 
     private val listeners = mutableListOf<(Comic) -> Unit>()
 
     init {
-        when {
-            filename.startsWith(COVER_FRONT_PREFIX) -> coverFront = filename
-            filename.startsWith(COVER_ALL_PREFIX) -> coverAll = filename
-            filename.startsWith(COVER_BELT_PREFIX) -> coverBelt = filename
-            filename.startsWith(PAGE_PREFIX) -> pagesProperty.add(filename)
-        }
+        addFile(filename)
+    }
 
-        pagesProperty.addListener { change: ListChangeListener.Change<out String> ->
-            while (change.next()) {
+    fun addPage(vararg filenames: String) {
+        pagesList.addAll(filenames)
+        pageImagesMap.putAll(filenames.map { it to loadImage(it) }.toMap())
+        invokeListener()
+    }
+
+    fun addFile(vararg filenames: String) {
+        filenames.forEach { filename ->
+            if (filename !in files) {
                 when {
-                    change.wasAdded() || change.wasRemoved() -> invokeListener()
+                    filename.startsWith(COVER_FRONT_PREFIX) -> coverFront = filename
+                    filename.startsWith(COVER_ALL_PREFIX) -> coverAll = filename
+                    filename.startsWith(COVER_BELT_PREFIX) -> coverBelt = filename
+                    filename.startsWith(PAGE_PREFIX) -> addPage(filename)
+                }
+            }
+        }
+    }
+
+    fun rescanFiles() {
+        files.forEach { filename ->
+            if (!File("${Setting.workDirectory}/$filename").exists()) {
+                when (filename) {
+                    coverFront -> coverFront = ""
+                    coverAll -> coverAll = ""
+                    coverBelt -> coverBelt = ""
+                    in pages -> {
+                        pageImagesMap.remove(filename)
+                        pagesList.remove(filename)
+                        invokeListener()
+                    }
                 }
             }
         }
@@ -91,7 +115,9 @@ class Comic(filename: String = "") {
             coverBelt = src.coverBelt
         }
         if (src.pages.isNotEmpty()) {
-            pages.addAll(src.pages)
+            pagesList.addAll(src.pages)
+            pageImagesMap.putAll(src.pages.zip(src.images))
+            invokeListener()
         }
     }
 
@@ -102,7 +128,7 @@ class Comic(filename: String = "") {
     }
 
     private fun loadImage(filename: String): Image {
-        return Image(File("${Setting.workDirectory}/$filename").toURI().toURL().toString(), false)
+        return Image(File("${Setting.workDirectory}/$filename").toURI().toURL().toString())
     }
 
     fun addListener(listener: (Comic) -> Unit) {

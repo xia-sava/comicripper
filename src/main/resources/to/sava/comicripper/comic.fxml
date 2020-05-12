@@ -3,7 +3,6 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<?import javafx.scene.image.ImageView?>
 <?import javafx.geometry.Insets?>
 <VBox xmlns="http://javafx.com/javafx/10.0.2-internal"
       xmlns:fx="http://javafx.com/fxml/1"
@@ -24,12 +23,6 @@
         <Label text="題名:"/>
         <Label fx:id="title" style="-fx-font-weight: bold"/>
     </HBox>
-    <HBox fx:id="imagesPane">
-        <ImageView fx:id="coverFront"/>
-        <Region prefWidth="8"/>
-        <ImageView fx:id="coverAll"/>
-        <ImageView fx:id="coverBelt"/>
-        <ImageView fx:id="pages"/>
-    </HBox>
+    <HBox fx:id="imagesPane"/>
 
 </VBox>

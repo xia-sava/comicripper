@@ -3,14 +3,22 @@ package to.sava.comicripper.controller
 import javafx.beans.property.SimpleObjectProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.geometry.Orientation
+import javafx.scene.canvas.Canvas
 import javafx.scene.control.Label
+import javafx.scene.control.Separator
 import javafx.scene.image.ImageView
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
+import javafx.scene.paint.Color
 import to.sava.comicripper.ext.fitImage
+import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.model.Comic
+import tornadofx.add
+import tornadofx.clear
 import tornadofx.onChange
+import tornadofx.paddingAll
 import java.net.URL
 import java.util.*
 
@@ -26,18 +34,6 @@ class ComicController : VBox(), Initializable {
 
     @FXML
     private lateinit var imagesPane: HBox
-
-    @FXML
-    private lateinit var coverFront: ImageView
-
-    @FXML
-    private lateinit var coverAll: ImageView
-
-    @FXML
-    private lateinit var coverBelt: ImageView
-
-    @FXML
-    private lateinit var pages: ImageView
 
     val comicProperty = SimpleObjectProperty<Comic?>(null)
     private val comic get() = comicProperty.value
@@ -75,14 +71,31 @@ class ComicController : VBox(), Initializable {
         author.text = comic.author
         title.text = comic.title
 
-        comic.coverFrontImage?.let {
-            coverFront.fitImage(it, 128.0, 128.0)
-        }
-        comic.coverAllImage?.let {
-            coverAll.fitImage(it, 320.0, 128.0)
-        }
-        comic.coverBeltImage?.let {
-            coverBelt.fitImage(it, 128.0, 128.0)
+        imagesPane.clear()
+        if (comic.images.isNotEmpty()) {
+            imagesPane.add(ImageView().apply {
+                fitImage(comic.images.first(), 256.0, 128.0)
+            })
+            val images = comic.images.drop(1)
+            if (images.isNotEmpty()) {
+                imagesPane.add(Separator().apply {
+                    orientation = Orientation.VERTICAL
+                    paddingAll = 4.0
+                })
+
+                imagesPane.add(Canvas().apply {
+                    val gc = graphicsContext2D
+                    width = 128.0 + (images.size - 1) * 3.0
+                    height = 128.0
+                    images.reversed().forEachIndexed { i, image ->
+                        val (w, h) = image.fitSize(128.0, 128.0)
+                        val x = width - 128.0 - (3.0 * i)
+                        gc.drawImage(image, x, 0.0, w, h)
+                        gc.stroke = Color.SILVER
+                        gc.strokeLine(x + w, 0.0, x + w, 128.0)
+                    }
+                })
+            }
         }
 
         comicScene.layoutBoundsProperty().onChange {

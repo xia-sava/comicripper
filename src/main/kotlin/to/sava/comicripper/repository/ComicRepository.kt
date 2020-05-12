@@ -21,12 +21,16 @@ class ComicRepository {
         scanFiles {
             ComicStorage.add(it)
         }
+        ComicStorage.all.forEach {
+            it.rescanFiles()
+        }
     }
 
-    suspend fun reScanFiles(rootComic: Comic) {
+    suspend fun reScanFiles(comic: Comic) {
+        comic.rescanFiles()
         scanFiles {
-            if (!rootComic.mergeConflict(it)) {
-                rootComic.merge(it)
+            if (!comic.mergeConflict(it)) {
+                comic.merge(it)
             } else {
                 ComicStorage.add(it)
             }
@@ -41,6 +45,24 @@ class ComicRepository {
                 block(Comic(it.name))
             }
             yield()
+        }
+    }
+
+    fun addFile(filename: String, targetComicId: String? = null) {
+        val comic = ComicStorage[targetComicId]
+        if (comic != null) {
+            comic.addFile(filename)
+        } else {
+            ComicStorage.add(Comic(filename))
+        }
+    }
+
+    fun deleteFile(filename: String) {
+        ComicStorage.all.forEach { comic ->
+            if (filename in comic.files) {
+                comic.rescanFiles()
+                return
+            }
         }
     }
 
@@ -115,17 +137,22 @@ class ComicRepository {
                 }
                 ComicStorage.add(comic)
             }
-            props.propertyNames().toList().map { it as String }.filterNot { it.startsWith("_") }.forEach { filename ->
-                val comic = Comic(filename)
-                val comicId = props.getProperty(filename)
-                val baseComic = ComicStorage[comicId]
-                if (baseComic != null) {
-                    baseComic.merge(comic)
-                } else {
-                    ComicStorage.add(comic)
+            props.propertyNames().toList()
+                .map { it as String }
+                .filterNot { it.startsWith("_") }
+                .sorted()
+                .forEach { filename ->
+                    if (File("${Setting.workDirectory}/$filename").exists()) {
+                        val comicId = props.getProperty(filename)
+                        val baseComic = ComicStorage[comicId]
+                        if (baseComic != null) {
+                            baseComic.addFile(filename)
+                        } else {
+                            ComicStorage.add(Comic(filename))
+                        }
+                    }
+                    yield()
                 }
-                yield()
-            }
             true
         } catch (ex: Exception) {
             false
@@ -152,7 +179,7 @@ object ComicStorage {
 
     operator fun get(id: String?): Comic? {
         return id?.let {
-            storage.firstOrNull() { it.id == id }
+            storage.firstOrNull { it.id == id }
         }
     }
 }
