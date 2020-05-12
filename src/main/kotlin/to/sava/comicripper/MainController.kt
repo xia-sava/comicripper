@@ -47,13 +47,10 @@ class MainController : Initializable, CoroutineScope {
     private lateinit var title: TextField
 
     @FXML
-    private lateinit var button: Button
+    private lateinit var zip: Button
 
     @FXML
     private lateinit var reload: Button
-
-    @FXML
-    private lateinit var label: Label
 
     private var stage: Stage? = null
 
@@ -79,15 +76,17 @@ class MainController : Initializable, CoroutineScope {
         title.textProperty().onChange {
             ComicStorage[selectedComicId]?.let { comic -> comic.title = it ?: "" }
         }
+        zip.setOnAction {
+            launch {
+                repos.zipAll()
+            }
+        }
         reload.setOnAction {
             launch {
                 ComicStorage[selectedComicId]?.let {
                     repos.reScanFiles(it)
                 } ?: repos.loadFiles()
             }
-        }
-        button.setOnAction {
-            println(1)
         }
         ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
             while (change.next()) {
@@ -150,7 +149,6 @@ class MainController : Initializable, CoroutineScope {
             }
             // ドラッグ相手が hover する前に受け入れ可能かどうかを確認する
             setOnDragOver { event ->
-                label.text = comic.id
                 if (event.gestureSource != this && event.dragboard.hasString()) {
                     event.acceptTransferModes(TransferMode.LINK);
                 }

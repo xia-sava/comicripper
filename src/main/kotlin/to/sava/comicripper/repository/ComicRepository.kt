@@ -11,8 +11,13 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import tornadofx.observableListOf
 import java.awt.image.BufferedImage
+import java.io.BufferedOutputStream
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 
 class ComicRepository {
@@ -87,6 +92,33 @@ class ComicRepository {
         ImageIO.write(newImage, "jpeg", outputFile)
 
         comic.coverFront = outputFile.name
+    }
+
+    suspend fun zipAll() {
+        ComicStorage.all.forEach { comic ->
+            zipComic(comic)
+            yield()
+        }
+    }
+
+    suspend fun zipComic(comic: Comic) {
+        val zipFilename = "${Setting.storeDirectory}/${comic.author}/${comic.title}.zip"
+        File(File(zipFilename).parent).mkdirs()
+        ZipOutputStream(BufferedOutputStream(File(zipFilename).outputStream())).use { zipStream ->
+            var coverNum = 1
+            var pageNum = 1
+            comic.files.forEach { src ->
+                val (prefix, num) = if (src.startsWith("cover")) Pair("cover", coverNum++) else Pair("page", pageNum++)
+                val entry = ZipEntry("%s_%03d.jpg".format(prefix, num))
+                zipStream.putNextEntry(entry)
+                zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
+                yield()
+            }
+        }
+        ComicStorage.delete(comic)
+        comic.files
+            .map { Paths.get("${Setting.workDirectory}/$it") }
+            .forEach { Files.deleteIfExists(it) }
     }
 
     /**
