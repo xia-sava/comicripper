@@ -47,7 +47,16 @@ class MainController : Initializable, CoroutineScope {
     private lateinit var title: TextField
 
     @FXML
+    private lateinit var isbn: TextField
+
+    @FXML
+    private lateinit var searchIsbn: Button
+
+    @FXML
     private lateinit var zip: Button
+
+    @FXML
+    private lateinit var pagesToComic: Button
 
     @FXML
     private lateinit var reload: Button
@@ -73,12 +82,34 @@ class MainController : Initializable, CoroutineScope {
         author.textProperty().onChange {
             ComicStorage[selectedComicId]?.let { comic -> comic.author = it ?: "" }
         }
+        author.focusedProperty().onChange { focused ->
+            if (focused) {
+                author.selectAll()
+            }
+        }
         title.textProperty().onChange {
             ComicStorage[selectedComicId]?.let { comic -> comic.title = it ?: "" }
+        }
+        title.focusedProperty().onChange { focused ->
+            if (focused) {
+                title.selectAll()
+            }
+        }
+        searchIsbn.setOnAction {
+            val (author, title) = repos.fetchISBN(isbn.text)
+            this.author.textProperty().set(author)
+            this.title.textProperty().set(title)
         }
         zip.setOnAction {
             launch {
                 repos.zipAll()
+            }
+        }
+        pagesToComic.setOnAction {
+            ComicStorage[selectedComicId]?.let { comic ->
+                launch {
+                    repos.pagesToComic(comic)
+                }
             }
         }
         reload.setOnAction {

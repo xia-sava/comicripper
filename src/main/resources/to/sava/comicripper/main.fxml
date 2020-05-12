@@ -14,15 +14,30 @@
     <top>
         <ToolBar prefHeight="40.0">
             <Label text="作者:"/>
-            <TextField fx:id="author" prefWidth="160"/>
+            <TextField fx:id="author" prefWidth="100"/>
             <Label text="題名:"/>
-            <TextField fx:id="title" prefWidth="256"/>
+            <TextField fx:id="title" prefWidth="200"/>
             <Separator orientation="VERTICAL">
-                <padding><Insets right="4.0" left="4.0"/></padding>
+                <padding>
+                    <Insets right="4.0" left="4.0"/>
+                </padding>
+            </Separator>
+            <TextField fx:id="isbn" prefWidth="100" text="9784832271494"/>
+            <Button text="ISBN検索" fx:id="searchIsbn"/>
+            <Separator orientation="VERTICAL">
+                <padding>
+                    <Insets right="4.0" left="4.0"/>
+                </padding>
             </Separator>
             <Button text="まとめてZIP作成" fx:id="zip"/>
+            <Separator orientation="VERTICAL">
+                <padding>
+                    <Insets right="4.0" left="4.0"/>
+                </padding>
+            </Separator>
+            <Button text="全pageを集約" fx:id="pagesToComic"/>
 
-            <Pane HBox.hgrow="ALWAYS" />
+            <Pane HBox.hgrow="ALWAYS"/>
             <Button text="フォルダ再スキャン" fx:id="reload"/>
         </ToolBar>
     </top>

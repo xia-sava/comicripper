@@ -79,6 +79,20 @@ object Setting {
             storeDirectoryProperty.value = value
         }
 
+    val googleBookApiUrlProperty = SimpleStringProperty("https://www.googleapis.com/books/v1/volumes?q=isbn:")
+    var googleBookApi: String
+        get() = googleBookApiUrlProperty.value
+        set(value) {
+            googleBookApiUrlProperty.value = value
+        }
+
+    val YodobashiSearchUrlProperty = SimpleStringProperty("https://www.yodobashi.com/?word=ISBN-13%3A")
+    var YodobashiSearchUrl: String
+        get() = YodobashiSearchUrlProperty.value
+        set(value) {
+            YodobashiSearchUrlProperty.value = value
+        }
+
     private val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
     val structureFile get() = File("${workDirectory}/.comicripperStructure")
 

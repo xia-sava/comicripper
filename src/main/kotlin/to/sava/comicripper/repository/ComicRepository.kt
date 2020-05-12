@@ -7,18 +7,23 @@ import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import kotlinx.coroutines.yield
+import org.jsoup.Jsoup
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import tornadofx.observableListOf
 import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.InputStreamReader
+import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
+import javax.json.Json
+import javax.json.JsonString
 
 class ComicRepository {
 
@@ -119,6 +124,54 @@ class ComicRepository {
         comic.files
             .map { Paths.get("${Setting.workDirectory}/$it") }
             .forEach { Files.deleteIfExists(it) }
+    }
+
+    fun pagesToComic(comic: Comic) {
+        ComicStorage.all
+            .filter { it.files.size == 1 && it.pages.size == 1 }
+            .forEach {
+                comic.merge(it)
+                ComicStorage.delete(it)
+            }
+    }
+
+    fun fetchISBN(isbn: String): Pair<String, String> {
+        // Yodobashi.com スクレイピング
+        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").get()
+            .select(".pListBlock a[href]").firstOrNull()
+            ?.absUrl("href")
+            ?.let { Jsoup.connect(it).get() }
+            ?.let { page ->
+                val title = page.select("#products_maintitle")?.first()?.text()
+                    ?.replace("""\s+\[.+?\]$""".toRegex(), "")
+                    ?.replace("""\s*（.+?）\s*$""".toRegex(), "")
+                    ?.replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
+                val authors = page.select("#js_bookAuthor a")?.joinToString("／") { it.text() }
+                if (authors != null || title != null) {
+                    return Pair(authors ?: "", title ?: "")
+                }
+            }
+
+        // Google Book API
+        Json.createReader(
+            InputStreamReader(
+                URL("${Setting.googleBookApi}$isbn")
+                    .openStream(), "utf-8"
+            ).buffered()
+        )
+            .readObject()?.let { json ->
+                if (json.getInt("totalItems") > 0) {
+                    val info = json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
+                    val authors = info?.getJsonArray("authors")?.joinToString("／") { (it as JsonString).string }
+                    val title = info?.getString("title")
+                        ?.replace("""\s*(\d+)$""".toRegex(), " ($1)")
+                    if (authors != null || title != null) {
+                        return Pair(authors ?: "", title ?: "")
+                    }
+                }
+            }
+
+        return Pair("", "")
     }
 
     /**
