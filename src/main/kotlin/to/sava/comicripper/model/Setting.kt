@@ -93,6 +93,13 @@ object Setting {
             YodobashiSearchUrlProperty.value = value
         }
 
+    val TesseractExeProperty = SimpleStringProperty("C:/Program Files/Tesseract-OCR/tesseract.exe")
+    var TesseractExe: String
+        get() = TesseractExeProperty.value
+        set(value) {
+            TesseractExeProperty.value = value
+        }
+
     private val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
     val structureFile get() = File("${workDirectory}/.comicripperStructure")
 

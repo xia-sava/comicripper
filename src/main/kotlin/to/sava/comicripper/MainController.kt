@@ -14,13 +14,11 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import to.sava.comicripper.controller.ComicController
 import to.sava.comicripper.controller.CutterController
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -48,6 +46,9 @@ class MainController : Initializable, CoroutineScope {
 
     @FXML
     private lateinit var isbn: TextField
+
+    @FXML
+    private lateinit var ocrIsbn: Button
 
     @FXML
     private lateinit var searchIsbn: Button
@@ -95,14 +96,30 @@ class MainController : Initializable, CoroutineScope {
                 title.selectAll()
             }
         }
+        ocrIsbn.setOnAction {
+            ComicStorage[selectedComicId]?.let { comic ->
+                val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
+                modal.show()
+                launch(Dispatchers.IO) {
+                    val (author_, title_) = repos.ocrISBN(comic)
+                    withContext(Dispatchers.Main) {
+                        author.textProperty().set(author_)
+                        title.textProperty().set(title_)
+                        modal.close()
+                    }
+                }
+            }
+        }
         searchIsbn.setOnAction {
-            val (author, title) = repos.fetchISBN(isbn.text)
+            val (author, title) = repos.searchISBN(isbn.text)
             this.author.textProperty().set(author)
             this.title.textProperty().set(title)
         }
         zip.setOnAction {
             launch {
+                val modal = modalProgressDialog("ZIPしています", "コミックをまとめてZIP化しています...", requireNotNull(stage))
                 repos.zipAll()
+                modal.close()
             }
         }
         pagesToComic.setOnAction {

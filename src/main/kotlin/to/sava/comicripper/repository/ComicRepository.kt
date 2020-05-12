@@ -8,6 +8,7 @@ import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import kotlinx.coroutines.yield
 import org.jsoup.Jsoup
+import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import tornadofx.observableListOf
@@ -135,7 +136,32 @@ class ComicRepository {
             }
     }
 
-    fun fetchISBN(isbn: String): Pair<String, String> {
+    fun ocrISBN(comic: Comic): Pair<String, String> {
+        val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
+        return try {
+            val cmd = """"${Setting.TesseractExe}" "${workFilename(comic.coverAll)}" "$tmp"""
+            Runtime.getRuntime().exec(cmd).waitFor()
+            File("$tmp.txt").readText()
+                .let { """ISBN([-\d\s]+)""".toRegex().find(it) }
+                ?.groupValues?.get(1)
+                ?.replace("""[-\s]""".toRegex(), "")?.substring(0, 13)
+                ?.let { isbn ->
+                    searchISBN(isbn)
+                }
+                ?: Pair("", "")
+        } catch (ex: UnsatisfiedLinkError) {
+            Pair("エラー", "cant find Tesseract")
+        } finally {
+            tmp.toFile().delete()
+            File("$tmp.txt").let {
+                if (it.exists()) {
+                    it.delete()
+                }
+            }
+        }
+    }
+
+    fun searchISBN(isbn: String): Pair<String, String> {
         // Yodobashi.com スクレイピング
         Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").get()
             .select(".pListBlock a[href]").firstOrNull()
@@ -146,9 +172,12 @@ class ComicRepository {
                     ?.replace("""\s+\[.+?\]$""".toRegex(), "")
                     ?.replace("""\s*（.+?）\s*$""".toRegex(), "")
                     ?.replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
-                val authors = page.select("#js_bookAuthor a")?.joinToString("／") { it.text() }
+                val authors = page.select("#js_bookAuthor a")?.map {
+                    it.text()
+                        .replace(" ", "")
+                }
                 if (authors != null || title != null) {
-                    return Pair(authors ?: "", title ?: "")
+                    return Pair(authors?.joinToString("／") ?: "", title ?: "")
                 }
             }
 
@@ -162,11 +191,14 @@ class ComicRepository {
             .readObject()?.let { json ->
                 if (json.getInt("totalItems") > 0) {
                     val info = json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
-                    val authors = info?.getJsonArray("authors")?.joinToString("／") { (it as JsonString).string }
+                    val authors = info?.getJsonArray("authors")?.map {
+                        (it as JsonString).string
+                            .replace(" ", "")
+                    }
                     val title = info?.getString("title")
                         ?.replace("""\s*(\d+)$""".toRegex(), " ($1)")
                     if (authors != null || title != null) {
-                        return Pair(authors ?: "", title ?: "")
+                        return Pair(authors?.joinToString("／") ?: "", title ?: "")
                     }
                 }
             }

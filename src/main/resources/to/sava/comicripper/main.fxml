@@ -22,7 +22,8 @@
                     <Insets right="4.0" left="4.0"/>
                 </padding>
             </Separator>
-            <TextField fx:id="isbn" prefWidth="100" text="9784832271494"/>
+            <Button text="OCR" fx:id="ocrIsbn"/>
+            <TextField fx:id="isbn" prefWidth="100"/>
             <Button text="ISBN検索" fx:id="searchIsbn"/>
             <Separator orientation="VERTICAL">
                 <padding>

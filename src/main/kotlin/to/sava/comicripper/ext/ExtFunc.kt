@@ -1,9 +1,18 @@
 package to.sava.comicripper.ext
 
 import javafx.fxml.FXMLLoader
+import javafx.geometry.Pos
+import javafx.scene.Scene
+import javafx.scene.control.Label
+import javafx.scene.control.ProgressIndicator
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
-import javafx.scene.layout.Region
+import javafx.scene.layout.VBox
+import javafx.stage.Modality
+import javafx.stage.Stage
+import to.sava.comicripper.model.Setting
+import tornadofx.add
+import tornadofx.paddingAll
 
 fun <P, C> Any.loadFxml(filename: String): Pair<P, C> {
     val loader = FXMLLoader(javaClass.getResource(filename))
@@ -30,4 +39,24 @@ fun ImageView.fitImage(image: Image, fitX: Double, fitY: Double) {
     val (width, height) = image.fitSize(fitX, fitY)
     fitWidth = width
     fitHeight = height
+}
+
+fun workFilename(filename: String): String {
+    return "${Setting.workDirectory}/$filename"
+}
+
+fun modalProgressDialog(title: String, text: String, owner: Stage): Stage {
+    return Stage().apply {
+        this.title = title
+        initModality(Modality.WINDOW_MODAL)
+        initOwner(owner)
+        scene = Scene(VBox().apply {
+            paddingAll = 8.0
+            alignment = Pos.CENTER
+            add(Label(text))
+            add(ProgressIndicator().apply {
+                setPrefSize(24.0, 24.0)
+            })
+        })
+    }
 }
