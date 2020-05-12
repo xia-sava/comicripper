@@ -63,11 +63,11 @@ class MainController : Initializable, CoroutineScope {
 
     private val comicObjs = mutableMapOf<String, Pair<ComicController, VBox>>()
 
-    private val selectedComicProperty = SimpleObjectProperty<String?>(null)
-    val selectedComicId get() = selectedComicProperty.value
+    private val selectedComicIdProperty = SimpleObjectProperty<String?>(null)
+    val selectedComicId get() = selectedComicIdProperty.value
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        selectedComicProperty.onChange { id ->
+        selectedComicIdProperty.onChange { id ->
             ComicStorage[id]?.let { comic ->
                 author.text = comic.author
                 title.text = comic.title
@@ -178,6 +178,7 @@ class MainController : Initializable, CoroutineScope {
                             }
                         }
                         comic.merge(src)
+                        selectComic(comic)
                         event.isDropCompleted = true
                     }
                 }
@@ -199,7 +200,7 @@ class MainController : Initializable, CoroutineScope {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
         }
-        selectedComicProperty.value = comic.id
+        selectedComicIdProperty.value = comic.id
     }
 
     private fun executeComicAction(comic: Comic) {
