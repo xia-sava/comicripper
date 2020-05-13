@@ -16,7 +16,9 @@
             <fx:include source="parts/separator.fxml"/>
             <Label fx:id="title"/>
 
-            <Pane HBox.hgrow="ALWAYS"/>
+            <Pane HBox.hgrow="ALWAYS">
+                <Label fx:id="notifyLabel"/>
+            </Pane>
             <Button text="OCR" fx:id="ocrIsbn"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="ZIP作成＆全削除" fx:id="zip"/>

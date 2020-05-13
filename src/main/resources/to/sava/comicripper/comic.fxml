@@ -17,11 +17,9 @@
     </padding>
 
     <HBox minHeight="24" prefHeight="24">
-        <Label text="作者:"/>
-        <Label fx:id="author" style="-fx-font-weight: bold"/>
-        <Region prefWidth="16"/>
-        <Label text="題名:"/>
-        <Label fx:id="title" style="-fx-font-weight: bold"/>
+        <Label fx:id="author"/>
+        <fx:include source="parts/separator.fxml"/>
+        <Label fx:id="title"/>
     </HBox>
     <HBox fx:id="imagesPane"/>
 

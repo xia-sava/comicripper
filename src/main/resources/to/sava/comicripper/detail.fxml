@@ -28,6 +28,8 @@
             <Button text="表紙カット" fx:id="cutter"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="ZIP作成" fx:id="zip"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Button text="閉じる" fx:id="close"/>
         </ToolBar>
     </top>
     <center>

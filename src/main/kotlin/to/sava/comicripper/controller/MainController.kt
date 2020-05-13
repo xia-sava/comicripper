@@ -41,6 +41,9 @@ class MainController : Initializable, CoroutineScope {
     private lateinit var title: Label
 
     @FXML
+    private lateinit var notifyLabel: Label
+
+    @FXML
     private lateinit var ocrIsbn: Button
 
     @FXML
@@ -128,25 +131,33 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun addComic(comic: Comic) {
-        val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
-        controller.apply {
-            comicProperty.set(comic)
-            stage?.let { initStage(it) }
-            addClickListener {
+        launch {
+            notifyLabel.text = "コミック情報更新中..."
+
+            val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
+            controller.apply {
+                comicProperty.set(comic)
+                stage?.let { initStage(it) }
+                addClickListener {
+                    selectComic(comic)
+                }
+            }
+            pane.apply {
+                minWidthProperty().onChange {
+                    minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+                }
+                setDragAndDrop(this, comic)
+            }
+            comicList.add(pane)
+            comicObjs[comic.id] = Pair(controller, pane)
+
+            if (comicObjs.size == 1) {
                 selectComic(comic)
             }
-        }
-        pane.apply {
-            minWidthProperty().onChange {
-                minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+            launch {
+                delay(3000)
+                notifyLabel.text = ""
             }
-            setDragAndDrop(this, comic)
-        }
-        comicList.add(pane)
-        comicObjs[comic.id] = Pair(controller, pane)
-
-        if (comicObjs.size == 1) {
-            selectComic(comic)
         }
     }
 

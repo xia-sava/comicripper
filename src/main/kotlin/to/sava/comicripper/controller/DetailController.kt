@@ -5,6 +5,8 @@ import javafx.fxml.Initializable
 import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.image.ImageView
+import javafx.scene.input.KeyCode
+import javafx.scene.input.MouseButton
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +60,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var zip: Button
 
     @FXML
+    private lateinit var close: Button
+
+    @FXML
     private lateinit var imageView: ImageView
 
     @FXML
@@ -101,10 +106,18 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
         }
 
-        searchIsbn.setOnAction {
+        val searchIsbnAction = {
             val (author, title) = repos.searchISBN(isbn.text)
             this.author.text = author
             this.title.text = title
+        }
+        isbn.setOnAction {
+            searchIsbnAction()
+        }
+        searchIsbn.setOnKeyPressed {
+            if (it.code == KeyCode.ENTER) {
+                searchIsbnAction()
+            }
         }
 
         ocrIsbn.setOnAction {
@@ -143,10 +156,27 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
         }
 
+        close.setOnAction {
+            stage?.close()
+        }
+
         imageView.apply {
             fitWidthProperty().bind(detailScene.widthProperty())
             fitHeightProperty().bind(detailScene.heightProperty() - 80.0)
             isPreserveRatio = true
+        }
+        imageView.setOnMouseClicked { event ->
+            if (event.button == MouseButton.PRIMARY) {
+                when (event.clickCount) {
+                    2 -> {
+                        comic?.let { comic ->
+                            if (comic.coverFront == "" && comic.coverAll != "" ) {
+                                launchCutter()
+                            }
+                        }
+                    }
+                }
+            }
         }
 
 
