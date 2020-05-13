@@ -19,6 +19,7 @@ import java.io.InputStreamReader
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.text.Normalizer
 import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -144,9 +145,10 @@ class ComicRepository {
             File("$tmp.txt").readText()
                 .let { """ISBN([-\d\s]+)""".toRegex().find(it) }
                 ?.groupValues?.get(1)
-                ?.replace("""[-\s]""".toRegex(), "")?.substring(0, 13)
+                ?.replace("""[-\s]""".toRegex(), "")
                 ?.let { isbn ->
-                    searchISBN(isbn)
+                    println("ISBN: $isbn")
+                    searchISBN(if (isbn.length <= 13) isbn else isbn.substring(0, 13))
                 }
                 ?: Pair("", "")
         } catch (ex: UnsatisfiedLinkError) {
@@ -162,6 +164,43 @@ class ComicRepository {
     }
 
     fun searchISBN(isbn: String): Pair<String, String> {
+        // 共通の正規化処理
+        fun normalizeText(text: String): String {
+            return Normalizer.normalize(text, Normalizer.Form.NFKC)
+                .replace(Character.codePointOf("FULLWIDTH TILDE").toChar(), '～')
+                .replace(Character.codePointOf("WAVE DASH").toChar(), '～')
+                .replace('!', '！').replace('\'', '’')
+                .replace('"', '”').replace('%', '％')
+                .replace('&', '＆').replace(':', '：')
+                .replace('*', '＊').replace('?', '？')
+                .replace('?', '／').replace('<', '＜')
+                .replace('>', '＞').replace('|', '｜')
+                .replace('~', '～').replace('/', '／')
+                .replace('\\', '￥')
+
+        }
+
+        fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
+            val a = authors
+                .map {
+                    normalizeText(it)
+                        .replace(" ", "")
+                }
+            val t = normalizeText(title)
+                .replace('(', '<').replace(')', '>')
+                .replace('[', '<').replace(']', '>')
+                .replace('{', '<').replace('}', '>')
+                .replace('「', '<').replace('」', '>')
+                .replace('〔', '<').replace('〕', '>')
+                .replace('【', '<').replace('】', '>')
+                .replace('『', '<').replace('』', '>')
+                .replace('《', '<').replace('》', '>')
+                .replace("""(?:<(?!\d+)[^>]+>)""".toRegex(), "")
+                .trimEnd()
+                .replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
+            return Pair(a.joinToString("／"), t)
+        }
+
         // Yodobashi.com スクレイピング
         Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").get()
             .select(".pListBlock a[href]").firstOrNull()
@@ -169,15 +208,9 @@ class ComicRepository {
             ?.let { Jsoup.connect(it).get() }
             ?.let { page ->
                 val title = page.select("#products_maintitle")?.first()?.text()
-                    ?.replace("""\s+\[.+?\]$""".toRegex(), "")
-                    ?.replace("""\s*（.+?）\s*$""".toRegex(), "")
-                    ?.replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
-                val authors = page.select("#js_bookAuthor a")?.map {
-                    it.text()
-                        .replace(" ", "")
-                }
-                if (authors != null || title != null) {
-                    return Pair(authors?.joinToString("／") ?: "", title ?: "")
+                val authors = page.select("#js_bookAuthor a")?.map { it.text() ?: "" }
+                if (authors != null && title != null) {
+                    return normalize(authors, title)
                 }
             }
 
@@ -191,19 +224,14 @@ class ComicRepository {
             .readObject()?.let { json ->
                 if (json.getInt("totalItems") > 0) {
                     val info = json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
-                    val authors = info?.getJsonArray("authors")?.map {
-                        (it as JsonString).string
-                            .replace(" ", "")
-                    }
+                    val authors = info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
                     val title = info?.getString("title")
-                        ?.replace("""\s*(\d+)$""".toRegex(), " ($1)")
-                    if (authors != null || title != null) {
-                        return Pair(authors?.joinToString("／") ?: "", title ?: "")
+                    if (authors != null && title != null) {
+                        return normalize(authors, title)
                     }
                 }
             }
-
-        return Pair("", "")
+        return Pair("--", "--")
     }
 
     /**
