@@ -9,7 +9,6 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Region
-import javafx.scene.layout.StackPane
 import javafx.stage.Stage
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -19,7 +18,7 @@ import java.net.URL
 import java.util.*
 
 class CutterController : BorderPane(), Initializable {
-    private val comicRepos = ComicRepository()
+    private val repos = ComicRepository()
 
     @FXML
     private lateinit var cutterScene: BorderPane
@@ -49,13 +48,11 @@ class CutterController : BorderPane(), Initializable {
 
     private var stage: Stage? = null
 
-    @FXML
-    private lateinit var cutterScreen: StackPane
-
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         leftLimit.value = Setting.cutterLeftPercent
-        rightLimit.value = Setting.cutterRightPercent
         Setting.cutterLeftPercentProperty.bind(leftLimit.valueProperty())
+
+        rightLimit.value = Setting.cutterRightPercent
         Setting.cutterRightPercentProperty.bind(rightLimit.valueProperty())
 
         leftLimit.valueProperty().onChange {
@@ -64,9 +61,16 @@ class CutterController : BorderPane(), Initializable {
         rightLimit.valueProperty().onChange {
             rescaleLimiter()
         }
+
+        imageView.apply {
+            fitWidthProperty().bind(cutterScene.widthProperty())
+            fitHeightProperty().bind(cutterScene.heightProperty() - 80.0)
+            isPreserveRatio = true
+        }
+
         doCutting.setOnAction {
             comic?.let { comic ->
-                comicRepos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
+                repos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
             }
             stage?.close()
         }
@@ -77,33 +81,24 @@ class CutterController : BorderPane(), Initializable {
 
     fun initStage(stage: Stage) {
         this.stage = stage
-        stage.widthProperty().onChange {
-            resizeScreen()
-        }
-        stage.heightProperty().onChange {
-            resizeScreen()
-        }
-        stage.maximizedProperty().onChange {
-            resizeScreen()
+        stage.apply {
+            width = Setting.cutterWindowWidth
+            height = Setting.cutterWindowHeight
+            Setting.cutterWindowWidthProperty.bind(widthProperty())
+            Setting.cutterWindowHeightProperty.bind(heightProperty())
         }
     }
 
     fun setComic(comic: Comic) {
         this.comic = comic
-        comic.coverAllImage?.let { imageView.imageProperty().set(it) }
+        this.stage?.title = "${comic.title} ${comic.author} - comicripper 0.0.1"
+        comic.coverAllImage?.let { imageView.image = it }
         resizeScreen()
     }
 
     private fun resizeScreen() {
         if (comic == null) {
             return
-        }
-        val width = cutterScene.width
-        imageView.apply {
-            prefWidth = width
-            prefHeight = image.height * (width / image.width)
-            fitHeight = prefHeight
-            fitWidth = prefWidth
         }
         ((leftLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0
         ((rightLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0

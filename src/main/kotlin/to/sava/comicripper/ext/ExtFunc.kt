@@ -15,7 +15,7 @@ import tornadofx.add
 import tornadofx.paddingAll
 
 fun <P, C> Any.loadFxml(filename: String): Pair<P, C> {
-    val loader = FXMLLoader(javaClass.getResource(filename))
+    val loader = FXMLLoader(javaClass.getResource("/to/sava/comicripper/$filename"))
     return Pair(loader.load(), loader.getController())
 }
 

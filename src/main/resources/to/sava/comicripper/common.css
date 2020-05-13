@@ -1,4 +1,9 @@
 
+#mainScene #author,
+#mainScene #title {
+    -fx-font-weight: bold;
+}
+
 .main {
     -fx-background-color: gray;
 }

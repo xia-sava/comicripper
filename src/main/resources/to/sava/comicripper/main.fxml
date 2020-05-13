@@ -3,7 +3,6 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="to.sava.comicripper.MainController"
@@ -12,39 +11,22 @@
             styleClass="main"
 >
     <top>
-        <ToolBar prefHeight="40.0">
-            <Label text="作者:"/>
-            <TextField fx:id="author" prefWidth="100"/>
-            <Label text="題名:"/>
-            <TextField fx:id="title" prefWidth="200"/>
-            <Separator orientation="VERTICAL">
-                <padding>
-                    <Insets right="4.0" left="4.0"/>
-                </padding>
-            </Separator>
-            <Button text="OCR" fx:id="ocrIsbn"/>
-            <TextField fx:id="isbn" prefWidth="100"/>
-            <Button text="ISBN検索" fx:id="searchIsbn"/>
-            <Separator orientation="VERTICAL">
-                <padding>
-                    <Insets right="4.0" left="4.0"/>
-                </padding>
-            </Separator>
-            <Button text="まとめてZIP作成" fx:id="zip"/>
-            <Separator orientation="VERTICAL">
-                <padding>
-                    <Insets right="4.0" left="4.0"/>
-                </padding>
-            </Separator>
-            <Button text="全pageを集約" fx:id="pagesToComic"/>
+        <ToolBar prefHeight="40.0" >
+            <Label fx:id="author"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Label fx:id="title"/>
 
             <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="OCR" fx:id="ocrIsbn"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Button text="ZIP作成" fx:id="zip"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Button text="全pageを集約" fx:id="pagesToComic"/>
+            <fx:include source="parts/separator.fxml"/>
             <Button text="フォルダ再スキャン" fx:id="reload"/>
         </ToolBar>
     </top>
     <center>
         <FlowPane fx:id="comicList" BorderPane.alignment="CENTER" hgap="2" vgap="2"/>
     </center>
-    <bottom>
-    </bottom>
 </BorderPane>

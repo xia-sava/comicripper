@@ -4,21 +4,22 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Orientation
+import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.control.Label
 import javafx.scene.control.Separator
 import javafx.scene.image.ImageView
 import javafx.scene.input.MouseButton
+import javafx.scene.layout.BorderPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
+import javafx.stage.Stage
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
+import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
-import tornadofx.add
-import tornadofx.clear
-import tornadofx.onChange
-import tornadofx.paddingAll
+import tornadofx.*
 import java.net.URL
 import java.util.*
 
@@ -39,14 +40,13 @@ class ComicController : VBox(), Initializable {
     private val comic get() = comicProperty.value
 
     private val clickListeners = mutableListOf<() -> Unit>()
-    private val doubleClickListeners = mutableListOf<() -> Unit>()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         comicScene.setOnMouseClicked { event ->
             if (event.button == MouseButton.PRIMARY) {
                 when (event.clickCount) {
                     1 -> invokeClickListener()
-                    2 -> invokeDoubleClickListener()
+                    2 -> launchDetailWindow()
                 }
             }
         }
@@ -103,6 +103,18 @@ class ComicController : VBox(), Initializable {
         }
     }
 
+    private fun launchDetailWindow() {
+        comic?.let { comic ->
+            val (detailPane, detailController) = loadFxml<BorderPane, DetailController>("detail.fxml")
+            Stage().apply {
+                detailController.initStage(this)
+                scene = Scene(detailPane)
+                show()
+            }
+            detailController.setComic(comic)
+        }
+    }
+
     fun addClickListener(listener: () -> Unit) {
         clickListeners.add(listener)
     }
@@ -113,20 +125,6 @@ class ComicController : VBox(), Initializable {
 
     private fun invokeClickListener() {
         clickListeners.forEach {
-            it()
-        }
-    }
-
-    fun addDoubleClickListener(listener: () -> Unit) {
-        doubleClickListeners.add(listener)
-    }
-
-    fun removeDoubleClickListener(listener: () -> Unit) {
-        doubleClickListeners.remove(listener)
-    }
-
-    private fun invokeDoubleClickListener() {
-        doubleClickListeners.forEach {
             it()
         }
     }

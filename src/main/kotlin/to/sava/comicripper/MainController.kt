@@ -6,7 +6,6 @@ import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
-import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.input.ClipboardContent
 import javafx.scene.input.TransferMode
@@ -16,11 +15,9 @@ import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
 import to.sava.comicripper.controller.ComicController
-import to.sava.comicripper.controller.CutterController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
-import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
 import tornadofx.*
@@ -39,19 +36,13 @@ class MainController : Initializable, CoroutineScope {
     private lateinit var mainScene: BorderPane
 
     @FXML
-    private lateinit var author: TextField
+    private lateinit var author: Label
 
     @FXML
-    private lateinit var title: TextField
-
-    @FXML
-    private lateinit var isbn: TextField
+    private lateinit var title: Label
 
     @FXML
     private lateinit var ocrIsbn: Button
-
-    @FXML
-    private lateinit var searchIsbn: Button
 
     @FXML
     private lateinit var zip: Button
@@ -80,25 +71,12 @@ class MainController : Initializable, CoroutineScope {
                 title.text = comic.title
             }
         }
-        author.textProperty().onChange {
-            ComicStorage[selectedComicId]?.let { comic -> comic.author = it ?: "" }
-        }
-        author.focusedProperty().onChange { focused ->
-            if (focused) {
-                author.selectAll()
-            }
-        }
-        title.textProperty().onChange {
-            ComicStorage[selectedComicId]?.let { comic -> comic.title = it ?: "" }
-        }
-        title.focusedProperty().onChange { focused ->
-            if (focused) {
-                title.selectAll()
-            }
-        }
         ocrIsbn.setOnAction {
             ComicStorage[selectedComicId]?.let { comic ->
                 val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
+                modal.setOnCloseRequest {
+                    job.cancel()
+                }
                 modal.show()
                 launch(Dispatchers.IO) {
                     val (author_, title_) = repos.ocrISBN(comic)
@@ -109,11 +87,6 @@ class MainController : Initializable, CoroutineScope {
                     }
                 }
             }
-        }
-        searchIsbn.setOnAction {
-            val (author, title) = repos.searchISBN(isbn.text)
-            this.author.textProperty().set(author)
-            this.title.textProperty().set(title)
         }
         zip.setOnAction {
             launch {
@@ -158,9 +131,6 @@ class MainController : Initializable, CoroutineScope {
             addClickListener {
                 selectComic(comic)
             }
-            addDoubleClickListener {
-                executeComicAction(comic)
-            }
         }
         pane.apply {
             minWidthProperty().onChange {
@@ -198,7 +168,7 @@ class MainController : Initializable, CoroutineScope {
             // ドラッグ相手が hover する前に受け入れ可能かどうかを確認する
             setOnDragOver { event ->
                 if (event.gestureSource != this && event.dragboard.hasString()) {
-                    event.acceptTransferModes(TransferMode.LINK);
+                    event.acceptTransferModes(TransferMode.LINK)
                 }
             }
             // ドラッグ相手が hover した状態
@@ -247,26 +217,5 @@ class MainController : Initializable, CoroutineScope {
             pane.styleClass.add("selected")
         }
         selectedComicIdProperty.value = comic.id
-    }
-
-    private fun executeComicAction(comic: Comic) {
-        if (comic.coverAll == "") {
-            alert(Alert.AlertType.ERROR, "フルカバーじゃないよ", "フルカバーがないコミックはカットできないのよ")
-            return
-        }
-        val (cutterPane, cutterController) = loadFxml<BorderPane, CutterController>("cutter.fxml")
-        Stage().apply {
-            cutterController.initStage(this)
-            scene = Scene(cutterPane)
-            width = Setting.cutterWindowWidth
-            height = Setting.cutterWindowHeight
-            title = "${comic.title} ${comic.author} - comicripper 0.0.1"
-
-            Setting.cutterWindowWidthProperty.bind(widthProperty())
-            Setting.cutterWindowHeightProperty.bind(heightProperty())
-
-            show()
-        }
-        cutterController.setComic(comic)
     }
 }

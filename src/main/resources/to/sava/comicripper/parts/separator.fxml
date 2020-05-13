@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+
+<?import javafx.geometry.Insets?>
+<Separator xmlns="http://javafx.com/javafx"
+           stylesheets="@../common.css"
+           styleClass="separator"
+           orientation="VERTICAL"
+>
+    <padding>
+        <Insets right="2.0" left="2.0"/>
+    </padding>
+</Separator>
