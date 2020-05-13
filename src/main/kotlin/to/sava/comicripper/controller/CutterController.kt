@@ -100,8 +100,10 @@ class CutterController : BorderPane(), Initializable {
         if (comic == null) {
             return
         }
-        ((leftLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0
-        ((rightLine.children[0] as HBox).children.first { it is Region } as Region).minHeight = cutterScene.height - 100.0
+        ((leftLine.children[0] as HBox).children.first { it is Region } as Region).minHeight =
+            cutterScene.height - 100.0
+        ((rightLine.children[0] as HBox).children.first { it is Region } as Region).minHeight =
+            cutterScene.height - 100.0
         rescaleLimiter()
     }
 

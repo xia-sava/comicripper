@@ -35,7 +35,7 @@ fun Image.fitSize(fitX: Double, fitY: Double): Pair<Double, Double> {
 }
 
 fun ImageView.fitImage(image: Image, fitX: Double, fitY: Double) {
-    imageProperty().set(image)
+    this.image = image
     val (width, height) = image.fitSize(fitX, fitY)
     fitWidth = width
     fitHeight = height

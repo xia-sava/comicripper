@@ -16,7 +16,10 @@
             <Label text="題名:"/>
             <TextField fx:id="title" prefWidth="200"/>
 
-            <Pane HBox.hgrow="ALWAYS"/>
+            <Pane HBox.hgrow="ALWAYS">
+                <Label fx:id="notifyLabel" alignment="CENTER"/>
+            </Pane>
+
             <TextField fx:id="isbn" prefWidth="100"/>
             <Button text="ISBN検索" fx:id="searchIsbn"/>
             <fx:include source="parts/separator.fxml"/>

@@ -19,7 +19,7 @@
         </VBox>
     </top>
     <center>
-        <StackPane fx:id="cutterScreen">
+        <StackPane>
             <ImageView fx:id="imageView"/>
             <Group fx:id="leftLine" styleClass="limitLine">
                 <HBox>

@@ -39,6 +39,8 @@ class ComicController : VBox(), Initializable {
     val comicProperty = SimpleObjectProperty<Comic?>(null)
     private val comic get() = comicProperty.value
 
+    private var stage: Stage? = null
+
     private val clickListeners = mutableListOf<() -> Unit>()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
@@ -57,6 +59,10 @@ class ComicController : VBox(), Initializable {
 
     fun destroy() {
         clickListeners.clear()
+    }
+
+    fun initStage(stage: Stage) {
+        this.stage = stage
     }
 
     private fun setComic(comic: Comic) {
@@ -108,6 +114,7 @@ class ComicController : VBox(), Initializable {
             val (detailPane, detailController) = loadFxml<BorderPane, DetailController>("detail.fxml")
             Stage().apply {
                 detailController.initStage(this)
+                this@ComicController.stage?.let { initOwner(it) }
                 scene = Scene(detailPane)
                 show()
             }
@@ -119,9 +126,9 @@ class ComicController : VBox(), Initializable {
         clickListeners.add(listener)
     }
 
-    fun removeClickListener(listener: () -> Unit) {
-        clickListeners.remove(listener)
-    }
+//    fun removeClickListener(listener: () -> Unit) {
+//        clickListeners.remove(listener)
+//    }
 
     private fun invokeClickListener() {
         clickListeners.forEach {

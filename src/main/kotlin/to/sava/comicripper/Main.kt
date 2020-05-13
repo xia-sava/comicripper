@@ -7,6 +7,7 @@ import javafx.stage.Stage
 import kotlinx.coroutines.*
 import net.contentobjects.jnotify.JNotify
 import net.contentobjects.jnotify.JNotifyListener
+import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository

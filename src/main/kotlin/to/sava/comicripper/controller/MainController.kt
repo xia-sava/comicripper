@@ -1,4 +1,4 @@
-package to.sava.comicripper
+package to.sava.comicripper.controller
 
 import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleObjectProperty
@@ -14,7 +14,6 @@ import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
-import to.sava.comicripper.controller.ComicController
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
@@ -30,10 +29,10 @@ class MainController : Initializable, CoroutineScope {
     override val coroutineContext get() = Dispatchers.Main + job
 
     @FXML
-    private lateinit var comicList: FlowPane
+    private lateinit var mainScene: BorderPane
 
     @FXML
-    private lateinit var mainScene: BorderPane
+    private lateinit var comicList: FlowPane
 
     @FXML
     private lateinit var author: Label
@@ -72,20 +71,24 @@ class MainController : Initializable, CoroutineScope {
             }
         }
         ocrIsbn.setOnAction {
-            ComicStorage[selectedComicId]?.let { comic ->
-                val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
-                modal.setOnCloseRequest {
-                    job.cancel()
-                }
-                modal.show()
-                launch(Dispatchers.IO) {
-                    val (author_, title_) = repos.ocrISBN(comic)
-                    withContext(Dispatchers.Main) {
-                        author.textProperty().set(author_)
-                        title.textProperty().set(title_)
-                        modal.close()
+            val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
+            val job = this.coroutineContext + Job()
+            modal.setOnCloseRequest {
+                job.cancel()
+            }
+            modal.show()
+            launch(Dispatchers.IO + job) {
+                ComicStorage.all.map { comic ->
+                    async {
+                        val (author, title) = repos.ocrISBN(comic)
+                        withContext(Dispatchers.Main + job) {
+                            comic.author = author
+                            comic.title = title
+                            yield()
+                        }
                     }
-                }
+                }.awaitAll()
+                modal.close()
             }
         }
         zip.setOnAction {
@@ -128,6 +131,7 @@ class MainController : Initializable, CoroutineScope {
         val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
         controller.apply {
             comicProperty.set(comic)
+            stage?.let { initStage(it) }
             addClickListener {
                 selectComic(comic)
             }

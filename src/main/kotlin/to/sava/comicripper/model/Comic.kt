@@ -135,9 +135,9 @@ class Comic(filename: String = "") {
         listeners.add(listener)
     }
 
-    fun removeListener(listener: (Comic) -> Unit) {
-        listeners.remove(listener)
-    }
+//    fun removeListener(listener: (Comic) -> Unit) {
+//        listeners.remove(listener)
+//    }
 
     private fun invokeListener() {
         listeners.forEach {

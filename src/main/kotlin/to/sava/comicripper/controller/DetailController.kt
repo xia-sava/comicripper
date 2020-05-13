@@ -7,7 +7,15 @@ import javafx.scene.control.*
 import javafx.scene.image.ImageView
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -16,7 +24,10 @@ import tornadofx.*
 import java.net.URL
 import java.util.*
 
-class DetailController : BorderPane(), Initializable {
+class DetailController : BorderPane(), Initializable, CoroutineScope {
+    private val job = Job()
+    override val coroutineContext get() = Dispatchers.Main + job
+
     private val repos = ComicRepository()
 
     @FXML
@@ -24,17 +35,25 @@ class DetailController : BorderPane(), Initializable {
 
     @FXML
     private lateinit var author: TextField
+
     @FXML
     private lateinit var title: TextField
 
     @FXML
+    private lateinit var notifyLabel: Label
+
+    @FXML
     private lateinit var isbn: TextField
+
     @FXML
     private lateinit var searchIsbn: Button
+
     @FXML
     private lateinit var ocrIsbn: Button
+
     @FXML
     private lateinit var cutter: Button
+
     @FXML
     private lateinit var zip: Button
 
@@ -43,14 +62,19 @@ class DetailController : BorderPane(), Initializable {
 
     @FXML
     private lateinit var bottomBar: ToolBar
+
     @FXML
     private lateinit var leftButton: Button
+
     @FXML
     private lateinit var slider: Slider
+
     @FXML
     private lateinit var currentNumber: Label
+
     @FXML
     private lateinit var pageNumber: Label
+
     @FXML
     private lateinit var rightButton: Button
 
@@ -79,14 +103,45 @@ class DetailController : BorderPane(), Initializable {
 
         searchIsbn.setOnAction {
             val (author, title) = repos.searchISBN(isbn.text)
-            this.author.textProperty().set(author)
-            this.title.textProperty().set(title)
+            this.author.text = author
+            this.title.text = title
+        }
+
+        ocrIsbn.setOnAction {
+            comic?.let { comic ->
+                val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
+                val job = this.coroutineContext + Job()
+                modal.setOnCloseRequest {
+                    job.cancel()
+                }
+                modal.show()
+                launch(Dispatchers.IO + job) {
+                    val (author_, title_) = repos.ocrISBN(comic)
+                    withContext(Dispatchers.Main + job) {
+                        author.text = author_
+                        title.text = title_
+                        modal.close()
+                    }
+                }
+            }
         }
 
         cutter.setOnAction {
             launchCutter()
         }
 
+        zip.setOnAction {
+            comic?.let {
+                launch {
+                    repos.zipComic(it)
+                    notifyLabel.text = "zipを作成しました"
+                    launch {
+                        delay(5000)
+                        notifyLabel.text = ""
+                    }
+                }
+            }
+        }
 
         imageView.apply {
             fitWidthProperty().bind(detailScene.widthProperty())
@@ -121,8 +176,10 @@ class DetailController : BorderPane(), Initializable {
             height = Setting.detailWindowHeight
             Setting.detailWindowWidthProperty.bind(widthProperty())
             Setting.detailWindowHeightProperty.bind(heightProperty())
+            setOnCloseRequest {
+                job.cancel()
+            }
         }
-
     }
 
     fun setComic(comic: Comic) {
@@ -149,8 +206,8 @@ class DetailController : BorderPane(), Initializable {
     }
 
     private fun setImage(num: Int) {
-        comic?.images?.getOrNull(num)?.let {image ->
-            imageView.imageProperty().set(image)
+        comic?.images?.getOrNull(num)?.let { image ->
+            imageView.image = image
         }
     }
 
@@ -158,6 +215,7 @@ class DetailController : BorderPane(), Initializable {
         comic?.let { comic ->
             val (cutterPane, cutterController) = loadFxml<BorderPane, CutterController>("cutter.fxml")
             Stage().apply {
+                this@DetailController.stage?.let { initOwner(it) }
                 cutterController.initStage(this)
                 scene = Scene(cutterPane)
                 show()

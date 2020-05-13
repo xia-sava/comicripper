@@ -103,15 +103,18 @@ class ComicRepository {
 
     suspend fun zipAll() {
         ComicStorage.all.forEach { comic ->
-            zipComic(comic)
+            zipComic(comic, true)
             yield()
         }
     }
 
-    suspend fun zipComic(comic: Comic) {
-        val zipFilename = "${Setting.storeDirectory}/${comic.author}/${comic.title}.zip"
-        File(File(zipFilename).parent).mkdirs()
-        ZipOutputStream(BufferedOutputStream(File(zipFilename).outputStream())).use { zipStream ->
+    suspend fun zipComic(comic: Comic, delete: Boolean = false) {
+        val zipFilename = File("${Setting.storeDirectory}/${comic.author}/${comic.title}.zip")
+        if (zipFilename.exists()) {
+            zipFilename.delete()
+        }
+        File(zipFilename.parent).mkdirs()
+        ZipOutputStream(BufferedOutputStream(zipFilename.outputStream())).use { zipStream ->
             var coverNum = 1
             var pageNum = 1
             comic.files.forEach { src ->
@@ -122,10 +125,12 @@ class ComicRepository {
                 yield()
             }
         }
-        ComicStorage.delete(comic)
-        comic.files
-            .map { Paths.get("${Setting.workDirectory}/$it") }
-            .forEach { Files.deleteIfExists(it) }
+        if (delete) {
+            ComicStorage.delete(comic)
+            comic.files
+                .map { Paths.get("${Setting.workDirectory}/$it") }
+                .forEach { Files.deleteIfExists(it) }
+        }
     }
 
     fun pagesToComic(comic: Comic) {
@@ -240,6 +245,7 @@ class ComicRepository {
      * prefix=page の時，page* が存在しなければ page_000.jpg を，
      * page_123.jpg が存在すれば page_124.jpg を返す．みたいな．
      */
+    @Suppress("SameParameterValue")
     private fun generateFilename(prefix: String): String {
         val num = File(Setting.workDirectory)
             .list { _, name -> name.startsWith(prefix) }
@@ -298,6 +304,11 @@ class ComicRepository {
                     }
                     yield()
                 }
+            ComicStorage.all.forEach {
+                if (it.files.isEmpty()) {
+                    ComicStorage.delete(it)
+                }
+            }
             true
         } catch (ex: Exception) {
             false

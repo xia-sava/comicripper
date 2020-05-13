@@ -5,7 +5,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="to.sava.comicripper.MainController"
+            fx:controller="to.sava.comicripper.controller.MainController"
             fx:id="mainScene"
             stylesheets="@common.css"
             styleClass="main"
@@ -19,7 +19,7 @@
             <Pane HBox.hgrow="ALWAYS"/>
             <Button text="OCR" fx:id="ocrIsbn"/>
             <fx:include source="parts/separator.fxml"/>
-            <Button text="ZIP作成" fx:id="zip"/>
+            <Button text="ZIP作成＆全削除" fx:id="zip"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="全pageを集約" fx:id="pagesToComic"/>
             <fx:include source="parts/separator.fxml"/>
