@@ -20,6 +20,8 @@
                 <Label fx:id="notifyLabel" alignment="CENTER"/>
             </Pane>
 
+            <Button text="画像リロード" fx:id="reloadImages"/>
+            <fx:include source="parts/separator.fxml"/>
             <TextField fx:id="isbn" prefWidth="100"/>
             <Button text="ISBN検索" fx:id="searchIsbn"/>
             <fx:include source="parts/separator.fxml"/>

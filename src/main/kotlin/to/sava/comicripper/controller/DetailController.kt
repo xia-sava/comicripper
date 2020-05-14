@@ -45,6 +45,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var notifyLabel: Label
 
     @FXML
+    private lateinit var reloadImages: Button
+
+    @FXML
     private lateinit var isbn: TextField
 
     @FXML
@@ -103,6 +106,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         title.focusedProperty().onChange { focused ->
             if (focused) {
                 title.selectAll()
+            }
+        }
+
+        reloadImages.setOnAction {
+            launch {
+                comic?.reloadImages()
             }
         }
 

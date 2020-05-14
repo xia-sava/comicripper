@@ -110,9 +110,7 @@ class MainController : Initializable, CoroutineScope {
         }
         reload.setOnAction {
             launch {
-                ComicStorage[selectedComicId]?.let {
-                    repos.reScanFiles(it)
-                } ?: repos.loadFiles()
+                repos.reScanFiles(ComicStorage[selectedComicId])
             }
         }
         ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
@@ -201,15 +199,11 @@ class MainController : Initializable, CoroutineScope {
                 event.isDropCompleted = false
                 if (event.dragboard.hasString()) {
                     ComicStorage[event.dragboard.string]?.let { src ->
-                        if (comic.mergeConflict(src)) {
-                            alert(Alert.AlertType.CONFIRMATION, "コンフリクト", "このマージは情報が上書きされます．マージしてよろしいですか？") {
-                                if (it.buttonData != ButtonBar.ButtonData.OK_DONE) {
-                                    return@setOnDragDropped
-                                }
-                            }
-                        }
                         comic.merge(src)
                         selectComic(comic)
+                        launch {
+                            repos.reScanFiles(comic)
+                        }
                         event.isDropCompleted = true
                     }
                 }

@@ -1,6 +1,7 @@
 package to.sava.comicripper.model
 
 import javafx.scene.image.Image
+import kotlinx.coroutines.yield
 import java.io.File
 import java.util.*
 
@@ -10,6 +11,7 @@ class Comic(filename: String = "") {
         const val COVER_ALL_PREFIX = "coverF"
         const val COVER_BELT_PREFIX = "coverS"
         const val PAGE_PREFIX = "page"
+        val TARGET_REGEX = "^(?:${COVER_FRONT_PREFIX}|${COVER_ALL_PREFIX}|${COVER_BELT_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
     }
 
     var id = UUID.randomUUID().toString()
@@ -29,7 +31,7 @@ class Comic(filename: String = "") {
     var coverFront: String = ""
         set(value) {
             field = value
-            coverFrontImage = loadImage(value)
+            coverFrontImage = if (value.isNotEmpty()) loadImage(value) else null
             invokeListener()
         }
     var coverFrontImage: Image? = null
@@ -37,7 +39,7 @@ class Comic(filename: String = "") {
     var coverAll: String = ""
         set(value) {
             field = value
-            coverAllImage = loadImage(value)
+            coverAllImage = if (value.isNotEmpty()) loadImage(value) else null
             invokeListener()
         }
     var coverAllImage: Image? = null
@@ -45,7 +47,7 @@ class Comic(filename: String = "") {
     var coverBelt: String = ""
         set(value) {
             field = value
-            coverBeltImage = loadImage(value)
+            coverBeltImage = if (value.isNotEmpty()) loadImage(value) else null
             invokeListener()
         }
     var coverBeltImage: Image? = null
@@ -74,22 +76,41 @@ class Comic(filename: String = "") {
         invokeListener()
     }
 
-    fun addFile(vararg filenames: String) {
+    fun addFile(vararg filenames: String): List<String> {
+        val replaced = mutableListOf<String>()
         filenames.forEach { filename ->
             if (filename !in files) {
                 when {
-                    filename.startsWith(COVER_FRONT_PREFIX) -> coverFront = filename
-                    filename.startsWith(COVER_ALL_PREFIX) -> coverAll = filename
-                    filename.startsWith(COVER_BELT_PREFIX) -> coverBelt = filename
-                    filename.startsWith(PAGE_PREFIX) -> addPage(filename)
+                    filename.startsWith(COVER_FRONT_PREFIX) -> {
+                        if (coverFront != "") {
+                            replaced.add(coverFront)
+                        }
+                        coverFront = filename
+                    }
+                    filename.startsWith(COVER_ALL_PREFIX) -> {
+                        if (coverAll != "") {
+                            replaced.add(coverAll)
+                        }
+                        coverAll = filename
+                    }
+                    filename.startsWith(COVER_BELT_PREFIX) -> {
+                        if (coverBelt != "") {
+                            replaced.add(coverBelt)
+                        }
+                        coverBelt = filename
+                    }
+                    filename.startsWith(PAGE_PREFIX) -> {
+                        addPage(filename)
+                    }
                 }
             }
         }
+        return replaced
     }
 
-    fun rescanFiles() {
-        files.forEach { filename ->
-            if (!File("${Setting.workDirectory}/$filename").exists()) {
+    fun removeFiles(vararg filenames: String) {
+        filenames.forEach { filename ->
+            if (filename in files) {
                 when (filename) {
                     coverFront -> coverFront = ""
                     coverAll -> coverAll = ""
@@ -101,6 +122,25 @@ class Comic(filename: String = "") {
                     }
                 }
             }
+        }
+    }
+
+    suspend fun reloadImages() {
+        if (coverFront.isNotEmpty()) {
+            coverFrontImage = loadImage(coverFront)
+            yield()
+        }
+        if (coverAll.isNotEmpty()) {
+            coverAllImage = loadImage(coverAll)
+            yield()
+        }
+        if (coverBelt.isNotEmpty()) {
+            coverBeltImage = loadImage(coverBelt)
+            yield()
+        }
+        files.forEach { filename ->
+            loadImage(filename)
+            yield()
         }
     }
 

@@ -14,7 +14,7 @@
     -fx-border-width: 1;
 }
 
-.comic .selected {
+.comic.selected {
     -fx-background-color: antiquewhite;
     -fx-border-color: black;
     -fx-border-width: 1;

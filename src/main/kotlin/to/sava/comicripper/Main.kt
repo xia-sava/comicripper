@@ -41,7 +41,7 @@ class Main : Application(), CoroutineScope {
 
         launch {
             repos.loadStructure()
-            repos.loadFiles()
+            repos.reScanFiles()
         }
 
         try {

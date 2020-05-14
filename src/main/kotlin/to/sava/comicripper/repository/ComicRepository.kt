@@ -29,32 +29,24 @@ import javax.json.JsonString
 
 class ComicRepository {
 
-    suspend fun loadFiles() {
-        scanFiles {
-            ComicStorage.add(it)
-        }
+    suspend fun reScanFiles(targetComic: Comic? = null) {
         ComicStorage.all.forEach {
-            it.rescanFiles()
+            removeDeletedFiles(it)
         }
-    }
-
-    suspend fun reScanFiles(comic: Comic) {
-        comic.rescanFiles()
-        scanFiles {
-            if (!comic.mergeConflict(it)) {
-                comic.merge(it)
-            } else {
-                ComicStorage.add(it)
-            }
-        }
-    }
-
-    private suspend inline fun scanFiles(block: (Comic) -> Unit) {
         val dir = File(Setting.workDirectory)
         val structuredFiles = ComicStorage.files
-        dir.listFiles { file -> file.name.endsWith(".jpg") }?.map {
+        dir.listFiles { file -> file.name.matches(Comic.TARGET_REGEX) }?.map {
             if (it.name !in structuredFiles) {
-                block(Comic(it.name))
+                val comic = Comic(it.name)
+                if (targetComic != null) {
+                    if (targetComic.mergeConflict(comic)) {
+                        ComicStorage.add(comic)
+                    } else {
+                        targetComic.merge(comic)
+                    }
+                } else {
+                    ComicStorage.add(comic)
+                }
             }
             yield()
         }
@@ -63,7 +55,9 @@ class ComicRepository {
     fun addFile(filename: String, targetComicId: String? = null) {
         val comic = ComicStorage[targetComicId]
         if (comic != null) {
-            comic.addFile(filename)
+            comic.addFile(filename).firstOrNull()?.let {
+                ComicStorage.add(Comic(it))
+            }
         } else {
             ComicStorage.add(Comic(filename))
         }
@@ -72,10 +66,18 @@ class ComicRepository {
     fun deleteFile(filename: String) {
         ComicStorage.all.forEach { comic ->
             if (filename in comic.files) {
-                comic.rescanFiles()
+                comic.removeFiles(filename)
+                if (comic.files.isEmpty()) {
+                    ComicStorage.delete(comic)
+                }
                 return
             }
         }
+    }
+
+    private fun removeDeletedFiles(comic: Comic) {
+        val files = comic.files.filter { !File("${Setting.workDirectory}/$it").exists() }
+        comic.removeFiles(*files.toTypedArray())
     }
 
     fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
