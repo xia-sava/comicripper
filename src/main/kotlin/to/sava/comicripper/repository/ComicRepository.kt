@@ -153,9 +153,10 @@ class ComicRepository {
                 .let { """ISBN([-\d\s]+)""".toRegex().find(it) }
                 ?.groupValues?.get(1)
                 ?.replace("""[-\s]""".toRegex(), "")
+                ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
                 ?.let { isbn ->
                     println("ISBN: $isbn")
-                    searchISBN(if (isbn.length <= 13) isbn else isbn.substring(0, 13))
+                    searchISBN(isbn)
                 }
                 ?: Pair("", "")
         } catch (ex: UnsatisfiedLinkError) {
