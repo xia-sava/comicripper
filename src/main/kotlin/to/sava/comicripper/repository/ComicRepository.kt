@@ -103,14 +103,7 @@ class ComicRepository {
         comic.coverFront = outputFile.name
     }
 
-    suspend fun zipAll() {
-        ComicStorage.all.forEach { comic ->
-            zipComic(comic, true)
-            yield()
-        }
-    }
-
-    suspend fun zipComic(comic: Comic, delete: Boolean = false) {
+    fun zipComic(comic: Comic, delete: Boolean = false) {
         val zipFilename = File("${Setting.storeDirectory}/${comic.author}/${comic.title}.zip")
         if (zipFilename.exists()) {
             zipFilename.delete()
@@ -124,7 +117,6 @@ class ComicRepository {
                 val entry = ZipEntry("%s_%03d.jpg".format(prefix, num))
                 zipStream.putNextEntry(entry)
                 zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
-                yield()
             }
         }
         if (delete) {
@@ -147,18 +139,19 @@ class ComicRepository {
     fun ocrISBN(comic: Comic): Pair<String, String> {
         val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         return try {
-            val cmd = """"${Setting.TesseractExe}" "${workFilename(comic.coverAll)}" "$tmp"""
+            val cmd = """"${Setting.TesseractExe}" "${workFilename(comic.coverAll)}" "$tmp" -l jpn """
             Runtime.getRuntime().exec(cmd).waitFor()
-            File("$tmp.txt").readText()
-                .let { """ISBN([-\d\s]+)""".toRegex().find(it) }
+            val ocrText = File("$tmp.txt").readText()
+
+            ocrText.let { """((?:978\d{10}|ISBN(?:\d\D?){13}))""".toRegex().find(it) }
                 ?.groupValues?.get(1)
-                ?.replace("""[-\s]""".toRegex(), "")
+                ?.replace("""\D""".toRegex(), "")
                 ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
                 ?.let { isbn ->
                     println("ISBN: $isbn")
                     searchISBN(isbn)
                 }
-                ?: Pair("", "")
+                ?: Pair("エラー", "ISBN不明")
         } catch (ex: UnsatisfiedLinkError) {
             Pair("エラー", "cant find Tesseract")
         } finally {
@@ -203,14 +196,15 @@ class ComicRepository {
                 .replace('【', '<').replace('】', '>')
                 .replace('『', '<').replace('』', '>')
                 .replace('《', '<').replace('》', '>')
-                .replace("""(?:<(?!\d+)[^>]+>)""".toRegex(), "")
+                .replace("""<.*(\d*).*>""".toRegex(), "<$1>")
+                .replace("""<>""".toRegex(), "")
                 .trimEnd()
                 .replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
             return Pair(a.joinToString("／"), t)
         }
 
         // Yodobashi.com スクレイピング
-        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").get()
+        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
             .select(".pListBlock a[href]").firstOrNull()
             ?.absUrl("href")
             ?.let { Jsoup.connect(it).get() }
@@ -239,7 +233,7 @@ class ComicRepository {
                     }
                 }
             }
-        return Pair("--", "--")
+        return Pair("ISBN", isbn)
     }
 
     /**
