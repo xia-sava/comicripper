@@ -103,7 +103,7 @@ class ComicRepository {
         comic.coverFront = outputFile.name
     }
 
-    fun zipComic(comic: Comic, delete: Boolean = false) {
+    fun zipComic(comic: Comic) {
         val zipFilename = File("${Setting.storeDirectory}/${comic.author}/${comic.title}.zip")
         if (zipFilename.exists()) {
             zipFilename.delete()
@@ -119,12 +119,10 @@ class ComicRepository {
                 zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
             }
         }
-        if (delete) {
-            ComicStorage.delete(comic)
-            comic.files
-                .map { Paths.get("${Setting.workDirectory}/$it") }
-                .forEach { Files.deleteIfExists(it) }
-        }
+        ComicStorage.delete(comic)
+        comic.files
+            .map { Paths.get("${Setting.workDirectory}/$it") }
+            .forEach { Files.deleteIfExists(it) }
     }
 
     fun pagesToComic(comic: Comic) {

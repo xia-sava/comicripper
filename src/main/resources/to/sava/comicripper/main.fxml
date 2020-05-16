@@ -29,7 +29,7 @@
         </ToolBar>
     </top>
     <center>
-        <ScrollPane hbarPolicy="NEVER" fitToWidth="true">
+        <ScrollPane fx:id="scrollPane" hbarPolicy="NEVER" fitToWidth="true">
             <FlowPane fx:id="comicList" BorderPane.alignment="CENTER" hgap="2" vgap="2"/>
         </ScrollPane>
     </center>

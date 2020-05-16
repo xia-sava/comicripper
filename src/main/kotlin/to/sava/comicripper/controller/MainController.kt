@@ -58,6 +58,9 @@ class MainController : Initializable, CoroutineScope {
     private lateinit var reload: Button
 
     @FXML
+    private lateinit var scrollPane: ScrollPane
+
+    @FXML
     private lateinit var statusBar: Label
 
     @FXML
@@ -106,7 +109,7 @@ class MainController : Initializable, CoroutineScope {
             ) {
                 ComicStorage.all.map { comic ->
                     launch(Dispatchers.IO + job) {
-                        repos.zipComic(comic, true)
+                        repos.zipComic(comic)
                     }
                 }
             }
@@ -120,11 +123,21 @@ class MainController : Initializable, CoroutineScope {
         }
         reload.setOnAction {
             launch {
-                repos.reScanFiles(ComicStorage[selectedComicId])
+                repos.reScanFiles()
+                repos.saveStructure()
             }
         }
         setting.setOnAction {
             launchSetting()
+        }
+
+        launch {
+            while (true) {
+                delay(1000)
+                val runtime = Runtime.getRuntime()
+                val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+                notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
+            }
         }
 
         ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
@@ -144,8 +157,6 @@ class MainController : Initializable, CoroutineScope {
 
     private fun addComic(comic: Comic) {
         launch {
-            notifyLabel.text = "コミック情報更新中..."
-
             val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
             controller.apply {
                 comicProperty.set(comic)
@@ -165,10 +176,6 @@ class MainController : Initializable, CoroutineScope {
 
             if (comicObjs.size == 1) {
                 selectComic(comic)
-            }
-            launch {
-                delay(3000)
-                notifyLabel.text = ""
             }
         }
     }

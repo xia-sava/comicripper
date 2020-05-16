@@ -39,7 +39,7 @@ class Comic(filename: String = "") {
     var coverAll: String = ""
         set(value) {
             field = value
-            coverAllImage = if (value.isNotEmpty()) loadImage(value) else null
+            coverAllImage = if (value.isNotEmpty()) loadImage(value, fullSize=true) else null
             invokeListener()
         }
     var coverAllImage: Image? = null
@@ -167,8 +167,12 @@ class Comic(filename: String = "") {
                 (src.coverBelt != "" && coverBelt != ""))
     }
 
-    private fun loadImage(filename: String): Image {
-        return Image(File("${Setting.workDirectory}/$filename").toURI().toURL().toString())
+    private fun loadImage(filename: String, fullSize: Boolean = false): Image {
+        val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
+        return if (fullSize)
+            Image(url)
+        else
+            Image(url, 1024.0, 1024.0, true, false)
     }
 
     fun addListener(listener: (Comic) -> Unit) {

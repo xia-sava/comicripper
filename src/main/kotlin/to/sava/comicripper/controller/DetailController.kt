@@ -41,9 +41,6 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var title: TextField
 
     @FXML
-    private lateinit var notifyLabel: Label
-
-    @FXML
     private lateinit var reloadImages: Button
 
     @FXML
@@ -115,9 +112,19 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
 
         val searchIsbnAction = {
-            val (author, title) = repos.searchISBN(isbn.text)
-            this.author.text = author
-            this.title.text = title
+            modalProgressDialog(
+                "ISBN検索",
+                "ISBN から著者名/作品名をサーチしてます",
+                stage
+            ) { job ->
+                launch(Dispatchers.IO + job) {
+                    val (author_, title_) = repos.searchISBN(isbn.text)
+                    withContext(Dispatchers.Main) {
+                        author.text = author_
+                        title.text = title_
+                    }
+                }
+            }
         }
         isbn.setOnAction {
             searchIsbnAction()
@@ -151,13 +158,15 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
 
         zip.setOnAction {
-            comic?.let {
-                launch {
-                    repos.zipComic(it)
-                    notifyLabel.text = "zipを作成しました"
+            comic?.let { comic ->
+                modalProgressDialog(
+                    "ZIPしています",
+                    "コミックをZIP化しています",
+                    stage
+                ) {
                     launch {
-                        delay(5000)
-                        notifyLabel.text = ""
+                        repos.zipComic(comic)
+                        stage?.close()
                     }
                 }
             }

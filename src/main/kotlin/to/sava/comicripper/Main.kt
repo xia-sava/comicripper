@@ -44,6 +44,13 @@ class Main : Application(), CoroutineScope {
             repos.reScanFiles()
         }
 
+        launch {
+            while (true) {
+                delay(30_000)
+                repos.saveStructure()
+            }
+        }
+
         try {
             jNotifyWatcher = JNotify.addWatch(
                 Setting.workDirectory,
