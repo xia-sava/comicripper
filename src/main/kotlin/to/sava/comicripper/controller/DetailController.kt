@@ -12,7 +12,6 @@ import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,18 +130,17 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
         ocrIsbn.setOnAction {
             comic?.let { comic ->
-                val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
-                val job = this.coroutineContext + Job()
-                modal.setOnCloseRequest {
-                    job.cancel()
-                }
-                modal.show()
-                launch(Dispatchers.IO + job) {
-                    val (author_, title_) = repos.ocrISBN(comic)
-                    withContext(Dispatchers.Main + job) {
-                        author.text = author_
-                        title.text = title_
-                        modal.close()
+                modalProgressDialog(
+                    "OCRしています",
+                    "画像から ISBN を読み取って著者名/作品名をサーチしてます",
+                    stage
+                ) { job ->
+                    launch(Dispatchers.IO + job) {
+                        val (author_, title_) = repos.ocrISBN(comic)
+                        withContext(Dispatchers.Main + job) {
+                            author.text = author_
+                            title.text = title_
+                        }
                     }
                 }
             }
@@ -179,7 +177,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 when (event.clickCount) {
                     2 -> {
                         comic?.let { comic ->
-                            if (comic.coverFront == "" && comic.coverAll != "" ) {
+                            if (comic.coverFront == "" && comic.coverAll != "") {
                                 launchCutter()
                             }
                         }

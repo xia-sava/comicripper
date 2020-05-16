@@ -10,6 +10,10 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.VBox
 import javafx.stage.Modality
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import to.sava.comicripper.model.Setting
 import tornadofx.add
 import tornadofx.paddingAll
@@ -45,8 +49,15 @@ fun workFilename(filename: String): String {
     return "${Setting.workDirectory}/$filename"
 }
 
-fun modalProgressDialog(title: String, text: String, owner: Stage): Stage {
-    return Stage().apply {
+fun CoroutineScope.modalProgressDialog(
+    title: String,
+    text: String,
+    owner: Stage?,
+    block: suspend (job: Job) -> Any
+) {
+    checkNotNull(owner)
+    val job = Job()
+    val modal = Stage().apply {
         this.title = title
         initModality(Modality.WINDOW_MODAL)
         initOwner(owner)
@@ -58,5 +69,18 @@ fun modalProgressDialog(title: String, text: String, owner: Stage): Stage {
                 setPrefSize(24.0, 24.0)
             })
         })
+        setOnCloseRequest {
+            job.cancel()
+        }
+    }
+    modal.show()
+    launch(Dispatchers.Main + job) {
+        when (val result = block(job)) {
+            is Job -> result.join()
+            is Iterable<*> -> result.forEach {
+                if (it is Job) it.join()
+            }
+        }
+        modal.close()
     }
 }

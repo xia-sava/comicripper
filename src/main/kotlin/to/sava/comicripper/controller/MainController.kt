@@ -74,31 +74,33 @@ class MainController : Initializable, CoroutineScope {
             }
         }
         ocrIsbn.setOnAction {
-            val modal = modalProgressDialog("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます", requireNotNull(stage))
-            val job = this.coroutineContext + Job()
-            modal.setOnCloseRequest {
-                job.cancel()
-            }
-            modal.show()
-            launch(Dispatchers.IO + job) {
-                ComicStorage.all.map { comic ->
-                    async {
+            modalProgressDialog(
+                "OCRしています",
+                "画像から ISBN を読み取って著者名/作品名をサーチしてます",
+                stage
+            ) {
+                ComicStorage.all.filter { it.coverAll.isNotEmpty() }.map { comic ->
+                    launch(Dispatchers.IO + job) {
                         val (author, title) = repos.ocrISBN(comic)
                         withContext(Dispatchers.Main + job) {
                             comic.author = author
                             comic.title = title
-                            yield()
                         }
                     }
-                }.awaitAll()
-                modal.close()
+                }
             }
         }
         zip.setOnAction {
-            launch {
-                val modal = modalProgressDialog("ZIPしています", "コミックをまとめてZIP化しています...", requireNotNull(stage))
-                repos.zipAll()
-                modal.close()
+            modalProgressDialog(
+                "ZIPしています",
+                "コミックをまとめてZIP化しています",
+                stage
+            ) {
+                ComicStorage.all.map { comic ->
+                    launch(Dispatchers.IO + job) {
+                        repos.zipComic(comic, true)
+                    }
+                }
             }
         }
         pagesToComic.setOnAction {
