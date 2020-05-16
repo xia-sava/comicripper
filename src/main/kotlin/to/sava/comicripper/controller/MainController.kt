@@ -6,11 +6,13 @@ import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
+import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.input.ClipboardContent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
+import javafx.scene.layout.Pane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
@@ -54,6 +56,12 @@ class MainController : Initializable, CoroutineScope {
 
     @FXML
     private lateinit var reload: Button
+
+    @FXML
+    private lateinit var statusBar: Label
+
+    @FXML
+    private lateinit var setting: Button
 
     private var stage: Stage? = null
 
@@ -115,6 +123,10 @@ class MainController : Initializable, CoroutineScope {
                 repos.reScanFiles(ComicStorage[selectedComicId])
             }
         }
+        setting.setOnAction {
+            launchSetting()
+        }
+
         ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
             while (change.next()) {
                 when {
@@ -228,5 +240,15 @@ class MainController : Initializable, CoroutineScope {
             pane.styleClass.add("selected")
         }
         selectedComicIdProperty.value = comic.id
+    }
+
+    private fun launchSetting() {
+        val (settingPane, settingController) = loadFxml<Pane, SettingController>("setting.fxml")
+        Stage().apply {
+            this@MainController.stage?.let { initOwner(it) }
+            settingController.initStage(this)
+            scene = Scene(settingPane)
+            show()
+        }
     }
 }

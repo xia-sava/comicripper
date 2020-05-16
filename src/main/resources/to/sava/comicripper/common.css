@@ -60,6 +60,13 @@
     -fx-fill: black;
 }
 
+#settingScene .label {
+    -fx-min-width: 200.0;
+}
+#settingScene .input {
+    -fx-min-width: 400.0;
+}
+
 .bordered {
     -fx-border-color: red;
     -fx-border-width: 1.0;

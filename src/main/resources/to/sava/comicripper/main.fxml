@@ -39,6 +39,7 @@
                 <Label fx:id="statusBar"/>
             </Pane>
             <fx:include source="parts/separator.fxml"/>
+            <Button text="設定" fx:id="setting"/>
         </ToolBar>
     </bottom>
 </BorderPane>

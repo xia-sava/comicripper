@@ -51,6 +51,20 @@ object Setting {
             cutterWindowHeightProperty.value = value
         }
 
+    val settingWindowWidthProperty = SimpleDoubleProperty(720.0)
+    var settingWindowWidth: Double
+        get() = settingWindowWidthProperty.value
+        set(value) {
+            settingWindowWidthProperty.value = value
+        }
+
+    val settingWindowHeightProperty = SimpleDoubleProperty(720.0)
+    var settingWindowHeight: Double
+        get() = settingWindowHeightProperty.value
+        set(value) {
+            settingWindowHeightProperty.value = value
+        }
+
     val cutterLeftPercentProperty = SimpleDoubleProperty(15.0)
     var cutterLeftPercent: Double
         get() = cutterLeftPercentProperty.value

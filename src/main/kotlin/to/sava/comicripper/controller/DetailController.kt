@@ -259,6 +259,5 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
             cutterController.setComic(comic)
         }
-
     }
 }
