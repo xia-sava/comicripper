@@ -29,6 +29,16 @@
         </ToolBar>
     </top>
     <center>
-        <FlowPane fx:id="comicList" BorderPane.alignment="CENTER" hgap="2" vgap="2"/>
+        <ScrollPane hbarPolicy="NEVER" fitToWidth="true">
+            <FlowPane fx:id="comicList" BorderPane.alignment="CENTER" hgap="2" vgap="2"/>
+        </ScrollPane>
     </center>
+    <bottom>
+        <ToolBar styleClass="statusBar">
+            <Pane HBox.hgrow="ALWAYS">
+                <Label fx:id="statusBar"/>
+            </Pane>
+            <fx:include source="parts/separator.fxml"/>
+        </ToolBar>
+    </bottom>
 </BorderPane>
