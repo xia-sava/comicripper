@@ -4,7 +4,10 @@
     -fx-font-weight: bold;
 }
 
-.main {
+#mainScene,
+#mainScene center,
+#comicList,
+#scrollPane {
     -fx-background-color: gray;
 }
 

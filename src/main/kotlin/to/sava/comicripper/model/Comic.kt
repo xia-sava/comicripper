@@ -172,7 +172,7 @@ class Comic(filename: String = "") {
         return if (fullSize)
             Image(url)
         else
-            Image(url, 1024.0, 1024.0, true, false)
+            Image(url, 2048.0, 2048.0, true, true)
     }
 
     fun addListener(listener: (Comic) -> Unit) {
