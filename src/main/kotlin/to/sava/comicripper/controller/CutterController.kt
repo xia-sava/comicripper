@@ -10,6 +10,9 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Region
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -17,7 +20,10 @@ import tornadofx.*
 import java.net.URL
 import java.util.*
 
-class CutterController : BorderPane(), Initializable {
+class CutterController : BorderPane(), Initializable, CoroutineScope {
+    private val job = Job()
+    override val coroutineContext get() = Dispatchers.Main + job
+
     private val repos = ComicRepository()
 
     @FXML
@@ -86,6 +92,9 @@ class CutterController : BorderPane(), Initializable {
             height = Setting.cutterWindowHeight
             Setting.cutterWindowWidthProperty.bind(widthProperty())
             Setting.cutterWindowHeightProperty.bind(heightProperty())
+            setOnCloseRequest {
+                job.cancel()
+            }
         }
     }
 

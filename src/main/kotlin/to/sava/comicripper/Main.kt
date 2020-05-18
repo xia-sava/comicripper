@@ -9,6 +9,7 @@ import net.contentobjects.jnotify.JNotify
 import net.contentobjects.jnotify.JNotifyListener
 import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 
@@ -61,17 +62,13 @@ class Main : Application(), CoroutineScope {
                     override fun fileRenamed(wd: Int, rootPath: String?, oldName: String?, newName: String?) {}
                     override fun fileDeleted(wd: Int, rootPath: String?, name: String?) {
                         name?.let {
-                            launch {
-                                repos.deleteFile(name)
-                            }
+                            repos.deleteFile(name)
                         }
                     }
 
                     override fun fileCreated(wd: Int, rootPath: String?, name: String?) {
-                        name?.let {
-                            launch {
-                                repos.addFile(name, mainController.selectedComicId)
-                            }
+                        name?.takeIf { Comic.TARGET_REGEX.matches(it) }?.let {
+                            repos.addFile(name, mainController.selectedComicId)
                         }
                     }
                 }

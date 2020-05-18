@@ -15,6 +15,10 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.ext.loadFxml
@@ -23,7 +27,10 @@ import tornadofx.*
 import java.net.URL
 import java.util.*
 
-class ComicController : VBox(), Initializable {
+class ComicController : VBox(), Initializable, CoroutineScope {
+    private val job = Job()
+    override val coroutineContext get() = Dispatchers.Main + job
+
     @FXML
     private lateinit var comicScene: VBox
 
@@ -59,16 +66,22 @@ class ComicController : VBox(), Initializable {
 
     fun destroy() {
         clickListeners.clear()
+        job.cancel()
     }
 
     fun initStage(stage: Stage) {
         this.stage = stage
+        stage.setOnCloseRequest {
+            job.cancel()
+        }
     }
 
     private fun setComic(comic: Comic) {
         updateComic()
         comic.addListener {
-            updateComic()
+            launch {
+                updateComic()
+            }
         }
     }
 

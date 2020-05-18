@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import to.sava.comicripper.model.Setting
 import tornadofx.add
 import tornadofx.paddingAll
@@ -53,7 +54,7 @@ fun CoroutineScope.modalProgressDialog(
     title: String,
     text: String,
     owner: Stage?,
-    block: suspend (job: Job) -> Any
+    block: suspend (job: Job) -> Any?
 ) {
     checkNotNull(owner)
     val job = Job()
@@ -74,13 +75,15 @@ fun CoroutineScope.modalProgressDialog(
         }
     }
     modal.show()
-    launch(Dispatchers.Main + job) {
+    launch(Dispatchers.IO + job) {
         when (val result = block(job)) {
             is Job -> result.join()
             is Iterable<*> -> result.forEach {
                 if (it is Job) it.join()
             }
         }
-        modal.close()
+        withContext(Dispatchers.Main + job) {
+            modal.close()
+        }
     }
 }

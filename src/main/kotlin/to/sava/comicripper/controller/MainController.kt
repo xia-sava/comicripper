@@ -89,7 +89,7 @@ class MainController : Initializable, CoroutineScope {
                 "OCRしています",
                 "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                 stage
-            ) {
+            ) { job ->
                 ComicStorage.all.filter { it.coverAll.isNotEmpty() }.map { comic ->
                     launch(Dispatchers.IO + job) {
                         val (author, title) = repos.ocrISBN(comic)
@@ -108,21 +108,19 @@ class MainController : Initializable, CoroutineScope {
                 stage
             ) {
                 ComicStorage.all.map { comic ->
-                    launch(Dispatchers.IO + job) {
-                        repos.zipComic(comic)
-                    }
+                    repos.zipComic(comic)
                 }
             }
         }
         pagesToComic.setOnAction {
             ComicStorage[selectedComicId]?.let { comic ->
-                launch {
+                launch(Dispatchers.IO) {
                     repos.pagesToComic(comic)
                 }
             }
         }
         reload.setOnAction {
-            launch {
+            launch(Dispatchers.IO) {
                 repos.reScanFiles()
                 repos.saveStructure()
             }
@@ -133,7 +131,7 @@ class MainController : Initializable, CoroutineScope {
 
         launch {
             while (true) {
-                delay(1000)
+                delay(5_000)
                 val runtime = Runtime.getRuntime()
                 val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
                 notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
@@ -182,10 +180,12 @@ class MainController : Initializable, CoroutineScope {
 
     private fun removeComic(comic: Comic) {
         comicObjs[comic.id]?.let {
-            val (controller, pane) = it
-            comicList.children.remove(pane)
-            controller.destroy()
-            comicObjs.remove(comic.id)
+            launch {
+                val (controller, pane) = it
+                comicList.children.remove(pane)
+                controller.destroy()
+                comicObjs.remove(comic.id)
+            }
         }
     }
 

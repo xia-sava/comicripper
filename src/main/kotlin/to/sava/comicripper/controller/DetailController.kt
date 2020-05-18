@@ -117,22 +117,23 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 "ISBN から著者名/作品名をサーチしてます",
                 stage
             ) { job ->
-                launch(Dispatchers.IO + job) {
-                    val (author_, title_) = repos.searchISBN(isbn.text)
-                    withContext(Dispatchers.Main) {
-                        author.text = author_
-                        title.text = title_
-                    }
+                val (author_, title_) = repos.searchISBN(isbn.text)
+                withContext(Dispatchers.Main + job) {
+                    author.text = author_
+                    title.text = title_
                 }
             }
         }
         isbn.setOnAction {
             searchIsbnAction()
         }
-        searchIsbn.setOnKeyPressed {
+        isbn.setOnKeyPressed {
             if (it.code == KeyCode.ENTER) {
                 searchIsbnAction()
             }
+        }
+        searchIsbn.setOnAction {
+            searchIsbnAction()
         }
 
         ocrIsbn.setOnAction {
@@ -142,12 +143,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                     stage
                 ) { job ->
-                    launch(Dispatchers.IO + job) {
-                        val (author_, title_) = repos.ocrISBN(comic)
-                        withContext(Dispatchers.Main + job) {
-                            author.text = author_
-                            title.text = title_
-                        }
+                    val (author_, title_) = repos.ocrISBN(comic)
+                    withContext(Dispatchers.Main + job) {
+                        author.text = author_
+                        title.text = title_
                     }
                 }
             }
@@ -163,9 +162,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "ZIPしています",
                     "コミックをZIP化しています",
                     stage
-                ) {
-                    launch {
-                        repos.zipComic(comic)
+                ) { job ->
+                    repos.zipComic(comic)
+                    withContext(Dispatchers.Main + job) {
                         stage?.close()
                     }
                 }
@@ -240,14 +239,16 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun updateComic() {
         val comic = this.comic ?: return
 
-        author.text = comic.author
-        title.text = comic.title
+        launch {
+            author.text = comic.author
+            title.text = comic.title
 
-        val imageNum = comic.files.size
-        pageNumber.text = imageNum.toString()
-        slider.max = imageNum.toDouble()
-        if (imageNum > 0) {
-            setImage(if (slider.value.toInt() > imageNum) imageNum - 1 else slider.value.toInt())
+            val imageNum = comic.files.size
+            pageNumber.text = imageNum.toString()
+            slider.max = imageNum.toDouble()
+            if (imageNum > 0) {
+                setImage(if (slider.value.toInt() > imageNum) imageNum - 1 else slider.value.toInt())
+            }
         }
     }
 
