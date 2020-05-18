@@ -134,6 +134,15 @@ class ComicRepository {
             }
     }
 
+    fun releaseFiles(comic: Comic, vararg filenames: String) {
+        filenames.forEach { filename ->
+            if (filename in comic.files) {
+                comic.removeFiles(filename)
+                ComicStorage.add(Comic(filename))
+            }
+        }
+    }
+
     fun ocrISBN(comic: Comic): Pair<String, String> {
         val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         return try {

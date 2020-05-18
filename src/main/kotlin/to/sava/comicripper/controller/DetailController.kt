@@ -41,6 +41,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var title: TextField
 
     @FXML
+    private lateinit var releaseImage: Button
+
+    @FXML
     private lateinit var reloadImages: Button
 
     @FXML
@@ -103,6 +106,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             if (focused) {
                 title.selectAll()
             }
+        }
+
+        releaseImage.setOnAction {
+            releaseImage()
         }
 
         reloadImages.setOnAction {
@@ -255,6 +262,14 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun setImage(num: Int) {
         comic?.images?.getOrNull(num)?.let { image ->
             imageView.image = image
+        }
+    }
+
+    private fun releaseImage() {
+        comic?.let { comic ->
+            comic.files.getOrNull(slider.value.toInt())?.let { filename ->
+                repos.releaseFiles(comic, filename)
+            }
         }
     }
 
