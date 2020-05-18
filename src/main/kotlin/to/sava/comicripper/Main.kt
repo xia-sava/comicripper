@@ -43,12 +43,11 @@ class Main : Application(), CoroutineScope {
         launch {
             repos.loadStructure()
             repos.reScanFiles()
-        }
-
-        launch {
-            while (true) {
-                delay(30_000)
-                repos.saveStructure()
+            launch {
+                while (true) {
+                    delay(30_000)
+                    repos.saveStructure()
+                }
             }
         }
 
