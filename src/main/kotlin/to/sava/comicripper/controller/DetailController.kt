@@ -93,19 +93,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         author.textProperty().onChange {
             ComicStorage[comic?.id]?.let { comic -> comic.author = it ?: "" }
         }
-        author.focusedProperty().onChange { focused ->
-            if (focused) {
-                author.selectAll()
-            }
-        }
 
         title.textProperty().onChange {
             ComicStorage[comic?.id]?.let { comic -> comic.title = it ?: "" }
-        }
-        title.focusedProperty().onChange { focused ->
-            if (focused) {
-                title.selectAll()
-            }
         }
 
         releaseImage.setOnAction {
@@ -247,8 +237,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         val comic = this.comic ?: return
 
         launch {
-            author.text = comic.author
-            title.text = comic.title
+            if (author.text != comic.author) {
+                author.text = comic.author
+            }
+            if (title.text != comic.title) {
+                title.text = comic.title
+            }
 
             val imageNum = comic.files.size
             pageNumber.text = imageNum.toString()

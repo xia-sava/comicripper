@@ -89,14 +89,14 @@ class MainController : Initializable, CoroutineScope {
                 "OCRしています",
                 "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                 stage
-            ) { job ->
+            ) {
                 ComicStorage.all.filter { it.coverAll.isNotEmpty() }.map { comic ->
-                    launch(Dispatchers.IO + job) {
-                        val (author, title) = repos.ocrISBN(comic)
-                        withContext(Dispatchers.Main + job) {
-                            comic.author = author
-                            comic.title = title
+                    launch {
+                        val (author, title) = withContext(Dispatchers.IO) {
+                            repos.ocrISBN(comic)
                         }
+                        comic.author = author
+                        comic.title = title
                     }
                 }
             }
@@ -114,13 +114,13 @@ class MainController : Initializable, CoroutineScope {
         }
         pagesToComic.setOnAction {
             ComicStorage[selectedComicId]?.let { comic ->
-                launch(Dispatchers.IO) {
+                launch(Dispatchers.IO + job) {
                     repos.pagesToComic(comic)
                 }
             }
         }
         reload.setOnAction {
-            launch(Dispatchers.IO) {
+            launch(Dispatchers.IO + job) {
                 repos.reScanFiles()
                 repos.saveStructure()
             }
@@ -129,12 +129,14 @@ class MainController : Initializable, CoroutineScope {
             launchSetting()
         }
 
-        launch {
+        launch(Dispatchers.Default + job) {
             while (true) {
                 delay(5_000)
                 val runtime = Runtime.getRuntime()
                 val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-                notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
+                withContext(Dispatchers.Main + job) {
+                    notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
+                }
             }
         }
 
