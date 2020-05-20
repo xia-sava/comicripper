@@ -90,6 +90,23 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private var stage: Stage? = null
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
+        detailScene.setOnKeyReleased {
+            when (it.code) {
+                KeyCode.ESCAPE -> stage?.close()
+                KeyCode.LEFT -> leftImage()
+                KeyCode.RIGHT -> rightImage()
+                else -> {}
+            }
+        }
+        listOf(author, title, isbn).forEach {  textfield ->
+            textfield.setOnKeyReleased {
+                when (it.code) {
+                    KeyCode.LEFT, KeyCode.RIGHT -> it.consume()
+                    else -> {}
+                }
+            }
+        }
+
         author.textProperty().onChange {
             ComicStorage[comic?.id]?.let { comic -> comic.author = it ?: "" }
         }
@@ -179,6 +196,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
         imageView.setOnMouseClicked { event ->
             if (event.button == MouseButton.PRIMARY) {
+                imageView.requestFocus()
                 when (event.clickCount) {
                     2 -> {
                         comic?.let { comic ->
@@ -200,14 +218,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
 
         leftButton.setOnAction {
-            if (slider.value > slider.min) {
-                slider.value -= 1
-            }
+            leftImage()
         }
         rightButton.setOnAction {
-            if (slider.value < slider.max) {
-                slider.value += 1
-            }
+            rightImage()
         }
     }
 
@@ -277,6 +291,18 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 show()
             }
             cutterController.setComic(comic)
+        }
+    }
+
+    private fun leftImage() {
+        if (slider.value > slider.min) {
+            slider.value -= 1
+        }
+    }
+
+    private fun rightImage() {
+        if (slider.value < slider.max) {
+            slider.value += 1
         }
     }
 }
