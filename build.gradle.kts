@@ -22,6 +22,7 @@ dependencies {
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("org.jsoup:jsoup:1.13.1")
+    implementation("net.sourceforge.htmlunit:htmlunit:2.40.0")
 
     testImplementation("junit", "junit", "4.12")
 }

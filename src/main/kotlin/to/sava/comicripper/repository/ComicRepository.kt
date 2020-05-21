@@ -223,6 +223,19 @@ class ComicRepository {
                 }
             }
 
+        // Amazon.com スクレイピング
+        Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
+            .select("#search .s-main-slot a[href]").firstOrNull()
+            ?.absUrl("href")
+            ?.let { Jsoup.connect(it).get() }
+            ?.let { page ->
+                val title = page.select("#productTitle")?.first()?.text()
+                val authors = page.select("#bylineInfo a")?.map { it.text() ?: "" }
+                if (authors != null && title != null) {
+                    return normalize(authors, title)
+                }
+            }
+
         // Google Book API
         Json.createReader(
             InputStreamReader(
