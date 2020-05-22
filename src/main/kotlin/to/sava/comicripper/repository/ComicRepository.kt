@@ -203,8 +203,8 @@ class ComicRepository {
                 .replace('【', '<').replace('】', '>')
                 .replace('『', '<').replace('』', '>')
                 .replace('《', '<').replace('》', '>')
-                .replace("""<.*(\d*).*>""".toRegex(), "<$1>")
-                .replace("""<>""".toRegex(), "")
+                .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
+                .replace("<>", "")
                 .trimEnd()
                 .replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
             return Pair(a.joinToString("／"), t)
@@ -214,7 +214,7 @@ class ComicRepository {
         Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
             .select(".pListBlock a[href]").firstOrNull()
             ?.absUrl("href")
-            ?.let { Jsoup.connect(it).get() }
+            ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
                 val title = page.select("#products_maintitle")?.first()?.text()
                 val authors = page.select("#js_bookAuthor a")?.map { it.text() ?: "" }
@@ -227,10 +227,10 @@ class ComicRepository {
         Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
             .select("#search .s-main-slot a[href]").firstOrNull()
             ?.absUrl("href")
-            ?.let { Jsoup.connect(it).get() }
+            ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
                 val title = page.select("#productTitle")?.first()?.text()
-                val authors = page.select("#bylineInfo a")?.map { it.text() ?: "" }
+                val authors = page.select("#bylineInfo .author a")?.map { it.text() ?: "" }
                 if (authors != null && title != null) {
                     return normalize(authors, title)
                 }

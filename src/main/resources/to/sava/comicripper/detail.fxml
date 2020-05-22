@@ -12,9 +12,9 @@
     <top>
         <ToolBar prefHeight="40.0" minHeight="40.0">
             <Label text="作者:"/>
-            <TextField fx:id="author" prefWidth="100"/>
+            <TextField fx:id="author" prefWidth="150.0"/>
             <Label text="題名:"/>
-            <TextField fx:id="title" prefWidth="200"/>
+            <TextField fx:id="title" prefWidth="300.0"/>
 
             <Pane HBox.hgrow="ALWAYS">
                 <Label fx:id="notifyLabel" alignment="CENTER"/>
