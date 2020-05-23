@@ -4,55 +4,53 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="to.sava.comicripper.controller.DetailController"
-            fx:id="detailScene"
-            stylesheets="@common.css"
->
+<BorderPane fx:id="detailScene" stylesheets="@common.css" xmlns="http://javafx.com/javafx/10.0.2-internal" xmlns:fx="http://javafx.com/fxml/1" fx:controller="to.sava.comicripper.controller.DetailController">
     <top>
-        <ToolBar prefHeight="40.0" minHeight="40.0">
-            <Label text="作者:"/>
-            <TextField fx:id="author" prefWidth="150.0"/>
-            <Label text="題名:"/>
-            <TextField fx:id="title" prefWidth="300.0"/>
+        <ToolBar minHeight="40.0" prefHeight="40.0">
+            <Label text="作者:" />
+            <TextField fx:id="author" prefWidth="150.0" />
+            <Label text="題名:" />
+            <TextField fx:id="title" prefWidth="300.0" />
 
             <Pane HBox.hgrow="ALWAYS">
-                <Label fx:id="notifyLabel" alignment="CENTER"/>
+                <Label fx:id="notifyLabel" alignment="CENTER" />
             </Pane>
 
-            <Button text="画像リリース" fx:id="releaseImage"/>
-            <Button text="画像リロード" fx:id="reloadImages"/>
-            <fx:include source="parts/separator.fxml"/>
-            <TextField fx:id="isbn" prefWidth="100"/>
-            <Button text="ISBN検索" fx:id="searchIsbn"/>
-            <fx:include source="parts/separator.fxml"/>
-            <Button text="OCR" fx:id="ocrIsbn"/>
-            <fx:include source="parts/separator.fxml"/>
-            <Button text="表紙カット" fx:id="cutter"/>
-            <fx:include source="parts/separator.fxml"/>
-            <Button text="ZIP作成" fx:id="zip"/>
-            <fx:include source="parts/separator.fxml"/>
-            <Button text="閉じる" fx:id="close"/>
+            <Button fx:id="releaseImage" text="画像リリース" />
+            <Button fx:id="reloadImages" text="画像リロード" />
+            <fx:include source="parts/separator.fxml" />
+            <TextField fx:id="isbn" prefWidth="100" />
+            <Button fx:id="searchIsbn" text="ISBN検索" />
+            <fx:include source="parts/separator.fxml" />
+            <Button fx:id="ocrIsbn" text="OCR" />
+            <fx:include source="parts/separator.fxml" />
+            <Button fx:id="cutter" text="表紙カット" />
+            <fx:include source="parts/separator.fxml" />
+            <Button fx:id="zip" text="ZIP作成" />
+            <fx:include source="parts/separator.fxml" />
+            <Button fx:id="close" text="閉じる" />
         </ToolBar>
     </top>
     <center>
-        <ImageView fx:id="imageView"/>
+        <ImageView fx:id="imageView" />
     </center>
     <bottom>
-        <ToolBar fx:id="bottomBar" prefHeight="32.0" minHeight="32.0">
-            <Button fx:id="leftButton" text="◀"/>
-            <fx:include source="parts/separator.fxml"/>
+        <ToolBar fx:id="bottomBar" minHeight="32.0" prefHeight="32.0">
+            <Button fx:id="leftButton" text="◀" />
+            <fx:include source="parts/separator.fxml" />
             <StackPane HBox.hgrow="ALWAYS">
-                <Slider fx:id="slider" showTickMarks="true" snapToTicks="true"
-                        majorTickUnit="1.0" minorTickCount="0" />
+                <Slider fx:id="slider"
+                        majorTickUnit="1.0" minorTickCount="0"
+                        showTickMarks="true" snapToTicks="true" showTickLabels="true"
+                />
                 <HBox alignment="CENTER" mouseTransparent="true">
-                    <Label fx:id="currentNumber"/>
-                    <Label text="/"/>
-                    <Label fx:id="pageNumber"/>
+                    <Label fx:id="currentNumber" />
+                    <Label text="/" />
+                    <Label fx:id="pageNumber" />
                 </HBox>
             </StackPane>
-            <fx:include source="parts/separator.fxml"/>
-            <Button fx:id="rightButton" text="▶"/>
+            <fx:include source="parts/separator.fxml" />
+            <Button fx:id="rightButton" text="▶" />
         </ToolBar>
     </bottom>
 </BorderPane>

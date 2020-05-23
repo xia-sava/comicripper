@@ -9,6 +9,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
+import javafx.util.StringConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -216,6 +217,11 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             setImage(it.toInt())
             currentNumber.text = it.toInt().toString()
         }
+        slider.labelFormatter = object : StringConverter<Double>() {
+            override fun fromString(value: String?) = (value?.toDouble() ?: 1.0) - 1.0
+            override fun toString(value: Double?) = ((value?.toInt() ?: 0) + 1).toString()
+        }
+        slider.requestFocus()
 
         leftButton.setOnAction {
             leftImage()
@@ -234,6 +240,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             Setting.detailWindowHeightProperty.bind(heightProperty())
             setOnCloseRequest {
                 job.cancel()
+            }
+            setOnShown {
+                imageView.requestFocus()
             }
         }
     }
@@ -260,7 +269,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
             val imageNum = comic.files.size
             pageNumber.text = imageNum.toString()
-            slider.max = imageNum.toDouble()
+            slider.max = imageNum.toDouble() - 1
             if (imageNum > 0) {
                 setImage(if (slider.value.toInt() > imageNum) imageNum - 1 else slider.value.toInt())
             }
