@@ -13,7 +13,6 @@ import javafx.util.StringConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import to.sava.comicripper.ext.loadFxml
@@ -96,14 +95,16 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 KeyCode.ESCAPE -> stage?.close()
                 KeyCode.LEFT -> leftImage()
                 KeyCode.RIGHT -> rightImage()
-                else -> {}
+                else -> {
+                }
             }
         }
-        listOf(author, title, isbn).forEach {  textfield ->
+        listOf(author, title, isbn).forEach { textfield ->
             textfield.setOnKeyReleased {
                 when (it.code) {
                     KeyCode.LEFT, KeyCode.RIGHT -> it.consume()
-                    else -> {}
+                    else -> {
+                    }
                 }
             }
         }
@@ -201,7 +202,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 when (event.clickCount) {
                     2 -> {
                         comic?.let { comic ->
-                            if (comic.coverFront == "" && comic.coverAll != "") {
+                            if (comic.coverAll.isNotEmpty()) {
                                 launchCutter()
                             }
                         }
@@ -209,7 +210,6 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 }
             }
         }
-
 
         bottomBar.prefWidthProperty().bind(detailScene.widthProperty())
 
@@ -292,14 +292,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     private fun launchCutter() {
         comic?.let { comic ->
-            val (cutterPane, cutterController) = loadFxml<BorderPane, CutterController>("cutter.fxml")
-            Stage().apply {
-                this@DetailController.stage?.let { initOwner(it) }
-                cutterController.initStage(this)
-                scene = Scene(cutterPane)
-                show()
+            stage?.let { stage ->
+                CutterController.launchStage(stage, comic)
             }
-            cutterController.setComic(comic)
         }
     }
 
@@ -312,6 +307,19 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun rightImage() {
         if (slider.value < slider.max) {
             slider.value += 1
+        }
+    }
+
+    companion object {
+        fun launchStage(owner: Stage, comic: Comic) {
+            val (detailPane, detailController) = loadFxml<BorderPane, DetailController>("detail.fxml")
+            Stage().apply {
+                initOwner(owner)
+                detailController.initStage(this)
+                scene = Scene(detailPane)
+                show()
+            }
+            detailController.setComic(comic)
         }
     }
 }

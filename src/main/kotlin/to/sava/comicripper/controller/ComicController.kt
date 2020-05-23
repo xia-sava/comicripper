@@ -4,13 +4,11 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.geometry.Orientation
-import javafx.scene.Scene
 import javafx.scene.canvas.Canvas
 import javafx.scene.control.Label
 import javafx.scene.control.Separator
 import javafx.scene.image.ImageView
 import javafx.scene.input.MouseButton
-import javafx.scene.layout.BorderPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
@@ -21,7 +19,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
-import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
 import tornadofx.*
 import java.net.URL
@@ -124,14 +121,13 @@ class ComicController : VBox(), Initializable, CoroutineScope {
 
     private fun launchDetailWindow() {
         comic?.let { comic ->
-            val (detailPane, detailController) = loadFxml<BorderPane, DetailController>("detail.fxml")
-            Stage().apply {
-                detailController.initStage(this)
-                this@ComicController.stage?.let { initOwner(it) }
-                scene = Scene(detailPane)
-                show()
+            stage?.let { stage ->
+                if (comic.coverAll.isNotEmpty() && comic.coverFront.isEmpty()) {
+                    CutterController.launchStage(stage, comic)
+                } else {
+                    DetailController.launchStage(stage, comic)
+                }
             }
-            detailController.setComic(comic)
         }
     }
 

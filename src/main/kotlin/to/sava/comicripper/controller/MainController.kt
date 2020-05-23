@@ -6,7 +6,6 @@ import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
-import javafx.scene.Scene
 import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.ScrollPane
@@ -14,7 +13,6 @@ import javafx.scene.input.ClipboardContent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
-import javafx.scene.layout.Pane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
@@ -142,7 +140,7 @@ class MainController : Initializable, CoroutineScope {
         }
 
         setting.setOnAction {
-            launchSetting()
+            stage?.let { SettingController.launchStage(it) }
         }
 
         launch(Dispatchers.Default + job) {
@@ -265,15 +263,5 @@ class MainController : Initializable, CoroutineScope {
             pane.styleClass.add("selected")
         }
         selectedComicIdProperty.value = comic.id
-    }
-
-    private fun launchSetting() {
-        val (settingPane, settingController) = loadFxml<Pane, SettingController>("setting.fxml")
-        Stage().apply {
-            this@MainController.stage?.let { initOwner(it) }
-            settingController.initStage(this)
-            scene = Scene(settingPane)
-            show()
-        }
     }
 }

@@ -2,13 +2,16 @@ package to.sava.comicripper.controller
 
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.GridPane
+import javafx.scene.layout.Pane
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import java.net.URL
 import java.util.*
@@ -61,6 +64,18 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
             Setting.settingWindowHeightProperty.bind(heightProperty())
             setOnCloseRequest {
                 job.cancel()
+            }
+        }
+    }
+
+    companion object {
+        fun launchStage(owner: Stage) {
+            val (settingPane, settingController) = loadFxml<Pane, SettingController>("setting.fxml")
+            Stage().apply {
+                initOwner(owner)
+                settingController.initStage(this)
+                scene = Scene(settingPane)
+                show()
             }
         }
     }
