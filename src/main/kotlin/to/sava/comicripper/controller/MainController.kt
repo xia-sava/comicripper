@@ -7,7 +7,9 @@ import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
 import javafx.scene.Scene
-import javafx.scene.control.*
+import javafx.scene.control.Button
+import javafx.scene.control.Label
+import javafx.scene.control.ScrollPane
 import javafx.scene.input.ClipboardContent
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.BorderPane
@@ -15,15 +17,22 @@ import javafx.scene.layout.FlowPane
 import javafx.scene.layout.Pane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
-import tornadofx.*
+import tornadofx.add
+import tornadofx.onChange
 import java.net.URL
 import java.util.*
+import kotlin.collections.set
 
 
 class MainController : Initializable, CoroutineScope {
@@ -127,6 +136,11 @@ class MainController : Initializable, CoroutineScope {
                 repos.saveStructure()
             }
         }
+
+        scrollPane.content.setOnScroll {
+            scrollPane.vvalue = scrollPane.vvalue - it.deltaY * 0.01
+        }
+
         setting.setOnAction {
             launchSetting()
         }
