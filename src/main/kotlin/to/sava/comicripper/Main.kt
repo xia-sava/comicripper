@@ -27,6 +27,9 @@ class Main : Application(), CoroutineScope {
 
         Setting.load()
 
+        repos.loadStructure()
+        repos.reScanFiles()
+
         mainController.initStage(primaryStage)
         primaryStage.apply {
             scene = Scene(mainPane)
@@ -41,13 +44,9 @@ class Main : Application(), CoroutineScope {
         }
 
         launch(Dispatchers.IO + job) {
-            repos.loadStructure()
-            repos.reScanFiles()
-            launch(Dispatchers.IO + job) {
-                while (true) {
-                    delay(30_000)
-                    repos.saveStructure()
-                }
+            while (true) {
+                delay(30_000)
+                repos.saveStructure()
             }
         }
 
@@ -61,7 +60,7 @@ class Main : Application(), CoroutineScope {
                     override fun fileRenamed(wd: Int, rootPath: String?, oldName: String?, newName: String?) {}
                     override fun fileDeleted(wd: Int, rootPath: String?, name: String?) {
                         name?.let {
-                            repos.deleteFile(name)
+                            repos.removeFile(name)
                         }
                     }
 

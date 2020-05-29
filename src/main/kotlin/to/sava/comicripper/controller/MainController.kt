@@ -86,9 +86,14 @@ class MainController : Initializable, CoroutineScope {
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         selectedComicIdProperty.onChange { id ->
-            ComicStorage[id]?.let { comic ->
-                author.text = comic.author
-                title.text = comic.title
+            launch {
+                ComicStorage[id]?.also { comic ->
+                    author.text = comic.author
+                    title.text = comic.title
+                } ?: run {
+                    author.text = ""
+                    title.text = ""
+                }
             }
         }
         ocrIsbn.setOnAction {
@@ -195,6 +200,9 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun removeComic(comic: Comic) {
+        if (selectedComicId == comic.id) {
+            selectComic(null)
+        }
         comicObjs[comic.id]?.let {
             launch {
                 val (controller, pane) = it
@@ -250,13 +258,17 @@ class MainController : Initializable, CoroutineScope {
                 scene.cursor = Cursor.DEFAULT
                 styleClass.remove("dragged")
                 if (event.isAccepted) {
-                    ComicStorage.delete(comic)
+                    ComicStorage.remove(comic)
                 }
             }
         }
     }
 
-    private fun selectComic(comic: Comic) {
+    private fun selectComic(comic: Comic?) {
+        if (comic == null) {
+            selectedComicIdProperty.value = null
+            return
+        }
         val (_, pane) = comicObjs[comic.id] ?: return
         if ("selected" !in pane.styleClass) {
             comicList.children.forEach { it.styleClass.remove("selected") }

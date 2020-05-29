@@ -29,10 +29,7 @@ import javax.json.JsonString
 
 class ComicRepository {
 
-    suspend fun reScanFiles(targetComic: Comic? = null) {
-        ComicStorage.all.forEach {
-            removeDeletedFiles(it)
-        }
+    fun reScanFiles(targetComic: Comic? = null) {
         val dir = File(Setting.workDirectory)
         val structuredFiles = ComicStorage.files
         dir.listFiles { file -> file.name.matches(Comic.TARGET_REGEX) }?.map {
@@ -48,14 +45,19 @@ class ComicRepository {
                     ComicStorage.add(comic)
                 }
             }
-            yield()
+        }
+        ComicStorage.all.forEach { comic ->
+            comic.removeFiles(comic.files.filter { !File("${Setting.workDirectory}/$it").exists() })
+            if (comic.files.isEmpty()) {
+                ComicStorage.remove(comic)
+            }
         }
     }
 
     fun addFile(filename: String, targetComicId: String? = null) {
         val comic = ComicStorage[targetComicId]
         if (comic != null) {
-            comic.addFile(filename).firstOrNull()?.let {
+            comic.addFile(filename)?.let {
                 ComicStorage.add(Comic(it))
             }
         } else {
@@ -63,21 +65,13 @@ class ComicRepository {
         }
     }
 
-    fun deleteFile(filename: String) {
-        ComicStorage.all.forEach { comic ->
-            if (filename in comic.files) {
-                comic.removeFiles(filename)
-                if (comic.files.isEmpty()) {
-                    ComicStorage.delete(comic)
-                }
-                return
-            }
-        }
+    fun removeFiles(filenames: List<String>) {
+        filenames.forEach(::removeFile)
     }
 
-    private fun removeDeletedFiles(comic: Comic) {
-        val files = comic.files.filter { !File("${Setting.workDirectory}/$it").exists() }
-        comic.removeFiles(*files.toTypedArray())
+    fun removeFile(filename: String) {
+        ComicStorage.all.forEach { it.removeFile(filename) }
+        ComicStorage.removeEmpty()
     }
 
     fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
@@ -119,7 +113,7 @@ class ComicRepository {
                 zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
             }
         }
-        ComicStorage.delete(comic)
+        ComicStorage.remove(comic)
         comic.files
             .map { Paths.get("${Setting.workDirectory}/$it") }
             .forEach { Files.deleteIfExists(it) }
@@ -130,16 +124,18 @@ class ComicRepository {
             .filter { it.files.size == 1 && it.pages.size == 1 }
             .forEach {
                 comic.merge(it)
-                ComicStorage.delete(it)
+                ComicStorage.remove(it)
             }
     }
 
-    fun releaseFiles(comic: Comic, vararg filenames: String) {
-        filenames.forEach { filename ->
-            if (filename in comic.files) {
-                comic.removeFiles(filename)
-                ComicStorage.add(Comic(filename))
-            }
+    fun releaseFiles(comic: Comic, filenames: List<String>) {
+        filenames.forEach { releaseFile(comic, it) }
+    }
+
+    fun releaseFile(comic: Comic, filename: String) {
+        if (filename in comic.files) {
+            comic.removeFile(filename)
+            ComicStorage.add(Comic(filename))
         }
     }
 
@@ -286,7 +282,7 @@ class ComicRepository {
         }
     }
 
-    suspend fun loadStructure(): Boolean {
+    fun loadStructure(): Boolean {
         if (!Setting.structureFile.exists()) {
             return false
         }
@@ -319,12 +315,9 @@ class ComicRepository {
                             ComicStorage.add(Comic(filename))
                         }
                     }
-                    yield()
                 }
-            ComicStorage.all.forEach {
-                if (it.files.isEmpty()) {
-                    ComicStorage.delete(it)
-                }
+            ComicStorage.all.filter { it.files.isEmpty() }.forEach {
+                ComicStorage.remove(it)
             }
             true
         } catch (ex: Exception) {
@@ -344,10 +337,14 @@ object ComicStorage {
         storage.addAll(comics)
     }
 
-    fun delete(vararg comics: Comic) {
+    fun remove(vararg comics: Comic) {
         comics.forEach { comic ->
             storage.remove(comic)
         }
+    }
+
+    fun removeEmpty() {
+        storage.removeAll(all.filter { it.files.isEmpty() })
     }
 
     operator fun get(id: String?): Comic? {

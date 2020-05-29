@@ -70,56 +70,56 @@ class Comic(filename: String = "") {
         addFile(filename)
     }
 
-    fun addPage(vararg filenames: String) {
-        pagesList.addAll(filenames)
-        pageImagesMap.putAll(filenames.map { it to loadImage(it) }.toMap())
-        invokeListener()
+    fun addFiles(filenames: List<String>): List<String> {
+        return filenames.mapNotNull(::addFile)
     }
 
-    fun addFile(vararg filenames: String): List<String> {
-        val replaced = mutableListOf<String>()
-        filenames.forEach { filename ->
-            if (filename !in files) {
-                when {
-                    filename.startsWith(COVER_FRONT_PREFIX) -> {
-                        if (coverFront != "") {
-                            replaced.add(coverFront)
-                        }
-                        coverFront = filename
+    fun addFile(filename: String): String? {
+        var replaced: String? = null
+        if (filename !in files) {
+            when {
+                filename.startsWith(COVER_FRONT_PREFIX) -> {
+                    if (coverFront != "") {
+                        replaced = coverFront
                     }
-                    filename.startsWith(COVER_ALL_PREFIX) -> {
-                        if (coverAll != "") {
-                            replaced.add(coverAll)
-                        }
-                        coverAll = filename
+                    coverFront = filename
+                }
+                filename.startsWith(COVER_ALL_PREFIX) -> {
+                    if (coverAll != "") {
+                        replaced = coverAll
                     }
-                    filename.startsWith(COVER_BELT_PREFIX) -> {
-                        if (coverBelt != "") {
-                            replaced.add(coverBelt)
-                        }
-                        coverBelt = filename
+                    coverAll = filename
+                }
+                filename.startsWith(COVER_BELT_PREFIX) -> {
+                    if (coverBelt != "") {
+                        replaced = coverBelt
                     }
-                    filename.startsWith(PAGE_PREFIX) -> {
-                        addPage(filename)
-                    }
+                    coverBelt = filename
+                }
+                filename.startsWith(PAGE_PREFIX) -> {
+                    pagesList.add(filename)
+                    pageImagesMap[filename] = loadImage(filename)
+                    invokeListener()
                 }
             }
         }
         return replaced
     }
 
-    fun removeFiles(vararg filenames: String) {
-        filenames.forEach { filename ->
-            if (filename in files) {
-                when (filename) {
-                    coverFront -> coverFront = ""
-                    coverAll -> coverAll = ""
-                    coverBelt -> coverBelt = ""
-                    in pages -> {
-                        pageImagesMap.remove(filename)
-                        pagesList.remove(filename)
-                        invokeListener()
-                    }
+    fun removeFiles(filenames: List<String>) {
+        filenames.forEach(::removeFile)
+    }
+
+    fun removeFile(filename: String) {
+        if (filename in files) {
+            when (filename) {
+                coverFront -> coverFront = ""
+                coverAll -> coverAll = ""
+                coverBelt -> coverBelt = ""
+                in pages -> {
+                    pageImagesMap.remove(filename)
+                    pagesList.remove(filename)
+                    invokeListener()
                 }
             }
         }
@@ -145,20 +145,8 @@ class Comic(filename: String = "") {
     }
 
     fun merge(src: Comic) {
-        if (src.coverFront != "") {
-            coverFront = src.coverFront
-        }
-        if (src.coverAll != "") {
-            coverAll = src.coverAll
-        }
-        if (src.coverBelt != "") {
-            coverBelt = src.coverBelt
-        }
-        if (src.pages.isNotEmpty()) {
-            pagesList.addAll(src.pages)
-            pageImagesMap.putAll(src.pages.zip(src.images))
-            invokeListener()
-        }
+        addFiles(src.files)
+        src.removeFiles(src.files)
     }
 
     fun mergeConflict(src: Comic): Boolean {

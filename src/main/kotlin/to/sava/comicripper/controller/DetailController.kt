@@ -285,7 +285,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun releaseImage() {
         comic?.let { comic ->
             comic.files.getOrNull(slider.value.toInt())?.let { filename ->
-                repos.releaseFiles(comic, filename)
+                repos.releaseFile(comic, filename)
             }
         }
     }
