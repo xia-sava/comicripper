@@ -174,42 +174,38 @@ class MainController : Initializable, CoroutineScope {
         stage.minWidthProperty().bind(minWidthProperty)
     }
 
-    private fun addComic(comic: Comic) {
-        launch {
-            val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
-            controller.apply {
-                comicProperty.set(comic)
-                stage?.let { initStage(it) }
-                addClickListener {
-                    selectComic(comic)
-                }
-            }
-            pane.apply {
-                minWidthProperty().onChange {
-                    minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
-                }
-                setDragAndDrop(this, comic)
-            }
-            comicList.add(pane)
-            comicObjs[comic.id] = Pair(controller, pane)
-
-            if (comicObjs.size == 1) {
+    private fun addComic(comic: Comic) = launch {
+        val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
+        controller.apply {
+            comicProperty.set(comic)
+            stage?.let { initStage(it) }
+            addClickListener {
                 selectComic(comic)
             }
         }
+        pane.apply {
+            minWidthProperty().onChange {
+                minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+            }
+            setDragAndDrop(this, comic)
+        }
+        comicList.add(pane)
+        comicObjs[comic.id] = Pair(controller, pane)
+
+        if (comicObjs.size == 1) {
+            selectComic(comic)
+        }
     }
 
-    private fun removeComic(comic: Comic) {
+    private fun removeComic(comic: Comic) = launch {
         if (selectedComicId == comic.id) {
             selectComic(null)
         }
         comicObjs[comic.id]?.let {
-            launch {
-                val (controller, pane) = it
-                comicList.children.remove(pane)
-                controller.destroy()
-                comicObjs.remove(comic.id)
-            }
+            val (controller, pane) = it
+            comicList.children.remove(pane)
+            controller.destroy()
+            comicObjs.remove(comic.id)
         }
     }
 

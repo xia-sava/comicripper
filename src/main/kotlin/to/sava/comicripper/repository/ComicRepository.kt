@@ -47,16 +47,19 @@ class ComicRepository {
             }
         }
         ComicStorage.all.forEach { comic ->
-            comic.removeFiles(comic.files.filter { !File("${Setting.workDirectory}/$it").exists() })
+            comic.removeFiles(comic.files.filter { File("${Setting.workDirectory}/$it").exists().not() })
             if (comic.files.isEmpty()) {
                 ComicStorage.remove(comic)
             }
         }
     }
 
-    fun addFile(filename: String, targetComicId: String? = null) {
-        val comic = ComicStorage[targetComicId]
-        if (comic != null) {
+    fun addFiles(comic: Comic?, filenames: List<String>) {
+        filenames.forEach { addFile(comic, it) }
+    }
+
+    fun addFile(comic: Comic?, filename: String) {
+        if (filename.startsWith(Comic.COVER_ALL_PREFIX).not() && comic != null) {
             comic.addFile(filename)?.let {
                 ComicStorage.add(Comic(it))
             }
@@ -79,7 +82,7 @@ class ComicRepository {
             File("${Setting.workDirectory}/${comic.coverFront}").delete()
         }
 
-        val coverAllImage = checkNotNull(comic.coverAllImage)
+        val coverAllImage = checkNotNull(comic.coverAllFullSizeImage)
         val imageView = ImageView().apply {
             image = coverAllImage
         }

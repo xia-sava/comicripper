@@ -136,7 +136,7 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
     fun setComic(comic: Comic) {
         this.comic = comic
         this.stage?.title = "${comic.title} ${comic.author} - comicripper 0.0.1"
-        comic.coverAllImage?.let { imageView.image = it }
+        comic.coverAllFullSizeImage?.let { imageView.image = it }
         resizeScreen()
     }
 

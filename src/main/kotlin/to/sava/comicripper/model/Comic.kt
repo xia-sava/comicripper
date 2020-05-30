@@ -39,10 +39,12 @@ class Comic(filename: String = "") {
     var coverAll: String = ""
         set(value) {
             field = value
-            coverAllImage = if (value.isNotEmpty()) loadImage(value, fullSize=true) else null
+            coverAllImage = if (value.isNotEmpty()) loadImage(value) else null
             invokeListener()
         }
     var coverAllImage: Image? = null
+    val coverAllFullSizeImage: Image?
+        get() = if (coverAll.isNotEmpty()) loadFullSizeImage(coverAll) else null
 
     var coverBelt: String = ""
         set(value) {
@@ -66,11 +68,17 @@ class Comic(filename: String = "") {
 
     private val listeners = mutableListOf<(Comic) -> Unit>()
 
+    private val imageCache = mutableListOf<Triple<Int, String, Image>>()
+
     init {
         addFile(filename)
     }
 
-    fun addFiles(filenames: List<String>): List<String> {
+    fun getFullSizeImage(index: Int): Image? {
+        return files.getOrNull(index)?.let { loadFullSizeImage(it) }
+    }
+
+    private fun addFiles(filenames: List<String>): List<String> {
         return filenames.mapNotNull(::addFile)
     }
 
@@ -138,9 +146,8 @@ class Comic(filename: String = "") {
             coverBeltImage = loadImage(coverBelt)
             yield()
         }
-        files.forEach { filename ->
-            loadImage(filename)
-            yield()
+        pages.forEach { filename ->
+            pageImagesMap[filename] = loadImage(filename)
         }
     }
 
@@ -155,12 +162,25 @@ class Comic(filename: String = "") {
                 (src.coverBelt != "" && coverBelt != ""))
     }
 
-    private fun loadImage(filename: String, fullSize: Boolean = false): Image {
+    private fun loadImage(filename: String): Image {
         val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-        return if (fullSize)
-            Image(url)
-        else
-            Image(url, 2048.0, 2048.0, true, true)
+        return Image(url, 512.0, 512.0, true, true)
+    }
+
+    private fun loadFullSizeImage(filename: String): Image {
+        val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
+        if (imageCache.count { it.second == url } > 0) {
+            return imageCache.first { it.second == url }.third
+        }
+        val num = (imageCache.maxBy { it.first }?.first ?: 0) + 1
+        val image = Image(url)
+        imageCache.add(Triple(num, url, image))
+        if (imageCache.count() > 10) {
+            imageCache.minBy { it.first }?.let {
+                imageCache.remove(it)
+            }
+        }
+        return image
     }
 
     fun addListener(listener: (Comic) -> Unit) {

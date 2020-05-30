@@ -254,6 +254,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         comic.addListener {
             updateComic()
         }
+        if (comic.files.size > 1 && comic.files[1] == comic.coverAll) {
+            slider.value = 1.0
+        }
     }
 
     private fun updateComic() {
@@ -277,7 +280,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     }
 
     private fun setImage(num: Int) {
-        comic?.images?.getOrNull(num)?.let { image ->
+        comic?.getFullSizeImage(num)?.let { image ->
             imageView.image = image
         }
     }
