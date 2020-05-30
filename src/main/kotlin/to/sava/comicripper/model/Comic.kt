@@ -81,6 +81,7 @@ class Comic(filename: String = "") {
                     replaced = coverBelt
                 }
             }
+            replaced?.let { removeFile(it, prependListener = false) }
             _files.add(filename)
             _thumbnails[filename] = loadImage(filename)
             if (prependListener.not()) {
@@ -96,9 +97,10 @@ class Comic(filename: String = "") {
     }
 
     fun removeFile(filename: String, prependListener: Boolean = false) {
-        if (File("${Setting.workDirectory}/$filename").exists().not() && filename in files) {
+        if (filename in files) {
             _files.remove(filename)
             _thumbnails.remove(filename)
+            imageCache.firstOrNull { it.second == filename }?.let { imageCache.remove(it) }
         }
         if (prependListener.not()) {
             invokeListener()

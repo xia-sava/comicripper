@@ -159,12 +159,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                     stage
                 ) { job ->
-                    launch(Dispatchers.Main + job) {
-                        withContext(Dispatchers.IO + job) {
-                            repos.ocrISBN(comic)
-                        }?.let {
-                            author.text = it.first
-                            title.text = it.second
+                    launch(Dispatchers.IO + job) {
+                        repos.ocrISBN(comic)?.let {
+                            withContext(Dispatchers.Main + job) {
+                                comic.author = it.first
+                                comic.title = it.second
+                            }
                         }
                     }
                 }
