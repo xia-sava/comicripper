@@ -111,7 +111,7 @@ class Comic(filename: String = "") {
     }
 
     fun removeFile(filename: String) {
-        if (filename in files) {
+        if (File("${Setting.workDirectory}/$filename").exists().not() && filename in files) {
             when (filename) {
                 coverFront -> coverFront = ""
                 coverAll -> coverAll = ""

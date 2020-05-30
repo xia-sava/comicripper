@@ -75,6 +75,10 @@ class ComicRepository {
     }
 
     fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
+        if (comic.coverFront.isNotEmpty()) {
+            File("${Setting.workDirectory}/${comic.coverFront}").delete()
+        }
+
         val coverAllImage = checkNotNull(comic.coverAllImage)
         val imageView = ImageView().apply {
             image = coverAllImage
