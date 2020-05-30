@@ -159,10 +159,13 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                     stage
                 ) { job ->
-                    val (author_, title_) = repos.ocrISBN(comic)
-                    withContext(Dispatchers.Main + job) {
-                        author.text = author_
-                        title.text = title_
+                    launch(Dispatchers.Main + job) {
+                        withContext(Dispatchers.IO + job) {
+                            repos.ocrISBN(comic)
+                        }?.let {
+                            author.text = it.first
+                            title.text = it.second
+                        }
                     }
                 }
             }
@@ -202,7 +205,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 when (event.clickCount) {
                     2 -> {
                         comic?.let { comic ->
-                            if (comic.coverAll.isNotEmpty()) {
+                            if (comic.coverAll.isNullOrEmpty().not() && comic.coverFront.isNullOrEmpty()) {
                                 launchCutter()
                             }
                         }
@@ -280,8 +283,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     }
 
     private fun setImage(num: Int) {
-        comic?.getFullSizeImage(num)?.let { image ->
-            imageView.image = image
+        comic?.let { comic ->
+            comic.files.getOrNull(num)?.let { filename ->
+                comic.getFullSizeImage(filename)?.let { image ->
+                    imageView.image = image
+                }
+            }
         }
     }
 

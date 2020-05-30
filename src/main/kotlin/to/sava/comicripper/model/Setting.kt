@@ -100,7 +100,7 @@ object Setting {
             googleBookApiUrlProperty.value = value
         }
 
-    val YodobashiSearchUrlProperty = SimpleStringProperty("https://www.yodobashi.com/?word=ISBN-13%3A")
+    val YodobashiSearchUrlProperty = SimpleStringProperty("https://www.yodobashi.com/?word=")
     var YodobashiSearchUrl: String
         get() = YodobashiSearchUrlProperty.value
         set(value) {

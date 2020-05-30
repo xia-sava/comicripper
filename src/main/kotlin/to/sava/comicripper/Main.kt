@@ -8,6 +8,7 @@ import kotlinx.coroutines.*
 import net.contentobjects.jnotify.win32.JNotify_win32
 import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
@@ -59,18 +60,22 @@ class Main : Application(), CoroutineScope {
             JNotify_win32.setNotifyListener { _, action, _, filePath ->
                 when (action) {
                     JNotify_win32.FILE_ACTION_ADDED -> synchronized(fileCreatedQueue) {
-                        println("JNotify_win32: added $filePath")
-                        fileCreatedQueue.add(filePath)
+                        if (filePath.matches(Comic.TARGET_REGEX)) {
+                            println("JNotify_win32: added $filePath")
+                            fileCreatedQueue.add(filePath)
+                        }
                     }
                     JNotify_win32.FILE_ACTION_REMOVED -> synchronized(fileDeletedQueue) {
-                        println("JNotify_win32: deleted $filePath")
-                        fileDeletedQueue.add(filePath)
+                        if (filePath.matches(Comic.TARGET_REGEX)) {
+                            println("JNotify_win32: deleted $filePath")
+                            fileDeletedQueue.add(filePath)
+                        }
                     }
                 }
             }
             launch(Dispatchers.IO + job) {
                 while (true) {
-                    delay(500)
+                    delay(200)
                     synchronized(fileCreatedQueue) {
                         if (fileCreatedQueue.isNotEmpty()) {
                             val filenames = fileCreatedQueue.toList()

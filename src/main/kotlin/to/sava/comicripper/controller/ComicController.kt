@@ -88,11 +88,11 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         title.text = comic.title
 
         imagesPane.clear()
-        if (comic.images.isNotEmpty()) {
+        if (comic.thumbnails.isNotEmpty()) {
             imagesPane.add(ImageView().apply {
-                fitImage(comic.images.first(), 256.0, 128.0)
+                fitImage(comic.thumbnails.first(), 256.0, 128.0)
             })
-            val images = comic.images.drop(1)
+            val images = comic.thumbnails.drop(1)
             if (images.isNotEmpty()) {
                 imagesPane.add(Separator().apply {
                     orientation = Orientation.VERTICAL
@@ -122,7 +122,7 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     private fun launchDetailWindow() {
         comic?.let { comic ->
             stage?.let { stage ->
-                if (comic.coverAll.isNotEmpty() && comic.coverFront.isEmpty()) {
+                if (comic.coverAll.isNullOrEmpty().not() && comic.coverFront.isNullOrEmpty()) {
                     CutterController.launchStage(stage, comic)
                 } else {
                     DetailController.launchStage(stage, comic)

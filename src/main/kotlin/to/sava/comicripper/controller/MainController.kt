@@ -102,13 +102,14 @@ class MainController : Initializable, CoroutineScope {
                 "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                 stage
             ) {
-                ComicStorage.all.filter { it.coverAll.isNotEmpty() }.map { comic ->
+                ComicStorage.all.filter { it.coverAll.isNullOrEmpty().not() }.map { comic ->
                     launch {
-                        val (author, title) = withContext(Dispatchers.IO) {
+                        withContext(Dispatchers.IO + job) {
                             repos.ocrISBN(comic)
+                        }?.let {
+                            comic.author = it.first
+                            comic.title = it.second
                         }
-                        comic.author = author
-                        comic.title = title
                     }
                 }
             }

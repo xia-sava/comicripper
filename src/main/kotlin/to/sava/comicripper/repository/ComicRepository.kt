@@ -78,11 +78,11 @@ class ComicRepository {
     }
 
     fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
-        if (comic.coverFront.isNotEmpty()) {
+        if (comic.coverFront.isNullOrEmpty().not()) {
             File("${Setting.workDirectory}/${comic.coverFront}").delete()
         }
 
-        val coverAllImage = checkNotNull(comic.coverAllFullSizeImage)
+        val coverAllImage = checkNotNull(comic.coverAllImage)
         val imageView = ImageView().apply {
             image = coverAllImage
         }
@@ -101,7 +101,7 @@ class ComicRepository {
         val outputFile = File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
         ImageIO.write(newImage, "jpeg", outputFile)
 
-        comic.coverFront = outputFile.name
+        comic.addFile(outputFile.name)
     }
 
     fun zipComic(comic: Comic) {
@@ -128,7 +128,7 @@ class ComicRepository {
 
     fun pagesToComic(comic: Comic) {
         ComicStorage.all
-            .filter { it.files.size == 1 && it.pages.size == 1 }
+            .filter { it.files.size == 1 && it.files.first().startsWith(Comic.PAGE_PREFIX) }
             .forEach {
                 comic.merge(it)
                 ComicStorage.remove(it)
@@ -146,10 +146,11 @@ class ComicRepository {
         }
     }
 
-    fun ocrISBN(comic: Comic): Pair<String, String> {
+    fun ocrISBN(comic: Comic): Pair<String, String>? {
+        val coverAll = comic.coverAll ?: return null
         val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         return try {
-            val cmd = """"${Setting.TesseractExe}" "${workFilename(comic.coverAll)}" "$tmp" -l jpn """
+            val cmd = """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn """
             Runtime.getRuntime().exec(cmd).waitFor()
             val ocrText = File("$tmp.txt").readText()
 

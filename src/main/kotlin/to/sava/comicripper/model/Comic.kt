@@ -11,7 +11,8 @@ class Comic(filename: String = "") {
         const val COVER_ALL_PREFIX = "coverF"
         const val COVER_BELT_PREFIX = "coverS"
         const val PAGE_PREFIX = "page"
-        val TARGET_REGEX = "^(?:${COVER_FRONT_PREFIX}|${COVER_ALL_PREFIX}|${COVER_BELT_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
+        val TARGET_REGEX =
+            "^(?:${COVER_FRONT_PREFIX}|${COVER_ALL_PREFIX}|${COVER_BELT_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
     }
 
     var id = UUID.randomUUID().toString()
@@ -28,43 +29,23 @@ class Comic(filename: String = "") {
             invokeListener()
         }
 
-    var coverFront: String = ""
-        set(value) {
-            field = value
-            coverFrontImage = if (value.isNotEmpty()) loadImage(value) else null
-            invokeListener()
-        }
-    var coverFrontImage: Image? = null
+    private val _files = mutableListOf<String>()
+    val files: List<String> get() = _files.sorted()
 
-    var coverAll: String = ""
-        set(value) {
-            field = value
-            coverAllImage = if (value.isNotEmpty()) loadImage(value) else null
-            invokeListener()
-        }
-    var coverAllImage: Image? = null
-    val coverAllFullSizeImage: Image?
-        get() = if (coverAll.isNotEmpty()) loadFullSizeImage(coverAll) else null
+    private val _thumbnails = mutableMapOf<String, Image>()
+    val thumbnails get() = _thumbnails.toSortedMap().values
 
-    var coverBelt: String = ""
-        set(value) {
-            field = value
-            coverBeltImage = if (value.isNotEmpty()) loadImage(value) else null
-            invokeListener()
-        }
-    var coverBeltImage: Image? = null
+    val coverFront: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_FRONT_PREFIX) }
 
-    private val pagesList = mutableListOf<String>()
-    val pages get() = pagesList.toList().sorted()
+    val coverAll: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_ALL_PREFIX) }
 
-    private val pageImagesMap = mutableMapOf<String, Image>()
-    val pageImages get() = pageImagesMap.toSortedMap().values
+    val coverBelt: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_BELT_PREFIX) }
 
-    val files: List<String>
-        get() = (listOf(coverFront, coverAll, coverBelt) + pages).filter { it != "" }
-
-    val images: List<Image>
-        get() = (listOf(coverFrontImage, coverAllImage, coverBeltImage) + pageImages).filterNotNull()
+    val coverAllImage: Image?
+        get() = coverAll?.let { getFullSizeImage(it) }
 
     private val listeners = mutableListOf<(Comic) -> Unit>()
 
@@ -74,80 +55,63 @@ class Comic(filename: String = "") {
         addFile(filename)
     }
 
-    fun getFullSizeImage(index: Int): Image? {
-        return files.getOrNull(index)?.let { loadFullSizeImage(it) }
+    fun getFullSizeImage(filename: String): Image? {
+        return loadFullSizeImage(filename)
     }
 
     private fun addFiles(filenames: List<String>): List<String> {
-        return filenames.mapNotNull(::addFile)
+        return filenames
+            .mapNotNull { addFile(it, prependListener = true) }
+            .also {
+                invokeListener()
+            }
     }
 
-    fun addFile(filename: String): String? {
+    fun addFile(filename: String, prependListener: Boolean = false): String? {
         var replaced: String? = null
-        if (filename !in files) {
+        if (filename.matches(TARGET_REGEX) && filename !in files) {
             when {
                 filename.startsWith(COVER_FRONT_PREFIX) -> {
-                    if (coverFront != "") {
-                        replaced = coverFront
-                    }
-                    coverFront = filename
+                    replaced = coverFront
                 }
                 filename.startsWith(COVER_ALL_PREFIX) -> {
-                    if (coverAll != "") {
-                        replaced = coverAll
-                    }
-                    coverAll = filename
+                    replaced = coverAll
                 }
                 filename.startsWith(COVER_BELT_PREFIX) -> {
-                    if (coverBelt != "") {
-                        replaced = coverBelt
-                    }
-                    coverBelt = filename
+                    replaced = coverBelt
                 }
-                filename.startsWith(PAGE_PREFIX) -> {
-                    pagesList.add(filename)
-                    pageImagesMap[filename] = loadImage(filename)
-                    invokeListener()
-                }
+            }
+            _files.add(filename)
+            _thumbnails[filename] = loadImage(filename)
+            if (prependListener.not()) {
+                invokeListener()
             }
         }
         return replaced
     }
 
     fun removeFiles(filenames: List<String>) {
-        filenames.forEach(::removeFile)
+        filenames.forEach { removeFile(it, prependListener = true) }
+        invokeListener()
     }
 
-    fun removeFile(filename: String) {
+    fun removeFile(filename: String, prependListener: Boolean = false) {
         if (File("${Setting.workDirectory}/$filename").exists().not() && filename in files) {
-            when (filename) {
-                coverFront -> coverFront = ""
-                coverAll -> coverAll = ""
-                coverBelt -> coverBelt = ""
-                in pages -> {
-                    pageImagesMap.remove(filename)
-                    pagesList.remove(filename)
-                    invokeListener()
-                }
-            }
+            _files.remove(filename)
+            _thumbnails.remove(filename)
+        }
+        if (prependListener.not()) {
+            invokeListener()
         }
     }
 
     suspend fun reloadImages() {
-        if (coverFront.isNotEmpty()) {
-            coverFrontImage = loadImage(coverFront)
-            yield()
+        _thumbnails.keys.subtract(files).forEach {
+            _thumbnails.remove(it)
         }
-        if (coverAll.isNotEmpty()) {
-            coverAllImage = loadImage(coverAll)
+        files.forEach {
+            _thumbnails[it] = loadImage(it)
             yield()
-        }
-        if (coverBelt.isNotEmpty()) {
-            coverBeltImage = loadImage(coverBelt)
-            yield()
-        }
-        pages.forEach { filename ->
-            pageImagesMap[filename] = loadImage(filename)
         }
     }
 
@@ -157,9 +121,9 @@ class Comic(filename: String = "") {
     }
 
     fun mergeConflict(src: Comic): Boolean {
-        return ((src.coverFront != "" && coverFront != "") ||
-                (src.coverAll != "" && coverAll != "") ||
-                (src.coverBelt != "" && coverBelt != ""))
+        return ((src.coverFront.isNullOrEmpty().not() && coverFront.isNullOrEmpty().not()) ||
+                (src.coverAll.isNullOrEmpty().not() && coverAll.isNullOrEmpty().not()) ||
+                (src.coverBelt.isNullOrEmpty().not() && coverBelt.isNullOrEmpty().not()))
     }
 
     private fun loadImage(filename: String): Image {
