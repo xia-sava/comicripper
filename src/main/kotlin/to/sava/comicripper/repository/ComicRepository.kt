@@ -159,7 +159,6 @@ class ComicRepository {
                 ?.replace("""\D""".toRegex(), "")
                 ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
                 ?.let { isbn ->
-                    println("ISBN: $isbn")
                     searchISBN(isbn)
                 }
                 ?: Pair("エラー", "ISBN不明")

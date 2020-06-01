@@ -61,13 +61,11 @@ class Main : Application(), CoroutineScope {
                 when (action) {
                     JNotify_win32.FILE_ACTION_ADDED -> synchronized(fileCreatedQueue) {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
-                            println("JNotify_win32: added $filePath")
                             fileCreatedQueue.add(filePath)
                         }
                     }
                     JNotify_win32.FILE_ACTION_REMOVED -> synchronized(fileDeletedQueue) {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
-                            println("JNotify_win32: deleted $filePath")
                             fileDeletedQueue.add(filePath)
                         }
                     }
@@ -80,7 +78,6 @@ class Main : Application(), CoroutineScope {
                         if (fileCreatedQueue.isNotEmpty()) {
                             val filenames = fileCreatedQueue.toList()
                             fileCreatedQueue.clear()
-                            println("dispatch: added $filenames")
                             repos.addFiles(ComicStorage[mainController.selectedComicId], filenames)
                         }
                     }
@@ -88,7 +85,6 @@ class Main : Application(), CoroutineScope {
                         if (fileDeletedQueue.isNotEmpty()) {
                             val filenames = fileDeletedQueue.toList()
                             fileDeletedQueue.clear()
-                            println("dispatch: deleted $filenames")
                             repos.removeFiles(filenames)
                         }
                     }
