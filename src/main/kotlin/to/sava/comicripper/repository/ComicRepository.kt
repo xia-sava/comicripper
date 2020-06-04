@@ -6,7 +6,6 @@ import javafx.geometry.Rectangle2D
 import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
-import kotlinx.coroutines.yield
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
@@ -47,7 +46,9 @@ class ComicRepository {
             }
         }
         ComicStorage.all.forEach { comic ->
-            comic.removeFiles(comic.files.filter { File("${Setting.workDirectory}/$it").exists().not() })
+            comic.removeFiles(comic.files.filter {
+                File("${Setting.workDirectory}/$it").exists().not()
+            })
             if (comic.files.isEmpty()) {
                 ComicStorage.remove(comic)
             }
@@ -96,9 +97,11 @@ class ComicRepository {
             viewport = Rectangle2D(leftX, 0.0, newWidth, imageHeight)
         }
         imageView.snapshot(ssParams, outputImage)
-        val awtImage = BufferedImage(newWidth.toInt(), imageHeight.toInt(), BufferedImage.TYPE_INT_RGB)
+        val awtImage =
+            BufferedImage(newWidth.toInt(), imageHeight.toInt(), BufferedImage.TYPE_INT_RGB)
         val newImage = SwingFXUtils.fromFXImage(outputImage, awtImage)
-        val outputFile = File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
+        val outputFile =
+            File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
         ImageIO.write(newImage, "jpeg", outputFile)
 
         comic.addFile(outputFile.name)
@@ -114,7 +117,10 @@ class ComicRepository {
             var coverNum = 1
             var pageNum = 1
             comic.files.forEach { src ->
-                val (prefix, num) = if (src.startsWith("cover")) Pair("cover", coverNum++) else Pair("page", pageNum++)
+                val (prefix, num) = if (src.startsWith("cover")) Pair(
+                    "cover",
+                    coverNum++
+                ) else Pair("page", pageNum++)
                 val entry = ZipEntry("%s_%03d.jpg".format(prefix, num))
                 zipStream.putNextEntry(entry)
                 zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
@@ -248,8 +254,10 @@ class ComicRepository {
         )
             .readObject()?.let { json ->
                 if (json.getInt("totalItems") > 0) {
-                    val info = json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
-                    val authors = info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
+                    val info =
+                        json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
+                    val authors =
+                        info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
                     val title = info?.getString("title")
                     if (authors != null && title != null) {
                         return normalize(authors, title)
@@ -298,16 +306,17 @@ class ComicRepository {
             Setting.structureFile.inputStream().use {
                 props.load(it)
             }
-            props.propertyNames().toList().map { it as String }.filter { it.startsWith("_") }.forEach {
-                val id = it.trimStart('_')
-                val (author, title) = props.getProperty(it).split("\t")
-                val comic = Comic().apply {
-                    this.id = id
-                    this.author = author
-                    this.title = title
+            props.propertyNames().toList().map { it as String }.filter { it.startsWith("_") }
+                .forEach {
+                    val id = it.trimStart('_')
+                    val (author, title) = props.getProperty(it).split("\t")
+                    val comic = Comic().apply {
+                        this.id = id
+                        this.author = author
+                        this.title = title
+                    }
+                    ComicStorage.add(comic)
                 }
-                ComicStorage.add(comic)
-            }
             props.propertyNames().toList()
                 .map { it as String }
                 .filterNot { it.startsWith("_") }

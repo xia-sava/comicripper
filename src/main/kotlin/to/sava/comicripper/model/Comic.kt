@@ -30,10 +30,19 @@ class Comic(filename: String = "") {
         }
 
     private val _files = mutableListOf<String>()
-    val files: List<String> get() = _files.sorted()
+    val files: List<String> get() = _files.sortedBy { numberFormat(it) }
 
     private val _thumbnails = mutableMapOf<String, Image>()
-    val thumbnails get() = _thumbnails.toSortedMap().values
+    val thumbnails get() = _thumbnails.toList()
+        .sortedBy { numberFormat(it.first) }
+        .map { it.second }
+
+    private fun numberFormat(filename: String): String {
+        return """^(\w+)_(\d+)\.""".toRegex().find(filename)?.let {
+            val (prefix, number) = it.destructured
+            "${prefix}_%06d".format(number.toInt())
+        } ?: filename
+    }
 
     val coverFront: String?
         get() = _files.firstOrNull { it.startsWith(COVER_FRONT_PREFIX) }
