@@ -7,7 +7,6 @@ import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
@@ -62,7 +61,7 @@ class ComicRepository {
         filenames.forEach { addFile(comic, it) }
     }
 
-    fun addFile(comic: Comic?, filename: String) {
+    private fun addFile(comic: Comic?, filename: String) {
         if (filename.startsWith(Comic.COVER_ALL_PREFIX).not() && comic != null) {
             comic.addFile(filename)?.let {
                 ComicStorage.add(Comic(it))
@@ -76,12 +75,17 @@ class ComicRepository {
         filenames.forEach(::removeFile)
     }
 
-    fun removeFile(filename: String) {
+    private fun removeFile(filename: String) {
         ComicStorage.all.forEach { it.removeFile(filename) }
         ComicStorage.removeEmpty()
     }
 
-    suspend fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
+    suspend fun cutCover(
+        comic: Comic,
+        leftPercent: Double,
+        rightPercent: Double,
+        rightMargin: Double
+    ) {
         if (comic.coverFront.isNullOrEmpty().not()) {
             File("${Setting.workDirectory}/${comic.coverFront}").delete()
         }
@@ -94,21 +98,20 @@ class ComicRepository {
         val imageHeight = coverAllImage.height
         val leftX = imageWidth * (leftPercent / 100.0)
         val rightX = imageWidth * (rightPercent / 100.0) + rightMargin
-        val newWidth = rightX - leftX
-        val outputImage = WritableImage(newWidth.toInt(), imageHeight.toInt())
+        val croppedWidth = rightX - leftX
+        val croppedFxImage = WritableImage(croppedWidth.toInt(), imageHeight.toInt())
         val ssParams = SnapshotParameters().apply {
-            viewport = Rectangle2D(leftX, 0.0, newWidth, imageHeight)
+            viewport = Rectangle2D(leftX, 0.0, croppedWidth, imageHeight)
         }
-        imageView.snapshot(ssParams, outputImage)
-        val awtImage =
-            BufferedImage(newWidth.toInt(), imageHeight.toInt(), BufferedImage.TYPE_INT_RGB)
-        val newImage = SwingFXUtils.fromFXImage(outputImage, awtImage)
+        imageView.snapshot(ssParams, croppedFxImage)
+        val croppedSwImage = SwingFXUtils.fromFXImage(croppedFxImage, null)
+        val outputImage =
+            BufferedImage(croppedWidth.toInt(), imageHeight.toInt(), BufferedImage.OPAQUE)
+        outputImage.createGraphics().drawImage(croppedSwImage, 0, 0, null)
         val outputFile =
             File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
         withContext(Dispatchers.IO) {
-            ImageIO.write(newImage, "jpeg", outputFile)
-            delay(200)
-            comic.addFile(outputFile.name)
+            ImageIO.write(outputImage, "jpeg", outputFile)
         }
     }
 
@@ -146,9 +149,9 @@ class ComicRepository {
             }
     }
 
-    fun releaseFiles(comic: Comic, filenames: List<String>) {
-        filenames.forEach { releaseFile(comic, it) }
-    }
+//    fun releaseFiles(comic: Comic, filenames: List<String>) {
+//        filenames.forEach { releaseFile(comic, it) }
+//    }
 
     fun releaseFile(comic: Comic, filename: String) {
         if (filename in comic.files) {

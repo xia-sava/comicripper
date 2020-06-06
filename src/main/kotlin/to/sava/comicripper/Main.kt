@@ -61,32 +61,44 @@ class Main : Application(), CoroutineScope {
                 when (action) {
                     JNotify_win32.FILE_ACTION_ADDED -> synchronized(fileCreatedQueue) {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
-                            fileCreatedQueue.add(filePath)
+                            synchronized(fileCreatedQueue) {
+                                fileCreatedQueue.add(filePath)
+                            }
                         }
                     }
                     JNotify_win32.FILE_ACTION_REMOVED -> synchronized(fileDeletedQueue) {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
-                            fileDeletedQueue.add(filePath)
+                            synchronized(fileDeletedQueue) {
+                                fileDeletedQueue.add(filePath)
+                            }
                         }
                     }
                 }
             }
-            launch(Dispatchers.IO + job) {
+            launch(Dispatchers.Default + job) {
+                val createdFiles = mutableListOf<String>()
+                val deletedFiles = mutableListOf<String>()
                 while (true) {
-                    delay(200)
                     synchronized(fileCreatedQueue) {
                         if (fileCreatedQueue.isNotEmpty()) {
-                            val filenames = fileCreatedQueue.toList()
+                            createdFiles.addAll(fileCreatedQueue)
                             fileCreatedQueue.clear()
-                            repos.addFiles(ComicStorage[mainController.selectedComicId], filenames)
                         }
                     }
                     synchronized(fileDeletedQueue) {
                         if (fileDeletedQueue.isNotEmpty()) {
-                            val filenames = fileDeletedQueue.toList()
+                            deletedFiles.addAll(fileDeletedQueue)
                             fileDeletedQueue.clear()
-                            repos.removeFiles(filenames)
                         }
+                    }
+                    delay(200)
+                    if (createdFiles.isNotEmpty()) {
+                        repos.addFiles(ComicStorage[mainController.selectedComicId], createdFiles)
+                        createdFiles.clear()
+                    }
+                    if (deletedFiles.isNotEmpty()) {
+                        repos.removeFiles(deletedFiles)
+                        deletedFiles.clear()
                     }
                 }
             }
