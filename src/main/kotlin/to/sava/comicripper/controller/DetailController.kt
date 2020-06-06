@@ -90,11 +90,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private var stage: Stage? = null
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        detailScene.setOnKeyReleased {
+        detailScene.setOnKeyPressed {
             when (it.code) {
                 KeyCode.ESCAPE -> stage?.close()
-                KeyCode.LEFT -> leftImage()
-                KeyCode.RIGHT -> rightImage()
                 else -> {
                 }
             }
@@ -146,6 +144,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         isbn.setOnKeyPressed {
             if (it.code == KeyCode.ENTER) {
                 searchIsbnAction()
+                it.consume()
             }
         }
         searchIsbn.setOnAction {
@@ -203,9 +202,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             if (event.button == MouseButton.PRIMARY) {
                 imageView.requestFocus()
                 when (event.clickCount) {
+                    1 -> slider.requestFocus()
                     2 -> {
                         comic?.let { comic ->
-                            if (comic.coverAll.isNullOrEmpty().not() && comic.coverFront.isNullOrEmpty()) {
+                            if (comic.coverAll.isNullOrEmpty().not()
+                                && comic.coverFront.isNullOrEmpty()
+                            ) {
                                 launchCutter()
                             }
                         }
@@ -224,7 +226,13 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             override fun fromString(value: String?) = (value?.toDouble() ?: 1.0) - 1.0
             override fun toString(value: Double?) = ((value?.toInt() ?: 0) + 1).toString()
         }
-        slider.requestFocus()
+        slider.setOnKeyPressed {
+            when (it.code) {
+                KeyCode.LEFT, KeyCode.RIGHT -> it.consume()
+                else -> {
+                }
+            }
+        }
 
         leftButton.setOnAction {
             leftImage()

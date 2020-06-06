@@ -26,8 +26,6 @@ class Main : Application(), CoroutineScope {
         checkNotNull(primaryStage)
 
         Setting.load()
-        repos.loadStructure()
-        repos.reScanFiles()
 
         val (mainPane, mainController) = loadFxml<BorderPane, MainController>("main.fxml")
         primaryStage.apply {
@@ -35,6 +33,9 @@ class Main : Application(), CoroutineScope {
             scene = Scene(mainPane)
             show()
         }
+
+        repos.loadStructure()
+        repos.reScanFiles()
 
         launch(Dispatchers.IO + job) {
             while (true) {

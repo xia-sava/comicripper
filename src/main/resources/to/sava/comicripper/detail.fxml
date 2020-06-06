@@ -40,7 +40,7 @@
             <fx:include source="parts/separator.fxml" />
             <StackPane HBox.hgrow="ALWAYS">
                 <Slider fx:id="slider"
-                        majorTickUnit="1.0" minorTickCount="0"
+                        majorTickUnit="1.0" minorTickCount="0" blockIncrement="1.0"
                         showTickMarks="true" snapToTicks="true" showTickLabels="true"
                 />
                 <HBox alignment="CENTER" mouseTransparent="true">
