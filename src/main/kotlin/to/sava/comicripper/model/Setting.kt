@@ -23,6 +23,20 @@ object Setting {
             mainWindowHeightProperty.value = value
         }
 
+    val mainWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    var mainWindowPosX: Double
+        get() = mainWindowPosXProperty.value
+        set(value) {
+            mainWindowPosXProperty.value = value
+        }
+
+    val mainWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    var mainWindowPosY: Double
+        get() = mainWindowPosYProperty.value
+        set(value) {
+            mainWindowPosYProperty.value = value
+        }
+
     val detailWindowWidthProperty = SimpleDoubleProperty(1280.0)
     var detailWindowWidth: Double
         get() = detailWindowWidthProperty.value
@@ -35,6 +49,20 @@ object Setting {
         get() = detailWindowHeightProperty.value
         set(value) {
             detailWindowHeightProperty.value = value
+        }
+
+    val detailWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    var detailWindowPosX: Double
+        get() = detailWindowPosXProperty.value
+        set(value) {
+            detailWindowPosXProperty.value = value
+        }
+
+    val detailWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    var detailWindowPosY: Double
+        get() = detailWindowPosYProperty.value
+        set(value) {
+            detailWindowPosYProperty.value = value
         }
 
     val cutterWindowWidthProperty = SimpleDoubleProperty(1280.0)
@@ -51,6 +79,20 @@ object Setting {
             cutterWindowHeightProperty.value = value
         }
 
+    val cutterWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    var cutterWindowPosX: Double
+        get() = cutterWindowPosXProperty.value
+        set(value) {
+            cutterWindowPosXProperty.value = value
+        }
+
+    val cutterWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    var cutterWindowPosY: Double
+        get() = cutterWindowPosYProperty.value
+        set(value) {
+            cutterWindowPosYProperty.value = value
+        }
+
     val settingWindowWidthProperty = SimpleDoubleProperty(720.0)
     var settingWindowWidth: Double
         get() = settingWindowWidthProperty.value
@@ -63,6 +105,20 @@ object Setting {
         get() = settingWindowHeightProperty.value
         set(value) {
             settingWindowHeightProperty.value = value
+        }
+
+    val settingWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    var settingWindowPosX: Double
+        get() = settingWindowPosXProperty.value
+        set(value) {
+            settingWindowPosXProperty.value = value
+        }
+
+    val settingWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    var settingWindowPosY: Double
+        get() = settingWindowPosYProperty.value
+        set(value) {
+            settingWindowPosYProperty.value = value
         }
 
     val cutterLeftPercentProperty = SimpleDoubleProperty(15.0)

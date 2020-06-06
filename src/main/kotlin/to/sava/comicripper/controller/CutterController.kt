@@ -126,8 +126,17 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         stage.apply {
             width = Setting.cutterWindowWidth
             height = Setting.cutterWindowHeight
+            if (Setting.cutterWindowPosX >= 0.0) {
+                x = Setting.cutterWindowPosX
+            }
+            if (Setting.cutterWindowPosY >= 0.0) {
+                y = Setting.cutterWindowPosY
+            }
             Setting.cutterWindowWidthProperty.bind(widthProperty())
             Setting.cutterWindowHeightProperty.bind(heightProperty())
+            Setting.cutterWindowPosXProperty.bind(xProperty())
+            Setting.cutterWindowPosYProperty.bind(yProperty())
+
             setOnCloseRequest {
                 job.cancel()
             }

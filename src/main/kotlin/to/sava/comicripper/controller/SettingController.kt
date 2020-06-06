@@ -60,8 +60,17 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
         stage.apply {
             width = Setting.settingWindowWidth
             height = Setting.settingWindowHeight
+            if (Setting.settingWindowPosX >= 0.0) {
+                x = Setting.settingWindowPosX
+            }
+            if (Setting.settingWindowPosY >= 0.0) {
+                y = Setting.settingWindowPosY
+            }
             Setting.settingWindowWidthProperty.bind(widthProperty())
             Setting.settingWindowHeightProperty.bind(heightProperty())
+            Setting.settingWindowPosXProperty.bind(xProperty())
+            Setting.settingWindowPosYProperty.bind(yProperty())
+
             setOnCloseRequest {
                 job.cancel()
             }

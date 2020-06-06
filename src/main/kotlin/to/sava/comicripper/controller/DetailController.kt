@@ -239,13 +239,22 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         stage.apply {
             width = Setting.detailWindowWidth
             height = Setting.detailWindowHeight
+            if (Setting.detailWindowPosX >= 0.0) {
+                x = Setting.detailWindowPosX
+            }
+            if (Setting.detailWindowPosY >= 0.0) {
+                y = Setting.detailWindowPosY
+            }
             Setting.detailWindowWidthProperty.bind(widthProperty())
             Setting.detailWindowHeightProperty.bind(heightProperty())
+            Setting.detailWindowPosXProperty.bind(xProperty())
+            Setting.detailWindowPosYProperty.bind(yProperty())
+
             setOnCloseRequest {
                 job.cancel()
             }
             setOnShown {
-                imageView.requestFocus()
+                slider.requestFocus()
             }
         }
     }

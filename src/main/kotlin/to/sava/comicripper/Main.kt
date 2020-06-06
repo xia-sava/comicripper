@@ -24,23 +24,15 @@ class Main : Application(), CoroutineScope {
 
     override fun start(primaryStage: Stage?) {
         checkNotNull(primaryStage)
-        val (mainPane, mainController) = loadFxml<BorderPane, MainController>("main.fxml")
 
         Setting.load()
-
         repos.loadStructure()
         repos.reScanFiles()
 
-        mainController.initStage(primaryStage)
+        val (mainPane, mainController) = loadFxml<BorderPane, MainController>("main.fxml")
         primaryStage.apply {
+            mainController.initStage(this)
             scene = Scene(mainPane)
-            width = Setting.mainWindowWidth
-            height = Setting.mainWindowHeight
-            title = "comicripper 0.0.1"
-
-            Setting.mainWindowWidthProperty.bind(primaryStage.widthProperty())
-            Setting.mainWindowHeightProperty.bind(primaryStage.heightProperty())
-
             show()
         }
 

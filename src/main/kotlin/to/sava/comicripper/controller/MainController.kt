@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.model.Comic
+import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
 import tornadofx.add
@@ -170,6 +171,22 @@ class MainController : Initializable, CoroutineScope {
 
     fun initStage(stage: Stage) {
         this.stage = stage
+        stage.apply {
+            width = Setting.mainWindowWidth
+            height = Setting.mainWindowHeight
+            if (Setting.mainWindowPosX >= 0.0) {
+                x = Setting.mainWindowPosX
+            }
+            if (Setting.mainWindowPosY >= 0.0) {
+                y = Setting.mainWindowPosY
+            }
+            title = "comicripper 0.0.1"
+
+            Setting.mainWindowWidthProperty.bind(widthProperty())
+            Setting.mainWindowHeightProperty.bind(heightProperty())
+            Setting.mainWindowPosXProperty.bind(xProperty())
+            Setting.mainWindowPosYProperty.bind(yProperty())
+        }
         stage.minWidthProperty().bind(minWidthProperty)
     }
 
