@@ -6,6 +6,9 @@ import javafx.geometry.Rectangle2D
 import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
@@ -78,7 +81,7 @@ class ComicRepository {
         ComicStorage.removeEmpty()
     }
 
-    fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
+    suspend fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double, rightMargin: Double) {
         if (comic.coverFront.isNullOrEmpty().not()) {
             File("${Setting.workDirectory}/${comic.coverFront}").delete()
         }
@@ -102,9 +105,11 @@ class ComicRepository {
         val newImage = SwingFXUtils.fromFXImage(outputImage, awtImage)
         val outputFile =
             File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
-        ImageIO.write(newImage, "jpeg", outputFile)
-
-        comic.addFile(outputFile.name)
+        withContext(Dispatchers.IO) {
+            ImageIO.write(newImage, "jpeg", outputFile)
+            delay(200)
+            comic.addFile(outputFile.name)
+        }
     }
 
     fun zipComic(comic: Comic) {

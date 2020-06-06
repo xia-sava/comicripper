@@ -15,6 +15,7 @@ import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -145,7 +146,9 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
 
     private fun cut() {
         comic?.let { comic ->
-            repos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
+            launch {
+                repos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
+            }
         }
         stage?.close()
     }
