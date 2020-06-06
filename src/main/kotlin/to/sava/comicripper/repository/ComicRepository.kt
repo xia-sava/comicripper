@@ -119,15 +119,15 @@ class ComicRepository {
         }
         File(zipFilename.parent).mkdirs()
         ZipOutputStream(BufferedOutputStream(zipFilename.outputStream())).use { zipStream ->
-            var coverNum = 1
             var pageNum = 1
             comic.files.forEach { src ->
-                val (prefix, num) = if (src.startsWith("cover")) Pair(
-                    "cover",
-                    coverNum++
-                ) else Pair("page", pageNum++)
-                val entry = ZipEntry("%s_%03d.jpg".format(prefix, num))
-                zipStream.putNextEntry(entry)
+                val name = when {
+                    src.startsWith(Comic.COVER_FRONT_PREFIX) -> Comic.COVER_FRONT_PREFIX
+                    src.startsWith(Comic.COVER_ALL_PREFIX) -> Comic.COVER_ALL_PREFIX
+                    src.startsWith(Comic.COVER_BELT_PREFIX) -> Comic.COVER_BELT_PREFIX
+                    else -> "page_%03d".format(pageNum++)
+                } + ".jpg"
+                zipStream.putNextEntry(ZipEntry(name))
                 zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
             }
         }
