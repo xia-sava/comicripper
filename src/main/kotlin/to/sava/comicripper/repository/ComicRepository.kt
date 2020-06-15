@@ -221,6 +221,7 @@ class ComicRepository {
                 .replace('『', '<').replace('』', '>')
                 .replace('《', '<').replace('》', '>')
                 .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
+                .replace("""\s+(\d+)巻""".toRegex(), " <$1>")
                 .replace("<>", "")
                 .trimEnd()
                 .replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
