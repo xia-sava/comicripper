@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
+import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -245,6 +246,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     fun initStage(stage: Stage) {
         this.stage = stage
         stage.apply {
+            setWindowIcon()
             width = Setting.detailWindowWidth
             height = Setting.detailWindowHeight
             if (Setting.detailWindowPosX >= 0.0) {

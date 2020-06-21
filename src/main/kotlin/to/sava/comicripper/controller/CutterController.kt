@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -124,6 +125,7 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
     fun initStage(stage: Stage) {
         this.stage = stage
         stage.apply {
+            setWindowIcon()
             width = Setting.cutterWindowWidth
             height = Setting.cutterWindowHeight
             if (Setting.cutterWindowPosX >= 0.0) {

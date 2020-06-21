@@ -21,9 +21,19 @@ import tornadofx.paddingAll
 
 object Loader
 
+/**
+ * FXML ファイルをロード
+ */
 fun <P, C> loadFxml(filename: String): Pair<P, C> {
     val loader = FXMLLoader(Loader.javaClass.getResource("/to/sava/comicripper/$filename"))
     return Pair(loader.load(), loader.getController())
+}
+
+/**
+ * アイコン PNG の Image を作成
+ */
+fun Stage.setWindowIcon() {
+    icons.add(Image(Loader.javaClass.getResourceAsStream("/to/sava/comicripper/icon.png")))
 }
 
 /**

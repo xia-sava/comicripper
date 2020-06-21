@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Setting
 import java.net.URL
 import java.util.*
@@ -58,6 +59,7 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
     fun initStage(stage: Stage) {
         this.stage = stage
         stage.apply {
+            setWindowIcon()
             width = Setting.settingWindowWidth
             height = Setting.settingWindowHeight
             if (Setting.settingWindowPosX >= 0.0) {

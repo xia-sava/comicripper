@@ -28,3 +28,7 @@
 
 Tesseract は ISBN を読むだけなので Japanese pack は要らないと思う．
 
+
+### 使用アイコン ###
+
+Icons made by <a href="https://www.flaticon.com/free-icon/cut_2091550" title="srip">srip</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
