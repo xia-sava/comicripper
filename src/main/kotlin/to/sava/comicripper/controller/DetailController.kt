@@ -78,6 +78,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var slider: Slider
 
     @FXML
+    private lateinit var filename: Label
+
+    @FXML
     private lateinit var currentNumber: Label
 
     @FXML
@@ -306,6 +309,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             comic.files.getOrNull(num)?.let { filename ->
                 comic.getFullSizeImage(filename)?.let { image ->
                     imageView.image = image
+                    this.filename.text = filename
                 }
             }
         }

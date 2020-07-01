@@ -47,6 +47,9 @@
                     <Label fx:id="currentNumber" />
                     <Label text="/" />
                     <Label fx:id="pageNumber" />
+                    <Label text=" (" />
+                    <Label fx:id="filename" />
+                    <Label text=")" />
                 </HBox>
             </StackPane>
             <fx:include source="parts/separator.fxml" />
