@@ -95,18 +95,14 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         detailScene.setOnKeyPressed {
-            when (it.code) {
-                KeyCode.ESCAPE -> stage?.close()
-                else -> {
-                }
+            if (it.code == KeyCode.ESCAPE) {
+                stage?.close()
             }
         }
         listOf(author, title, isbn).forEach { textfield ->
             textfield.setOnKeyReleased {
-                when (it.code) {
-                    KeyCode.LEFT, KeyCode.RIGHT -> it.consume()
-                    else -> {
-                    }
+                if (it.code in listOf(KeyCode.LEFT, KeyCode.RIGHT)) {
+                     it.consume()
                 }
             }
         }
@@ -114,9 +110,19 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         author.textProperty().onChange {
             ComicStorage[comic?.id]?.let { comic -> comic.author = it ?: "" }
         }
+        author.setOnKeyPressed {
+            if (it.code == KeyCode.ENTER) {
+                stage?.close()
+            }
+        }
 
         title.textProperty().onChange {
             ComicStorage[comic?.id]?.let { comic -> comic.title = it ?: "" }
+        }
+        title.setOnKeyPressed {
+            if (it.code == KeyCode.ENTER) {
+                stage?.close()
+            }
         }
 
         releaseImage.setOnAction {
@@ -130,15 +136,17 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
 
         val searchIsbnAction = {
-            modalProgressDialog(
-                "ISBN検索",
-                "ISBN から著者名/作品名をサーチしてます",
-                stage
-            ) { job ->
-                val (author_, title_) = repos.searchISBN(isbn.text)
-                withContext(Dispatchers.Main + job) {
-                    author.text = author_
-                    title.text = title_
+            if (isbn.text.isNotEmpty()) {
+                modalProgressDialog(
+                    "ISBN検索",
+                    "ISBN から著者名/作品名をサーチしてます",
+                    stage
+                ) { job ->
+                    val (author_, title_) = repos.searchISBN(isbn.text)
+                    withContext(Dispatchers.Main + job) {
+                        author.text = author_
+                        title.text = title_
+                    }
                 }
             }
         }
