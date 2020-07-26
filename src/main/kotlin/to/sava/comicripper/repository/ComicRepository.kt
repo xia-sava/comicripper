@@ -295,8 +295,11 @@ class ComicRepository {
 
     fun saveStructure() {
         val props = Properties()
-        ComicStorage.all.forEach { comic ->
-            props.setProperty("_${comic.id}", "${comic.author}\t${comic.title}")
+        ComicStorage.all.forEachIndexed { index, comic ->
+            props.setProperty(
+                "_${comic.id}",
+                listOf("$index", comic.author, comic.title).joinToString("\t")
+            )
             comic.files.forEach {
                 props.setProperty(it, comic.id)
             }
@@ -315,16 +318,22 @@ class ComicRepository {
             Setting.structureFile.inputStream().use {
                 props.load(it)
             }
-            props.propertyNames().toList().map { it as String }.filter { it.startsWith("_") }
-                .forEach {
+            props.propertyNames().toList().map { it as String }
+                .filter { it.startsWith("_") }
+                .map {
                     val id = it.trimStart('_')
-                    val (author, title) = props.getProperty(it).split("\t")
+                    val (index, author, title) = props.getProperty(it).split("\t")
                     val comic = Comic().apply {
                         this.id = id
                         this.author = author
                         this.title = title
                     }
-                    ComicStorage.add(comic)
+                    index.toInt() to comic
+                }
+                .toMap()
+                .toSortedMap()
+                .forEach {
+                    ComicStorage.add(it.value)
                 }
             props.propertyNames().toList()
                 .map { it as String }
