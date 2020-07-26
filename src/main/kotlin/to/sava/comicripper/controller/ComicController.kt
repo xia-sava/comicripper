@@ -8,6 +8,7 @@ import javafx.scene.canvas.Canvas
 import javafx.scene.control.Label
 import javafx.scene.control.Separator
 import javafx.scene.image.ImageView
+import javafx.scene.input.KeyCode
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
@@ -46,6 +47,7 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     private var stage: Stage? = null
 
     private val clickListeners = mutableListOf<() -> Unit>()
+    private val keyPressedListeners = mutableListOf<(KeyCode) -> Unit>()
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         comicScene.setOnMouseClicked { event ->
@@ -54,6 +56,12 @@ class ComicController : VBox(), Initializable, CoroutineScope {
                     1 -> invokeClickListener()
                     2 -> launchDetailWindow()
                 }
+            }
+        }
+        comicScene.setOnKeyPressed {
+            when (it.code) {
+                KeyCode.ENTER -> launchDetailWindow()
+                else -> invokeKeyPressedListener(it.code)
             }
         }
         comicProperty.onChange {
@@ -142,6 +150,20 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     private fun invokeClickListener() {
         clickListeners.forEach {
             it()
+        }
+    }
+
+    fun addKeyPressedListener(listener: (KeyCode) -> Unit) {
+        keyPressedListeners.add(listener)
+    }
+
+//    fun removeKeyPressedListener(listener: () -> Unit) {
+//        keyPressedListeners.remove(listener)
+//    }
+
+    private fun invokeKeyPressedListener(code: KeyCode) {
+        keyPressedListeners.forEach {
+            it(code)
         }
     }
 }

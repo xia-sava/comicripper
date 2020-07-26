@@ -10,6 +10,7 @@ import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.ScrollPane
 import javafx.scene.input.ClipboardContent
+import javafx.scene.input.KeyCode
 import javafx.scene.input.TransferMode
 import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
@@ -200,10 +201,14 @@ class MainController : Initializable, CoroutineScope {
             addClickListener {
                 selectComic(comic)
             }
+            addKeyPressedListener {
+                keyboardControl(comic, it)
+            }
         }
         pane.apply {
             minWidthProperty().onChange {
-                minWidthProperty.value = 8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+                minWidthProperty.value =
+                    8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
             }
             setDragAndDrop(this, comic)
         }
@@ -284,10 +289,31 @@ class MainController : Initializable, CoroutineScope {
             return
         }
         val (_, pane) = comicObjs[comic.id] ?: return
+        pane.children.firstOrNull()?.requestFocus()
         if ("selected" !in pane.styleClass) {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
         }
         selectedComicIdProperty.value = comic.id
+    }
+
+    private fun keyboardControl(comic: Comic, code: KeyCode) {
+        when (code) {
+            KeyCode.RIGHT, KeyCode.DOWN -> moveComicFocus(1)
+            KeyCode.LEFT, KeyCode.UP -> moveComicFocus(-1)
+            else -> {
+            }
+        }
+    }
+
+    private fun moveComicFocus(dir: Int) {
+        val currentIndex = ComicStorage.all.indexOfFirst { it.id == selectedComicId }
+        if (currentIndex == -1) {
+            return
+        }
+        if (currentIndex + dir !in ComicStorage.all.indices) {
+            return
+        }
+        selectComic(ComicStorage.all[currentIndex + dir])
     }
 }
