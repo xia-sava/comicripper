@@ -248,7 +248,12 @@ class ComicRepository {
             ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
                 val title = page.select("#productTitle")?.first()?.text()
-                val authors = page.select("#bylineInfo .author a")?.map { it.text() ?: "" }
+                val authors =
+                    page.select("#bylineInfo .author a.contributorNameID")?.map { it.text() ?: "" }
+                        ?.ifEmpty {
+                            page.select("#bylineInfo .author a")?.map { it.text() ?: "" }
+                                ?: listOf("作者不明")
+                        }
                 if (authors != null && title != null) {
                     return normalize(authors, title)
                 }
