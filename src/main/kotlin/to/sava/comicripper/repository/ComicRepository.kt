@@ -291,7 +291,7 @@ class ComicRepository {
     private fun generateFilename(prefix: String): String {
         val num = File(Setting.workDirectory)
             .list { _, name -> name.startsWith(prefix) }
-            ?.max()
+            ?.maxOrNull()
             ?.let { filename ->
                 Regex("""\d+""").find(filename)?.value?.toInt()?.let { it + 1 }
             } ?: 0

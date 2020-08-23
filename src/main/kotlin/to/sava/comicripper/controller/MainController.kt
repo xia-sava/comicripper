@@ -36,7 +36,7 @@ import java.util.*
 import kotlin.collections.set
 
 
-private const val WINDOW_TITLE = "comicripper 0.0.1"
+private const val WINDOW_TITLE = "comicripper 0.2"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
@@ -212,7 +212,7 @@ class MainController : Initializable, CoroutineScope {
         pane.apply {
             minWidthProperty().onChange {
                 minWidthProperty.value =
-                    8.0 + (comicList.children.map { it.layoutBounds.width }.max() ?: 0.0)
+                    8.0 + (comicList.children.map { it.layoutBounds.width }.maxOrNull() ?: 0.0)
             }
             setDragAndDrop(this, comic)
         }

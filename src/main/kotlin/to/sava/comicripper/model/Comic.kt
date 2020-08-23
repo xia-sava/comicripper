@@ -147,11 +147,11 @@ class Comic(filename: String = "") {
         if (imageCache.count { it.second == url } > 0) {
             return imageCache.first { it.second == url }.third
         }
-        val num = (imageCache.maxBy { it.first }?.first ?: 0) + 1
+        val num = (imageCache.maxByOrNull { it.first }?.first ?: 0) + 1
         val image = Image(url)
         imageCache.add(Triple(num, url, image))
         if (imageCache.count() > 10) {
-            imageCache.minBy { it.first }?.let {
+            imageCache.minByOrNull { it.first }?.let {
                 imageCache.remove(it)
             }
         }
