@@ -36,10 +36,13 @@ import java.util.*
 import kotlin.collections.set
 
 
+private const val WINDOW_TITLE = "comicripper 0.0.1"
+
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
     override val coroutineContext get() = Dispatchers.Main + job
 
+    @Suppress("unused")
     @FXML
     private lateinit var mainScene: BorderPane
 
@@ -70,6 +73,7 @@ class MainController : Initializable, CoroutineScope {
     @FXML
     private lateinit var scrollPane: ScrollPane
 
+    @Suppress("unused")
     @FXML
     private lateinit var statusBar: Label
 
@@ -88,17 +92,17 @@ class MainController : Initializable, CoroutineScope {
     val selectedComicId get() = selectedComicIdProperty.value
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        selectedComicIdProperty.onChange { id ->
-            launch {
-                ComicStorage[id]?.also { comic ->
-                    author.text = comic.author
-                    title.text = comic.title
-                } ?: run {
-                    author.text = ""
-                    title.text = ""
-                }
-            }
-        }
+//        selectedComicIdProperty.onChange { id ->
+//            launch {
+//                ComicStorage[id]?.also { comic ->
+//                    author.text = comic.author
+//                    title.text = comic.title
+//                } ?: run {
+//                    author.text = ""
+//                    title.text = ""
+//                }
+//            }
+//        }
         ocrIsbn.setOnAction {
             modalProgressDialog(
                 "OCRしています",
@@ -183,7 +187,7 @@ class MainController : Initializable, CoroutineScope {
             if (Setting.mainWindowPosY >= 0.0) {
                 y = Setting.mainWindowPosY
             }
-            title = "comicripper 0.0.1"
+            title = WINDOW_TITLE
 
             Setting.mainWindowWidthProperty.bind(widthProperty())
             Setting.mainWindowHeightProperty.bind(heightProperty())
@@ -284,20 +288,34 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun selectComic(comic: Comic?) {
+        comicObjs[selectedComicId]?.first?.comicProperty?.value?.removeListener(::setWindowTitle)
         if (comic == null) {
             selectedComicIdProperty.value = null
             return
         }
-        val (_, pane) = comicObjs[comic.id] ?: return
+        val (controller, pane) = comicObjs[comic.id] ?: return
         pane.children.firstOrNull()?.requestFocus()
         if ("selected" !in pane.styleClass) {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
         }
         selectedComicIdProperty.value = comic.id
+        controller.comicProperty.value?.addListener(::setWindowTitle)
+        setWindowTitle()
     }
 
-    private fun keyboardControl(comic: Comic, code: KeyCode) {
+    private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
+        launch {
+            comicObjs[selectedComicId]?.first?.comicProperty?.value?.let { comic ->
+                author.text = comic.author
+                title.text = comic.title
+                stage?.title = if (title.text.isNotEmpty() && author.text.isNotEmpty())
+                    "${author.text} / ${title.text} - $WINDOW_TITLE" else WINDOW_TITLE
+            }
+        }
+    }
+
+    private fun keyboardControl(@Suppress("UNUSED_PARAMETER") comic: Comic, code: KeyCode) {
         when (code) {
             KeyCode.RIGHT, KeyCode.DOWN -> moveComicFocus(1)
             KeyCode.LEFT, KeyCode.UP -> moveComicFocus(-1)
