@@ -99,6 +99,13 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 stage?.close()
             }
         }
+        detailScene.setOnScroll {
+            when {
+                it.deltaY > 0 -> leftImage()
+                it.deltaY < 0 -> rightImage()
+            }
+        }
+
         listOf(author, title, isbn).forEach { textfield ->
             textfield.setOnKeyReleased {
                 if (it.code in listOf(KeyCode.LEFT, KeyCode.RIGHT)) {

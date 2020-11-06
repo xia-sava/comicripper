@@ -2,14 +2,14 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    kotlin("jvm") version "1.4.0"
+    kotlin("jvm") version "1.4.10"
     id("application")
     id("org.openjfx.javafxplugin") version "0.0.8"
     id("com.github.johnrengelman.shadow") version "5.2.0"
 }
 
 group = "to.sava.comicripper"
-version = "0.2"
+version = "0.3"
 
 repositories {
     mavenCentral()

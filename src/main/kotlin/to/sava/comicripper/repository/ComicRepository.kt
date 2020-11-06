@@ -215,6 +215,7 @@ class ComicRepository {
                 .replace('(', '<').replace(')', '>')
                 .replace('[', '<').replace(']', '>')
                 .replace('{', '<').replace('}', '>')
+                .replace('＜', '<').replace('＞', '>')
                 .replace('「', '<').replace('」', '>')
                 .replace('〔', '<').replace('〕', '>')
                 .replace('【', '<').replace('】', '>')
