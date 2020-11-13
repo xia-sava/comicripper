@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "to.sava.comicripper"
-version = "0.3"
+version = "0.3.1"
 
 repositories {
     mavenCentral()
@@ -17,6 +17,7 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("reflect", "1.4.0"))
     implementation("no.tornado:tornadofx:1.7.20")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.3.6")
     implementation("net.contentobjects.jnotify:jnotify:0.94")

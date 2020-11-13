@@ -36,7 +36,7 @@ import java.util.*
 import kotlin.collections.set
 
 
-private const val WINDOW_TITLE = "comicripper 0.3"
+private const val WINDOW_TITLE = "comicripper 0.3.1"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
@@ -92,17 +92,12 @@ class MainController : Initializable, CoroutineScope {
     val selectedComicId get() = selectedComicIdProperty.value
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-//        selectedComicIdProperty.onChange { id ->
-//            launch {
-//                ComicStorage[id]?.also { comic ->
-//                    author.text = comic.author
-//                    title.text = comic.title
-//                } ?: run {
-//                    author.text = ""
-//                    title.text = ""
-//                }
-//            }
-//        }
+        mainScene.setOnScroll {
+            when {
+                it.deltaY > 0 -> moveComicFocus(-1)
+                it.deltaY < 0 -> moveComicFocus(+1)
+            }
+        }
         ocrIsbn.setOnAction {
             modalProgressDialog(
                 "OCRしています",
@@ -302,6 +297,18 @@ class MainController : Initializable, CoroutineScope {
         selectedComicIdProperty.value = comic.id
         controller.comicProperty.value?.addListener(::setWindowTitle)
         setWindowTitle()
+
+        // 選択コミックが画面内に入るようにスクロールする
+        val paneTop = pane.layoutY // 対象位置 px
+        val paneBottom = pane.layoutY + pane.height // 対象下端位置 px
+        val screenHeight = scrollPane.viewportBounds.height
+        val scrollLength = comicList.height - screenHeight
+        if (paneTop < scrollLength * scrollPane.vvalue) {
+            scrollPane.vvalue = paneTop / scrollLength
+        }
+        if ((scrollLength * scrollPane.vvalue + screenHeight) < paneBottom) {
+            scrollPane.vvalue = (paneBottom - screenHeight) / scrollLength
+        }
     }
 
     private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
