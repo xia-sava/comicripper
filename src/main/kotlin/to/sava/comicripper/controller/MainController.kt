@@ -36,7 +36,7 @@ import java.util.*
 import kotlin.collections.set
 
 
-private const val WINDOW_TITLE = "comicripper 0.3.1"
+private const val WINDOW_TITLE = "comicripper 0.3.2"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
@@ -92,12 +92,6 @@ class MainController : Initializable, CoroutineScope {
     val selectedComicId get() = selectedComicIdProperty.value
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
-        mainScene.setOnScroll {
-            when {
-                it.deltaY > 0 -> moveComicFocus(-1)
-                it.deltaY < 0 -> moveComicFocus(+1)
-            }
-        }
         ocrIsbn.setOnAction {
             modalProgressDialog(
                 "OCRしています",
@@ -142,7 +136,11 @@ class MainController : Initializable, CoroutineScope {
         }
 
         scrollPane.content.setOnScroll {
-            scrollPane.vvalue = scrollPane.vvalue - it.deltaY * 0.01
+            when {
+                it.deltaY > 0 -> moveComicFocus(-1)
+                it.deltaY < 0 -> moveComicFocus(+1)
+            }
+            it.consume()
         }
 
         setting.setOnAction {
