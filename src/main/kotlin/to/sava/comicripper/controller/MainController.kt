@@ -36,7 +36,7 @@ import java.util.*
 import kotlin.collections.set
 
 
-private const val WINDOW_TITLE = "comicripper 0.3.2"
+private const val WINDOW_TITLE = "comicripper 0.3.3"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
