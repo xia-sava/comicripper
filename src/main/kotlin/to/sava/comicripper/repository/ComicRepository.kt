@@ -231,7 +231,8 @@ class ComicRepository {
 
         // Yodobashi.com スクレイピング
         Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
-            .select(".pListBlock a[href]").firstOrNull()
+            .takeIf { it.select(".noResult").count() == 0 }
+            ?.select(".pListBlock a[href]")?.firstOrNull()
             ?.absUrl("href")
             ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
