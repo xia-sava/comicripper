@@ -57,6 +57,12 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
     @FXML
     private lateinit var cancel: Button
 
+    @FXML
+    private lateinit var toDetailBox: HBox
+
+    @FXML
+    private lateinit var toDetail: Button
+
     private var comic: Comic? = null
 
     private var stage: Stage? = null
@@ -120,6 +126,10 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         cancel.setOnAction {
             stage?.close()
         }
+
+        toDetail.setOnAction {
+            launchDetail()
+        }
     }
 
     fun initStage(stage: Stage) {
@@ -152,6 +162,11 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         comic.coverAllImage?.let {
             imageView.image = it
         }
+
+        comic.coverFront?.let {
+            toDetailBox.hide()
+        }
+
         resizeScreen()
     }
 
@@ -178,6 +193,15 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
     private fun rescaleLimiter() {
         leftLine.translateX = (leftLimit.value - 50.0) * ((imageView.fitWidth - leftLine.layoutBounds.width) / 100)
         rightLine.translateX = (rightLimit.value - 50.0) * ((imageView.fitWidth - rightLine.layoutBounds.width) / 100)
+    }
+
+    private fun launchDetail() {
+        comic?.let { comic ->
+            stage?.let { stage ->
+                stage.close()
+                DetailController.launchStage(stage, comic)
+            }
+        }
     }
 
     companion object {
