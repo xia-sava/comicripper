@@ -109,7 +109,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         listOf(author, title, isbn).forEach { textfield ->
             textfield.setOnKeyReleased {
                 if (it.code in listOf(KeyCode.LEFT, KeyCode.RIGHT)) {
-                     it.consume()
+                    it.consume()
                 }
             }
         }
@@ -296,6 +296,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
         if (comic.files.size > 1 && comic.files[1] == comic.coverAll) {
             slider.value = 1.0
+        }
+        if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
+            isbn.requestFocus()
         }
     }
 

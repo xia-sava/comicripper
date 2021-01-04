@@ -176,7 +176,7 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
                 repos.cutCover(comic, leftLimit.value, rightLimit.value, rightLine.layoutBounds.width)
             }
         }
-        stage?.close()
+        launchDetail()
     }
 
     private fun resizeScreen() {
