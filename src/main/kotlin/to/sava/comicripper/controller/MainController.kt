@@ -22,6 +22,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.ext.setWindowIcon
@@ -36,7 +37,7 @@ import java.util.*
 import kotlin.collections.set
 
 
-private const val WINDOW_TITLE = "comicripper 0.3.4"
+private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()

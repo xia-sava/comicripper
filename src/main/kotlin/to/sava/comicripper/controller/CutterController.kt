@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
@@ -26,6 +27,8 @@ import java.net.URL
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
+
+private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class CutterController : BorderPane(), Initializable, CoroutineScope {
     private val job = Job()
@@ -157,7 +160,7 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
 
     fun setComic(comic: Comic) {
         this.comic = comic
-        this.stage?.title = "${comic.title} ${comic.author} - comicripper 0.0.1"
+        this.stage?.title = "${comic.title} ${comic.author} - $WINDOW_TITLE"
 
         comic.coverAllImage?.let {
             imageView.image = it

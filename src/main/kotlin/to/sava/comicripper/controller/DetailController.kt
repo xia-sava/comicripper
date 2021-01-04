@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.ext.setWindowIcon
@@ -25,6 +26,8 @@ import to.sava.comicripper.repository.ComicStorage
 import tornadofx.*
 import java.net.URL
 import java.util.*
+
+private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class DetailController : BorderPane(), Initializable, CoroutineScope {
     private val job = Job()
@@ -289,7 +292,6 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     fun setComic(comic: Comic) {
         this.comic = comic
-        this.stage?.title = "${comic.title} ${comic.author} - comicripper 0.0.1"
         updateComic()
         comic.addListener {
             updateComic()
@@ -304,6 +306,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     private fun updateComic() {
         val comic = this.comic ?: return
+        this.stage?.title = "${comic.title} ${comic.author} - $WINDOW_TITLE"
 
         launch {
             if (author.text != comic.author) {

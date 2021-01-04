@@ -2,14 +2,12 @@ package to.sava.comicripper
 
 import javafx.application.Application
 import javafx.scene.Scene
-import javafx.scene.image.Image
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import kotlinx.coroutines.*
 import net.contentobjects.jnotify.win32.JNotify_win32
 import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.ext.loadFxml
-import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -108,5 +106,9 @@ class Main : Application(), CoroutineScope {
         job.cancel()
         Setting.save()
         repos.saveStructure()
+    }
+
+    companion object {
+        const val VERSION = "0.3.5"
     }
 }
