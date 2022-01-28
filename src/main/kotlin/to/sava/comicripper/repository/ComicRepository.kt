@@ -188,7 +188,10 @@ class ComicRepository {
         }
     }
 
-    fun searchISBN(isbn: String): Pair<String, String> {
+    fun searchISBN(pIsbn: String): Pair<String, String> {
+        // ISBN 10桁→13桁変換
+        val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
+
         // 共通の正規化処理
         fun normalizeText(text: String): String {
             return Normalizer.normalize(text, Normalizer.Form.NFKC)
