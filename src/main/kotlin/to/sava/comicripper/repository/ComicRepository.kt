@@ -168,7 +168,7 @@ class ComicRepository {
             Runtime.getRuntime().exec(cmd).waitFor()
             val ocrText = File("$tmp.txt").readText()
 
-            ocrText.let { """((?:978\d{10}|ISBN(?:\d\D*){13}))""".toRegex().find(it) }
+            ocrText.let { """(978\d{10}|ISBN(?:\d\D*){13})""".toRegex().find(it) }
                 ?.groupValues?.get(1)
                 ?.replace("""\D""".toRegex(), "")
                 ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
@@ -251,7 +251,7 @@ class ComicRepository {
 
         // Yodobashi.com スクレイピング
         Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
-            .takeIf { it.select(".noResult").count() == 0 }
+            .takeIf { it.select(".noResult").isEmpty() }
             ?.select(".pListBlock a[href]")?.firstOrNull()
             ?.absUrl("href")
             ?.let { Jsoup.connect(it).timeout(10_000).get() }
@@ -329,7 +329,7 @@ class ComicRepository {
             }
             props.propertyNames().toList().map { it as String }
                 .filter { it.startsWith("_") }
-                .map {
+                .associate {
                     val id = it.trimStart('_')
                     val (index, author, title) = props.getProperty(it).split("\t")
                     val comic = Comic().apply {
@@ -339,7 +339,6 @@ class ComicRepository {
                     }
                     index.toInt() to comic
                 }
-                .toMap()
                 .toSortedMap()
                 .forEach {
                     ComicStorage.add(it.value)
@@ -387,7 +386,7 @@ object ComicStorage {
     }
 
     fun removeEmpty() {
-        storage.removeAll(all.filter { it.files.isEmpty() })
+        storage.removeAll(all.filter { it.files.isEmpty() }.toSet())
     }
 
     operator fun get(id: String?): Comic? {

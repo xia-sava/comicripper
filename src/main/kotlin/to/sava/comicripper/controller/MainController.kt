@@ -206,7 +206,7 @@ class MainController : Initializable, CoroutineScope {
         pane.apply {
             minWidthProperty().onChange {
                 minWidthProperty.value =
-                    8.0 + (comicList.children.map { it.layoutBounds.width }.maxOrNull() ?: 0.0)
+                    8.0 + (comicList.children.maxOfOrNull { it.layoutBounds.width } ?: 0.0)
             }
             setDragAndDrop(this, comic)
         }
