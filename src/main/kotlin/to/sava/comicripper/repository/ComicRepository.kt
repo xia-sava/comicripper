@@ -228,20 +228,6 @@ class ComicRepository {
             return Pair(a.joinToString("／"), t)
         }
 
-        // Yodobashi.com スクレイピング
-        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
-            .takeIf { it.select(".noResult").count() == 0 }
-            ?.select(".pListBlock a[href]")?.firstOrNull()
-            ?.absUrl("href")
-            ?.let { Jsoup.connect(it).timeout(10_000).get() }
-            ?.let { page ->
-                val title = page.select("#products_maintitle")?.first()?.text()
-                val authors = page.select("#js_bookAuthor a")?.map { it.text() ?: "" }
-                if (authors != null && title != null) {
-                    return normalize(authors, title)
-                }
-            }
-
         // Amazon.com スクレイピング
         Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
             .select("#search .s-main-slot a[href]").firstOrNull()
@@ -255,6 +241,20 @@ class ComicRepository {
                             page.select("#bylineInfo .author a")?.map { it.text() ?: "" }
                                 ?: listOf("作者不明")
                         }
+                if (authors != null && title != null) {
+                    return normalize(authors, title)
+                }
+            }
+
+        // Yodobashi.com スクレイピング
+        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
+            .takeIf { it.select(".noResult").count() == 0 }
+            ?.select(".pListBlock a[href]")?.firstOrNull()
+            ?.absUrl("href")
+            ?.let { Jsoup.connect(it).timeout(10_000).get() }
+            ?.let { page ->
+                val title = page.select("#products_maintitle")?.first()?.text()
+                val authors = page.select("#js_bookAuthor a")?.map { it.text() ?: "" }
                 if (authors != null && title != null) {
                     return normalize(authors, title)
                 }
