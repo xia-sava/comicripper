@@ -237,14 +237,16 @@ class ComicRepository {
             ?.absUrl("href")
             ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
-                val title = page.select("#productTitle")?.first()?.text()
+                val title = page.select("#productTitle").first()?.text()
                 val authors =
-                    page.select("#bylineInfo .author a.contributorNameID")?.map { it.text() ?: "" }
-                        ?.ifEmpty {
-                            page.select("#bylineInfo .author a")?.map { it.text() ?: "" }
-                                ?: listOf("作者不明")
+                    page.select("#bylineInfo .author a.contributorNameID")
+                        .map { it.text() ?: "" }
+                        .ifEmpty {
+                            page.select("#bylineInfo .author a")
+                                .map { it.text() ?: "" }
+                                .ifEmpty { listOf("作者不明") }
                         }
-                if (authors != null && title != null) {
+                if (title != null) {
                     return normalize(authors, title)
                 }
             }
@@ -256,9 +258,11 @@ class ComicRepository {
             ?.absUrl("href")
             ?.let { Jsoup.connect(it).timeout(10_000).get() }
             ?.let { page ->
-                val title = page.select("#products_maintitle")?.first()?.text()
-                val authors = page.select("#js_bookAuthor a")?.map { it.text() ?: "" }
-                if (authors != null && title != null) {
+                val title = page.select("#products_maintitle").first()?.text()
+                val authors = page.select("#js_bookAuthor a")
+                    .map { it.text() ?: "" }
+                    .ifEmpty { listOf("作者不明") }
+                if (title != null) {
                     return normalize(authors, title)
                 }
             }

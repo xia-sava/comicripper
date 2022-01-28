@@ -2,10 +2,10 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    kotlin("jvm") version "1.4.20"
+    kotlin("jvm") version "1.6.10"
     id("application")
-    id("org.openjfx.javafxplugin") version "0.0.8"
-    id("com.github.johnrengelman.shadow") version "5.2.0"
+    id("org.openjfx.javafxplugin") version "0.0.11"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 group = "to.sava.comicripper"
@@ -16,24 +16,22 @@ repositories {
 }
 
 dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(kotlin("reflect", "1.4.0"))
     implementation("no.tornado:tornadofx:1.7.20")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.3.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.6.0")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
-    implementation("com.google.code.gson:gson:2.8.6")
-    implementation("org.jsoup:jsoup:1.13.1")
-    implementation("net.sourceforge.htmlunit:htmlunit:2.40.0")
+    implementation("com.google.code.gson:gson:2.8.9")
+    implementation("org.jsoup:jsoup:1.14.3")
+    implementation("net.sourceforge.htmlunit:htmlunit:2.57.0")
 
     testImplementation("junit", "junit", "4.12")
 }
 
-configure<JavaPluginConvention> {
+configure<JavaPluginExtension> {
     sourceCompatibility = JavaVersion.VERSION_1_8
 }
 
 application {
-    mainClassName = "to.sava.comicripper.Main"
+    mainClass.set("to.sava.comicripper.Main")
 }
 
 tasks {
@@ -48,7 +46,7 @@ tasks {
         archiveBaseName.set("app")
         mergeServiceFiles()
         manifest {
-            attributes(mapOf("Main-Class" to application.mainClassName))
+            attributes(mapOf("Main-Class" to application.mainClass))
         }
     }
 }
