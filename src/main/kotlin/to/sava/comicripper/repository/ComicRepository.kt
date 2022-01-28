@@ -168,7 +168,7 @@ class ComicRepository {
             Runtime.getRuntime().exec(cmd).waitFor()
             val ocrText = File("$tmp.txt").readText()
 
-            ocrText.let { """((?:978\d{10}|ISBN(?:\d\D?){13}))""".toRegex().find(it) }
+            ocrText.let { """((?:978\d{10}|ISBN(?:\d\D*){13}))""".toRegex().find(it) }
                 ?.groupValues?.get(1)
                 ?.replace("""\D""".toRegex(), "")
                 ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
@@ -222,10 +222,9 @@ class ComicRepository {
                 .replace('『', '<').replace('』', '>')
                 .replace('《', '<').replace('》', '>')
                 .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
-                .replace("""\s+(\d+)巻""".toRegex(), " <$1>")
-                .replace("<>", "")
-                .trimEnd()
-                .replace("""\s*<?(\d+)>?$""".toRegex(), " ($1)")
+                .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
+                .replace("""：\s*(\d+)""".toRegex(), " <$1>")
+                .replace("""\s*<?(\d+)>?[<> ]*$""".toRegex(), " ($1)")
             return Pair(a.joinToString("／"), t)
         }
 
