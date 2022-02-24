@@ -164,11 +164,14 @@ class ComicRepository {
         val coverAll = comic.coverAll ?: return null
         val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         return try {
-            val cmd = """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn """
+            val cmd = """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn --psm 11"""
             Runtime.getRuntime().exec(cmd).waitFor()
-            val ocrText = File("$tmp.txt").readText()
 
-            ocrText.let { """(978\d{10}|ISBN(?:\d\D*){13})""".toRegex().find(it) }
+            File("$tmp.txt").readText()
+                .replace(" ", "")
+                .replace("\n", " ")
+                .replace("-", "")
+                .let { """(978\d{10}|ISBN(?:\d\D*){13})""".toRegex().find(it) }
                 ?.groupValues?.get(1)
                 ?.replace("""\D""".toRegex(), "")
                 ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
