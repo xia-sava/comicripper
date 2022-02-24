@@ -3,8 +3,8 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     java
     kotlin("jvm") version "1.6.10"
-    id("application")
-    id("org.openjfx.javafxplugin") version "0.0.11"
+    application
+    id("org.openjfx.javafxplugin") version "0.0.12"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
@@ -19,15 +19,16 @@ dependencies {
     implementation("no.tornado:tornadofx:1.7.20")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.6.0")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
-    implementation("com.google.code.gson:gson:2.8.9")
+    implementation("com.google.code.gson:gson:2.9.0")
     implementation("org.jsoup:jsoup:1.14.3")
-    implementation("net.sourceforge.htmlunit:htmlunit:2.57.0")
 
     testImplementation("junit", "junit", "4.12")
 }
 
-configure<JavaPluginExtension> {
-    sourceCompatibility = JavaVersion.VERSION_1_8
+kotlin {
+    jvmToolchain {
+        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11))
+    }
 }
 
 application {
@@ -35,19 +36,9 @@ application {
 }
 
 tasks {
-    compileKotlin {
-        kotlinOptions.jvmTarget = "1.8"
-    }
-    compileTestKotlin {
-        kotlinOptions.jvmTarget = "1.8"
-    }
-
     named<ShadowJar>("shadowJar") {
-        archiveBaseName.set("app")
+        archiveFileName.set("comicripper.jar")
         mergeServiceFiles()
-        manifest {
-            attributes(mapOf("Main-Class" to application.mainClass))
-        }
     }
 }
 
