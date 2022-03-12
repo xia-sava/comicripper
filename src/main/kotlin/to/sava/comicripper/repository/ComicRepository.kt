@@ -164,7 +164,8 @@ class ComicRepository {
         val coverAll = comic.coverAll ?: return null
         val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         return try {
-            val cmd = """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn --psm 11"""
+            val cmd =
+                """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn --psm 11"""
             Runtime.getRuntime().exec(cmd).waitFor()
 
             File("$tmp.txt").readText()
@@ -212,11 +213,9 @@ class ComicRepository {
         }
 
         fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
-            val a = authors
-                .map {
-                    normalizeText(it)
-                        .replace(" ", "")
-                }
+            val a = authors.joinToString("／") {
+                normalizeText(it).replace(" ", "")
+            }
             val t = normalizeText(title)
                 .replace('(', '<').replace(')', '>')
                 .replace('[', '<').replace(']', '>')
@@ -230,8 +229,10 @@ class ComicRepository {
                 .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
                 .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
                 .replace("""：\s*(\d+)""".toRegex(), " <$1>")
+                .replace("<>", "")
+                .trimEnd()
                 .replace("""\s*<?(\d+)>?[<> ]*$""".toRegex(), " ($1)")
-            return Pair(a.joinToString("／"), t)
+            return Pair(a, t)
         }
 
         // Amazon.com スクレイピング
@@ -242,8 +243,10 @@ class ComicRepository {
             ?.let { page ->
                 val title = page.select("#productTitle").first()?.text()
                 val authors =
-                    page.select("#bylineInfo .author a.contributorNameID")
+                    page.select("#bylineInfo .author a")
                         .map { it.text() ?: "" }
+                        .filter { it != "" }
+                        .filter { t -> listOf("原著", "著者ページ", "検索結果").all { it !in t } }
                         .ifEmpty {
                             page.select("#bylineInfo .author a")
                                 .map { it.text() ?: "" }
