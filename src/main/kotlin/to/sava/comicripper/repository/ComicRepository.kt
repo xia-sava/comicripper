@@ -8,6 +8,7 @@ import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
@@ -160,13 +161,17 @@ class ComicRepository {
         }
     }
 
-    fun ocrISBN(comic: Comic): Pair<String, String>? {
+    suspend fun ocrISBN(comic: Comic): Pair<String, String>? {
         val coverAll = comic.coverAll ?: return null
-        val tmp = Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
+        val tmp = withContext(Dispatchers.IO) {
+            Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
+        }
         return try {
             val cmd =
                 """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn --psm 11"""
-            Runtime.getRuntime().exec(cmd).waitFor()
+            withContext(Dispatchers.IO) {
+                Runtime.getRuntime().exec(cmd).waitFor()
+            }
 
             File("$tmp.txt").readText()
                 .replace(" ", "")
@@ -192,7 +197,7 @@ class ComicRepository {
         }
     }
 
-    fun searchISBN(pIsbn: String): Pair<String, String> {
+    suspend fun searchISBN(pIsbn: String): Pair<String, String> {
         // ISBN 10桁→13桁変換
         val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
 
@@ -236,62 +241,86 @@ class ComicRepository {
         }
 
         // Amazon.com スクレイピング
-        Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
-            .select("#search .s-main-slot a[href]").firstOrNull()
-            ?.absUrl("href")
-            ?.let { Jsoup.connect(it).timeout(10_000).get() }
-            ?.let { page ->
-                val title = page.select("#productTitle").first()?.text()
-                val authors =
-                    page.select("#bylineInfo .author a")
-                        .map { it.text() ?: "" }
-                        .filter { it != "" }
-                        .filter { t -> listOf("原著", "著者ページ", "検索結果").all { it !in t } }
-                        .ifEmpty {
-                            page.select("#bylineInfo .author a")
-                                .map { it.text() ?: "" }
-                                .ifEmpty { listOf("作者不明") }
-                        }
-                if (title != null) {
-                    return normalize(authors, title)
-                }
-            }
-
-        // Yodobashi.com スクレイピング
-        Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
-            .takeIf { it.select(".noResult").isEmpty() }
-            ?.select(".pListBlock a[href]")?.firstOrNull()
-            ?.absUrl("href")
-            ?.let { Jsoup.connect(it).timeout(10_000).get() }
-            ?.let { page ->
-                val title = page.select("#products_maintitle").first()?.text()
-                val authors = page.select("#js_bookAuthor a")
-                    .map { it.text() ?: "" }
-                    .ifEmpty { listOf("作者不明") }
-                if (title != null) {
-                    return normalize(authors, title)
-                }
-            }
-
-        // Google Book API
-        Json.createReader(
-            InputStreamReader(
-                URL("${Setting.googleBookApi}$isbn")
-                    .openStream(), "utf-8"
-            ).buffered()
-        )
-            .readObject()?.let { json ->
-                if (json.getInt("totalItems") > 0) {
-                    val info =
-                        json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
+        try {
+            println("Amazon $isbn start")
+            Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
+                .select("#search .s-main-slot a[href]").firstOrNull()
+                ?.absUrl("href")
+                ?.let { Jsoup.connect(it).timeout(10_000).get() }
+                ?.let { page ->
+                    val title = page.select("#productTitle").first()?.text()
                     val authors =
-                        info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
-                    val title = info?.getString("title")
-                    if (authors != null && title != null) {
+                        page.select("#bylineInfo .author a")
+                            .map { it.text() ?: "" }
+                            .filter { it != "" }
+                            .filter { t -> listOf("原著", "著者ページ", "検索結果").all { it !in t } }
+                            .ifEmpty {
+                                page.select("#bylineInfo .author a")
+                                    .map { it.text() ?: "" }
+                                    .ifEmpty { listOf("作者不明") }
+                            }
+                    if (title != null) {
+                        println("Amazon $isbn done")
                         return normalize(authors, title)
                     }
                 }
-            }
+        } catch (e: HttpStatusException) {
+            // ステータスエラーは握り潰しちゃうよ
+            println("Amazon $isbn error: ${e.message}")
+        }
+
+        // Yodobashi.com スクレイピング
+        try {
+            println("Yodobashi $isbn start")
+            Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
+                .takeIf { it.select(".noResult").isEmpty() }
+                ?.select(".pListBlock a[href]")?.firstOrNull()
+                ?.absUrl("href")
+                ?.let { Jsoup.connect(it).timeout(10_000).get() }
+                ?.let { page ->
+                    val title = page.select("#products_maintitle").first()?.text()
+                    val authors = page.select("#js_bookAuthor a")
+                        .map { it.text() ?: "" }
+                        .ifEmpty { listOf("作者不明") }
+                    if (title != null) {
+                        println("Yodobashi $isbn done")
+                        return normalize(authors, title)
+                    }
+                }
+        } catch (e: HttpStatusException) {
+            // ステータスエラーは握り潰しちゃうよ
+            println("Yodobashi $isbn error: ${e.message}")
+        }
+
+        // Google Book API
+        try {
+            println("Google $isbn start")
+            Json.createReader(
+                withContext(Dispatchers.IO) {
+                    InputStreamReader(
+                        URL("${Setting.googleBookApi}$isbn")
+                            .openStream(), "utf-8"
+                    ).buffered()
+                }
+            )
+                .readObject()?.let { json ->
+                    if (json.getInt("totalItems") > 0) {
+                        val info =
+                            json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
+                        val authors =
+                            info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
+                        val title = info?.getString("title")
+                        if (authors != null && title != null) {
+                            println("Google $isbn done")
+                            return normalize(authors, title)
+                        }
+                    }
+                }
+        } catch (e: HttpStatusException) {
+            // ステータスエラーは握り潰しちゃうよ
+            println("Google $isbn error: ${e.message}")
+        }
+
         return Pair("ISBN", isbn)
     }
 

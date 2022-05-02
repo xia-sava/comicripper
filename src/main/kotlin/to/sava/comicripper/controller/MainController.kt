@@ -115,10 +115,10 @@ class MainController : Initializable, CoroutineScope {
                 "コミックをまとめてZIP化しています",
                 stage
             ) {
-                ComicStorage.all.filter {
-                    it.files.size > 3
-                }.forEach { comic ->
-                    repos.zipComic(comic)
+                ComicStorage.all.filter { it.files.size > 3 }.map { comic ->
+                    launch(Dispatchers.IO + job) {
+                        repos.zipComic(comic)
+                    }
                 }
             }
         }

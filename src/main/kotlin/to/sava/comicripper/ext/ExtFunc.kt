@@ -13,6 +13,7 @@ import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import to.sava.comicripper.model.Setting
@@ -90,9 +91,7 @@ fun CoroutineScope.modalProgressDialog(
     launch(Dispatchers.IO + job) {
         when (val result = block(job)) {
             is Job -> result.join()
-            is Iterable<*> -> result.forEach {
-                if (it is Job) it.join()
-            }
+            is Iterable<*> -> result.filterIsInstance<Job>().joinAll()
         }
         withContext(Dispatchers.Main + job) {
             modal.close()
