@@ -236,7 +236,7 @@ class ComicRepository {
                 .replace("""：\s*(\d+)""".toRegex(), " <$1>")
                 .replace("<>", "")
                 .trimEnd()
-                .replace("""\s*<?(\d+)>?[<> ]*$""".toRegex(), " ($1)")
+                .replace("""\s*<?(\d+)>?[\d<> ]*$""".toRegex(), " ($1)")
             return Pair(a, t)
         }
 
