@@ -405,6 +405,21 @@ class ComicRepository {
             false
         }
     }
+
+    fun getNameList(): List<Triple<String, String, String>> {
+        return ComicStorage.all.map {
+            Triple(it.id, it.author, it.title)
+        }
+    }
+
+    fun setNameList(nameList: List<Triple<String, String, String>>) {
+        nameList.forEach { (id, author, title) ->
+            ComicStorage[id]?.let {
+                it.author = author
+                it.title = title
+            }
+        }
+    }
 }
 
 object ComicStorage {

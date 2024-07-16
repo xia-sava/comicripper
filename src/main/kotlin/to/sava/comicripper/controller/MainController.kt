@@ -23,9 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import to.sava.comicripper.Main
-import to.sava.comicripper.ext.loadFxml
-import to.sava.comicripper.ext.modalProgressDialog
-import to.sava.comicripper.ext.setWindowIcon
+import to.sava.comicripper.ext.*
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -70,6 +68,9 @@ class MainController : Initializable, CoroutineScope {
 
     @FXML
     private lateinit var reload: Button
+
+    @FXML
+    private lateinit var nameAll: Button
 
     @FXML
     private lateinit var scrollPane: ScrollPane
@@ -134,6 +135,29 @@ class MainController : Initializable, CoroutineScope {
                 repos.reScanFiles()
                 repos.saveStructure()
             }
+        }
+
+        nameAll.setOnAction {
+            modalTextAreaDialog(
+                "まとめて名前をセットします",
+                "全てのコミックの著者名/作品名をセットしてください",
+                stage,
+                text = repos.getNameList()
+                    .joinToString(separator = "\n") { triple ->
+                        triple.toList().joinToString(separator = "\t")
+                    } + "\n",
+                result = { input ->
+                    input.lines().forEach { line ->
+                        val record = line.split("\t")
+                        if (record.size == 3) {
+                            ComicStorage[record[0]]?.let { comic ->
+                                comic.author = record[1]
+                                comic.title = record[2]
+                            }
+                        }
+                    }
+                },
+            )
         }
 
         scrollPane.content.setOnScroll {

@@ -109,6 +109,6 @@ class Main : Application(), CoroutineScope {
     }
 
     companion object {
-        const val VERSION = "0.3.9"
+        const val VERSION = "0.4.0"
     }
 }

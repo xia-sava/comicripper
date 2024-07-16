@@ -24,6 +24,8 @@
             <Button text="全pageを集約" fx:id="pagesToComic"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="フォルダ再スキャン" fx:id="reload"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Button text="一括命名" fx:id="nameAll"/>
         </ToolBar>
     </top>
     <center>

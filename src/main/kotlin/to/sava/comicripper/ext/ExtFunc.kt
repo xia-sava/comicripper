@@ -3,8 +3,10 @@ package to.sava.comicripper.ext
 import javafx.fxml.FXMLLoader
 import javafx.geometry.Pos
 import javafx.scene.Scene
+import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
+import javafx.scene.control.TextArea
 import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.layout.VBox
@@ -63,12 +65,12 @@ fun workFilename(filename: String): String {
     return "${Setting.workDirectory}/$filename"
 }
 
-fun CoroutineScope.modalProgressDialog(
+private fun modalDialog(
     title: String,
     text: String,
     owner: Stage?,
-    block: suspend (job: Job) -> Any?
-) {
+    block: VBox.() -> Unit = {},
+): Stage {
     checkNotNull(owner)
     val job = Job()
     val modal = Stage().apply {
@@ -79,15 +81,60 @@ fun CoroutineScope.modalProgressDialog(
             paddingAll = 8.0
             alignment = Pos.CENTER
             add(Label(text))
-            add(ProgressIndicator().apply {
-                setPrefSize(24.0, 24.0)
-            })
+            block()
         })
         setOnCloseRequest {
             job.cancel()
         }
     }
     modal.show()
+    return modal
+}
+
+fun modalTextAreaDialog(
+    title: String,
+    prompt: String,
+    owner: Stage?,
+    text: String,
+    result: (String) -> Unit = {},
+    cancel: () -> Unit = {},
+) {
+    val modal = modalDialog(title, prompt, owner) {
+        val textArea = TextArea(text).apply {
+            promptText = prompt
+
+        }
+        add(textArea)
+        add(VBox(10.0, Button("完了").apply {
+            setOnAction {
+                result(textArea.text)
+                (scene.window as Stage).close()
+            }
+        }, Button("キャンセル").apply {
+            setOnAction {
+                cancel()
+                (scene.window as Stage).close()
+            }
+        }).apply {
+            alignment = Pos.CENTER
+        })
+    }
+}
+fun CoroutineScope.modalProgressDialog(
+    title: String,
+    text: String,
+    owner: Stage?,
+    block: suspend (job: Job) -> Any?
+) {
+    val job = Job()
+    val modal = modalDialog(title, text, owner) {
+        add(ProgressIndicator().apply {
+            setPrefSize(24.0, 24.0)
+        })
+    }
+    modal.setOnCloseRequest {
+        job.cancel()
+    }
     launch(Dispatchers.IO + job) {
         when (val result = block(job)) {
             is Job -> result.join()
