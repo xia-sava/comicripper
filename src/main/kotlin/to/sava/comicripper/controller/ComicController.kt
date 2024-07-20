@@ -96,11 +96,12 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         title.text = comic.title
 
         imagesPane.clear()
-        if (comic.thumbnails.isNotEmpty()) {
+        val thumbnails = comic.thumbnails
+        if (thumbnails.isNotEmpty()) {
             imagesPane.add(ImageView().apply {
-                fitImage(comic.thumbnails.first(), 256.0, 128.0)
+                fitImage(thumbnails.first(), 256.0, 128.0)
             })
-            val images = comic.thumbnails.drop(1)
+            val images = thumbnails.drop(1)
             if (images.isNotEmpty()) {
                 imagesPane.add(Separator().apply {
                     orientation = Orientation.VERTICAL

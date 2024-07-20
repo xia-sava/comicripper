@@ -90,9 +90,6 @@ class MainController : Initializable, CoroutineScope {
 
     private val comicObjs = mutableMapOf<String, Pair<ComicController, VBox>>()
 
-    private val selectedComicIdProperty = SimpleObjectProperty<String?>(null)
-    val selectedComicId get() = selectedComicIdProperty.value
-
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         ocrIsbn.setOnAction {
             modalProgressDialog(
@@ -124,7 +121,7 @@ class MainController : Initializable, CoroutineScope {
             }
         }
         pagesToComic.setOnAction {
-            ComicStorage[selectedComicId]?.let { comic ->
+            ComicStorage.target?.let { comic ->
                 launch(Dispatchers.IO + job) {
                     repos.pagesToComic(comic)
                 }
@@ -236,15 +233,11 @@ class MainController : Initializable, CoroutineScope {
         }
         comicList.add(pane)
         comicObjs[comic.id] = Pair(controller, pane)
-
-        if (comicObjs.size == 1) {
-            selectComic(comic)
-        }
     }
 
     private fun removeComic(comic: Comic) = launch {
-        if (selectedComicId == comic.id) {
-            selectComic(null)
+        if (ComicStorage.targetId == comic.id) {
+            selectComic(ComicStorage.all.firstOrNull())
         }
         comicObjs[comic.id]?.let {
             val (controller, pane) = it
@@ -306,9 +299,9 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun selectComic(comic: Comic?) {
-        comicObjs[selectedComicId]?.first?.comicProperty?.value?.removeListener(::setWindowTitle)
+        comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.removeListener(::setWindowTitle)
         if (comic == null) {
-            selectedComicIdProperty.value = null
+            ComicStorage.targetId = null
             return
         }
         val (controller, pane) = comicObjs[comic.id] ?: return
@@ -317,7 +310,7 @@ class MainController : Initializable, CoroutineScope {
             comicList.children.forEach { it.styleClass.remove("selected") }
             pane.styleClass.add("selected")
         }
-        selectedComicIdProperty.value = comic.id
+        ComicStorage.targetId = comic.id
         controller.comicProperty.value?.addListener(::setWindowTitle)
         setWindowTitle()
 
@@ -336,12 +329,11 @@ class MainController : Initializable, CoroutineScope {
 
     private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
         launch {
-            comicObjs[selectedComicId]?.first?.comicProperty?.value?.let { comic ->
+            comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.let { comic ->
                 author.text = comic.author
                 title.text = comic.title
-                stage?.title = if (title.text.isNotEmpty() && author.text.isNotEmpty())
-                    "${author.text} / ${title.text} - $WINDOW_TITLE" else WINDOW_TITLE
-            }
+                stage?.title = "${author.text} / ${title.text} - $WINDOW_TITLE"
+            } ?: WINDOW_TITLE
         }
     }
 
@@ -355,7 +347,7 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun moveComicFocus(dir: Int) {
-        val currentIndex = ComicStorage.all.indexOfFirst { it.id == selectedComicId }
+        val currentIndex = ComicStorage.all.indexOfFirst { it.id == ComicStorage.targetId }
         if (currentIndex == -1) {
             return
         }

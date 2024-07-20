@@ -86,7 +86,7 @@ class Main : Application(), CoroutineScope {
                     }
                     delay(200)
                     if (createdFiles.isNotEmpty()) {
-                        repos.addFiles(ComicStorage[mainController.selectedComicId], createdFiles)
+                        repos.addFiles(createdFiles)
                         createdFiles.clear()
                     }
                     if (deletedFiles.isNotEmpty()) {

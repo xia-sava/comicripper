@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "to.sava.comicripper"
-version = "0.4.0"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
@@ -20,7 +20,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.6.1")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("com.google.code.gson:gson:2.9.0")
-    implementation("org.jsoup:jsoup:1.14.3")
+    implementation("org.jsoup:jsoup:1.15.3")
 
     testImplementation("junit", "junit", "4.12")
 }

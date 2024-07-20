@@ -99,7 +99,7 @@ fun modalTextAreaDialog(
     result: (String) -> Unit = {},
     cancel: () -> Unit = {},
 ) {
-    val modal = modalDialog(title, prompt, owner) {
+    modalDialog(title, prompt, owner) {
         val textArea = TextArea(text).apply {
             promptText = prompt
 

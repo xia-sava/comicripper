@@ -58,17 +58,25 @@ class ComicRepository {
         }
     }
 
-    fun addFiles(comic: Comic?, filenames: List<String>) {
-        filenames.forEach { addFile(comic, it) }
+    fun addFiles(filenames: List<String>) {
+        filenames.forEach { addFile(it) }
     }
 
-    private fun addFile(comic: Comic?, filename: String) {
-        if (filename.startsWith(Comic.COVER_ALL_PREFIX).not() && comic != null) {
-            comic.addFile(filename)?.let {
-                ComicStorage.add(Comic(it))
+    private fun addFile(filename: String) {
+        if (filename.startsWith(Comic.COVER_ALL_PREFIX)) {
+            Comic(filename).let {
+                ComicStorage.add(it)
+                ComicStorage.targetId = it.id
             }
         } else {
-            ComicStorage.add(Comic(filename))
+            val target = ComicStorage.target
+            if (target != null) {
+                target.addFile(filename)?.let {
+                    ComicStorage.add(Comic(it))
+                }
+            } else {
+                ComicStorage.add(Comic(filename))
+            }
         }
     }
 
@@ -424,10 +432,12 @@ class ComicRepository {
 
 object ComicStorage {
     private val storage = SimpleListProperty<Comic>(observableListOf())
+    var targetId: String? = null
 
     val property get() = storage
     val all get() = storage.value.toList()
     val files get() = storage.value.toList().flatMap { it.files }
+    val target get() = targetId?.let { this[it] }
 
     fun add(vararg comics: Comic) {
         storage.addAll(comics)
