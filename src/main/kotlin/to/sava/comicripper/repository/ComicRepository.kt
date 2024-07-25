@@ -20,9 +20,12 @@ import java.io.File
 import java.io.InputStreamReader
 import java.net.URL
 import java.nio.file.Files
+import java.nio.file.FileSystems
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.text.Normalizer
 import java.util.*
+import java.util.stream.Collectors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
@@ -56,6 +59,14 @@ class ComicRepository {
                 ComicStorage.remove(comic)
             }
         }
+    }
+
+    fun listFiles(pattern: String): List<Path> {
+        val dirPath = Paths.get(Setting.workDirectory)
+        val matcher = FileSystems.getDefault().getPathMatcher("glob:$pattern")
+        return Files.list(dirPath)
+            .filter { path -> Files.isRegularFile(path) && matcher.matches(path.fileName) }
+            .collect(Collectors.toList())
     }
 
     fun addFiles(filenames: List<String>) {

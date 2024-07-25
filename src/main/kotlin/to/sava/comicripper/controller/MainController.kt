@@ -1,7 +1,6 @@
 package to.sava.comicripper.controller
 
 import javafx.beans.property.SimpleDoubleProperty
-import javafx.beans.property.SimpleObjectProperty
 import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
@@ -71,6 +70,9 @@ class MainController : Initializable, CoroutineScope {
 
     @FXML
     private lateinit var nameAll: Button
+
+    @FXML
+    private lateinit var nameEpub: Button
 
     @FXML
     private lateinit var scrollPane: ScrollPane
@@ -150,6 +152,41 @@ class MainController : Initializable, CoroutineScope {
                             ComicStorage[record[0]]?.let { comic ->
                                 comic.author = record[1]
                                 comic.title = record[2]
+                            }
+                        }
+                    }
+                },
+            )
+        }
+
+        nameEpub.setOnAction {
+            val regex = Regex("""^(.+?)｜(.+)\.epub$""")
+            val epubFiles = repos.listFiles("*.epub")
+                .map { path ->
+                    val fileName = path.fileName.toString()
+                    regex.matchEntire(fileName)?.destructured?.let { (author, title) ->
+                        (author to title)
+                    } ?: (fileName to "")
+                }
+            modalTextAreaDialog(
+                "epub ファイル名から名前をセットします",
+                "全てのコミックの著者名/作品名をセットしてください",
+                stage,
+                text = repos.getNameList()
+                    .mapIndexed { i, names ->
+                        val (author, title) = epubFiles.getOrElse(i) { Pair("", "") }
+                        listOf(names.first, names.second, author, title)
+                    }
+                    .joinToString(separator = "\n") {
+                        it.joinToString(separator = "\t")
+                    } + "\n",
+                result = { input ->
+                    input.lines().forEach { line ->
+                        val record = line.split("\t")
+                        if (record.size == 4) {
+                            ComicStorage[record[0]]?.let { comic ->
+                                comic.author = record[2]
+                                comic.title = record[3]
                             }
                         }
                     }

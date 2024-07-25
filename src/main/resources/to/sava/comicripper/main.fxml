@@ -26,6 +26,8 @@
             <Button text="フォルダ再スキャン" fx:id="reload"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="一括命名" fx:id="nameAll"/>
+            <fx:include source="parts/separator.fxml"/>
+            <Button text="epub命名" fx:id="nameEpub"/>
         </ToolBar>
     </top>
     <center>
