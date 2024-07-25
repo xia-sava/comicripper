@@ -56,6 +56,11 @@ class Comic(filename: String = "") {
     val coverAllImage: Image?
         get() = coverAll?.let { getFullSizeImage(it) }
 
+    val isCoverFrontLandscape: Boolean
+        get() = coverFront?.let { filename ->
+            getFullSizeImage(filename)?.let { it.width > it.height }
+        } ?: false
+
     private val listeners = mutableListOf<(Comic) -> Unit>()
 
     private val imageCache = mutableListOf<Triple<Int, String, Image>>()

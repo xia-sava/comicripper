@@ -131,7 +131,11 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     private fun launchDetailWindow() {
         comic?.let { comic ->
             stage?.let { stage ->
-                if (comic.coverAll.isNullOrEmpty().not() && comic.coverFront.isNullOrEmpty()) {
+                if (
+                    comic.coverAll.isNullOrEmpty().not() &&
+                    comic.coverFront.isNullOrEmpty() &&
+                    comic.isCoverFrontLandscape
+                ) {
                     CutterController.launchStage(stage, comic)
                 } else {
                     DetailController.launchStage(stage, comic)
