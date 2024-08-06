@@ -56,8 +56,8 @@ class Comic(filename: String = "") {
     val coverAllImage: Image?
         get() = coverAll?.let { getFullSizeImage(it) }
 
-    val isCoverFrontLandscape: Boolean
-        get() = coverFront?.let { filename ->
+    val isCoverAllLandscape: Boolean
+        get() = coverAll?.let { filename ->
             getFullSizeImage(filename)?.let { it.width > it.height }
         } ?: false
 
