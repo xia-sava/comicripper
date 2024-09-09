@@ -132,9 +132,9 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         comic?.let { comic ->
             stage?.let { stage ->
                 if (
-                    comic.coverAll.isNullOrEmpty().not() &&
-                    comic.coverFront.isNullOrEmpty() &&
-                    comic.isCoverAllLandscape
+                    comic.coverFull.isNullOrEmpty().not() &&
+                    comic.coverAlbum.isNullOrEmpty() &&
+                    comic.isCoverFullLandscape
                 ) {
                     CutterController.launchStage(stage, comic)
                 } else {

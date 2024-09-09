@@ -7,12 +7,12 @@ import java.util.*
 
 class Comic(filename: String = "") {
     companion object {
-        const val COVER_FRONT_PREFIX = "coverA"
-        const val COVER_ALL_PREFIX = "coverF"
-        const val COVER_BELT_PREFIX = "coverS"
+        const val COVER_ALBUM_PREFIX = "coverA"
+        const val COVER_FULL_PREFIX = "coverF"
+        const val COVER_STRIP_PREFIX = "coverS"
         const val PAGE_PREFIX = "page"
         val TARGET_REGEX =
-            "^(?:${COVER_FRONT_PREFIX}|${COVER_ALL_PREFIX}|${COVER_BELT_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
+            "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
     }
 
     var id = UUID.randomUUID().toString()
@@ -44,21 +44,21 @@ class Comic(filename: String = "") {
         } ?: filename
     }
 
-    val coverFront: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_FRONT_PREFIX) }
+    val coverAlbum: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_ALBUM_PREFIX) }
 
-    val coverAll: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_ALL_PREFIX) }
+    val coverFull: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_FULL_PREFIX) }
 
-    val coverBelt: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_BELT_PREFIX) }
+    val coverStrip: String?
+        get() = _files.firstOrNull { it.startsWith(COVER_STRIP_PREFIX) }
 
-    val coverAllImage: Image?
-        get() = coverAll?.let { getFullSizeImage(it) }
+    val coverFullImage: Image?
+        get() = coverFull?.let { getFullSizeImage(it) }
 
-    val isCoverAllLandscape: Boolean
-        get() = coverAll?.let { filename ->
-            getFullSizeImage(filename)?.let { it.width > it.height }
+    val isCoverFullLandscape: Boolean
+        get() = coverFull?.let { filename ->
+            getFullSizeImage(filename).let { it.width > it.height }
         } ?: false
 
     private val listeners = mutableListOf<(Comic) -> Unit>()
@@ -69,7 +69,7 @@ class Comic(filename: String = "") {
         addFile(filename)
     }
 
-    fun getFullSizeImage(filename: String): Image? {
+    fun getFullSizeImage(filename: String): Image {
         return loadFullSizeImage(filename)
     }
 
@@ -85,14 +85,14 @@ class Comic(filename: String = "") {
         var replaced: String? = null
         if (filename.matches(TARGET_REGEX) && filename !in files) {
             when {
-                filename.startsWith(COVER_FRONT_PREFIX) -> {
-                    replaced = coverFront
+                filename.startsWith(COVER_ALBUM_PREFIX) -> {
+                    replaced = coverAlbum
                 }
-                filename.startsWith(COVER_ALL_PREFIX) -> {
-                    replaced = coverAll
+                filename.startsWith(COVER_FULL_PREFIX) -> {
+                    replaced = coverFull
                 }
-                filename.startsWith(COVER_BELT_PREFIX) -> {
-                    replaced = coverBelt
+                filename.startsWith(COVER_STRIP_PREFIX) -> {
+                    replaced = coverStrip
                 }
             }
             replaced?.let { removeFile(it, prependListener = false) }
@@ -137,9 +137,9 @@ class Comic(filename: String = "") {
     }
 
     fun mergeConflict(src: Comic): Boolean {
-        return ((src.coverFront.isNullOrEmpty().not() && coverFront.isNullOrEmpty().not()) ||
-                (src.coverAll.isNullOrEmpty().not() && coverAll.isNullOrEmpty().not()) ||
-                (src.coverBelt.isNullOrEmpty().not() && coverBelt.isNullOrEmpty().not()))
+        return ((src.coverAlbum.isNullOrEmpty().not() && coverAlbum.isNullOrEmpty().not()) ||
+                (src.coverFull.isNullOrEmpty().not() && coverFull.isNullOrEmpty().not()) ||
+                (src.coverStrip.isNullOrEmpty().not() && coverStrip.isNullOrEmpty().not()))
     }
 
     private fun loadImage(filename: String): Image {

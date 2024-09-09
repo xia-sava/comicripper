@@ -227,8 +227,8 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     1 -> slider.requestFocus()
                     2 -> {
                         comic?.let { comic ->
-                            if (comic.coverAll.isNullOrEmpty().not()
-                                && comic.coverFront.isNullOrEmpty()
+                            if (comic.coverFull.isNullOrEmpty().not()
+                                && comic.coverAlbum.isNullOrEmpty()
                             ) {
                                 launchCutter()
                             }
@@ -296,7 +296,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         comic.addListener {
             updateComic()
         }
-        if (comic.files.size > 1 && comic.files[1] == comic.coverAll) {
+        if (comic.files.size > 1 && comic.files[1] == comic.coverFull) {
             slider.value = 1.0
         }
         if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {

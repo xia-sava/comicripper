@@ -74,7 +74,7 @@ class ComicRepository {
     }
 
     private fun addFile(filename: String) {
-        if (filename.startsWith(Comic.COVER_ALL_PREFIX)) {
+        if (filename.startsWith(Comic.COVER_FULL_PREFIX)) {
             Comic(filename).let {
                 ComicStorage.add(it)
                 ComicStorage.targetId = it.id
@@ -106,16 +106,16 @@ class ComicRepository {
         rightPercent: Double,
         rightMargin: Double
     ) {
-        if (comic.coverFront.isNullOrEmpty().not()) {
-            File("${Setting.workDirectory}/${comic.coverFront}").delete()
+        if (comic.coverAlbum.isNullOrEmpty().not()) {
+            File("${Setting.workDirectory}/${comic.coverAlbum}").delete()
         }
 
-        val coverAllImage = checkNotNull(comic.coverAllImage)
+        val coverFullImage = checkNotNull(comic.coverFullImage)
         val imageView = ImageView().apply {
-            image = coverAllImage
+            image = coverFullImage
         }
-        val imageWidth = coverAllImage.width
-        val imageHeight = coverAllImage.height
+        val imageWidth = coverFullImage.width
+        val imageHeight = coverFullImage.height
         val leftX = imageWidth * (leftPercent / 100.0)
         val rightX = imageWidth * (rightPercent / 100.0) + rightMargin
         val croppedWidth = rightX - leftX
@@ -129,7 +129,7 @@ class ComicRepository {
             BufferedImage(croppedWidth.toInt(), imageHeight.toInt(), BufferedImage.OPAQUE)
         outputImage.createGraphics().drawImage(croppedSwImage, 0, 0, null)
         val outputFile =
-            File("${Setting.workDirectory}/${generateFilename(Comic.COVER_FRONT_PREFIX)}")
+            File("${Setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
         withContext(Dispatchers.IO) {
             ImageIO.write(outputImage, "jpeg", outputFile)
         }
@@ -145,9 +145,9 @@ class ComicRepository {
             var pageNum = 1
             comic.files.forEach { src ->
                 val name = when {
-                    src.startsWith(Comic.COVER_FRONT_PREFIX) -> Comic.COVER_FRONT_PREFIX
-                    src.startsWith(Comic.COVER_ALL_PREFIX) -> Comic.COVER_ALL_PREFIX
-                    src.startsWith(Comic.COVER_BELT_PREFIX) -> Comic.COVER_BELT_PREFIX
+                    src.startsWith(Comic.COVER_ALBUM_PREFIX) -> Comic.COVER_ALBUM_PREFIX
+                    src.startsWith(Comic.COVER_FULL_PREFIX) -> Comic.COVER_FULL_PREFIX
+                    src.startsWith(Comic.COVER_STRIP_PREFIX) -> Comic.COVER_STRIP_PREFIX
                     else -> "page_%03d".format(pageNum++)
                 } + ".jpg"
                 zipStream.putNextEntry(ZipEntry(name))
@@ -181,13 +181,13 @@ class ComicRepository {
     }
 
     suspend fun ocrISBN(comic: Comic): Pair<String, String>? {
-        val coverAll = comic.coverAll ?: return null
+        val coverFull = comic.coverFull ?: return null
         val tmp = withContext(Dispatchers.IO) {
             Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         }
         return try {
             val cmd =
-                """"${Setting.TesseractExe}" "${workFilename(coverAll)}" "$tmp" -l jpn --psm 11"""
+                """"${Setting.TesseractExe}" "${workFilename(coverFull)}" "$tmp" -l jpn --psm 11"""
             withContext(Dispatchers.IO) {
                 Runtime.getRuntime().exec(cmd).waitFor()
             }

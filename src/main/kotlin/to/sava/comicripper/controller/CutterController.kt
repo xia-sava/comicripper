@@ -162,11 +162,11 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         this.comic = comic
         this.stage?.title = "${comic.title} ${comic.author} - $WINDOW_TITLE"
 
-        comic.coverAllImage?.let {
+        comic.coverFullImage?.let {
             imageView.image = it
         }
 
-        comic.coverFront?.let {
+        comic.coverAlbum?.let {
             toDetailBox.hide()
         }
 

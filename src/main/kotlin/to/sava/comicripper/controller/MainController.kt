@@ -99,7 +99,7 @@ class MainController : Initializable, CoroutineScope {
                 "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                 stage
             ) { job ->
-                ComicStorage.all.filter { it.coverAll.isNullOrEmpty().not() }.map { comic ->
+                ComicStorage.all.filter { it.coverFull.isNullOrEmpty().not() }.map { comic ->
                     launch(Dispatchers.IO + job) {
                         repos.ocrISBN(comic)?.let {
                             comic.author = it.first
@@ -162,9 +162,9 @@ class MainController : Initializable, CoroutineScope {
         nameEpub.setOnAction {
             ComicStorage.all
                 .mapNotNull {
-                    it.coverAll?.let { coverAll ->
+                    it.coverFull?.let { coverFull ->
                         Regex("""coverF_(.+?)｜(.+).jpg""")
-                            .find(coverAll)
+                            .find(coverFull)
                             ?.destructured
                             ?.let { (author, title) ->
                                 Triple(it.id, author, title)
