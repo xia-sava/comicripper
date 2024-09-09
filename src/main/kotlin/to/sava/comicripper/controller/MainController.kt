@@ -160,38 +160,23 @@ class MainController : Initializable, CoroutineScope {
         }
 
         nameEpub.setOnAction {
-            val regex = Regex("""^(.+?)｜(.+)\.epub$""")
-            val epubFiles = repos.listFiles("*.epub")
-                .map { path ->
-                    val fileName = path.fileName.toString()
-                    regex.matchEntire(fileName)?.destructured?.let { (author, title) ->
-                        (author to title)
-                    } ?: (fileName to "")
-                }
-            modalTextAreaDialog(
-                "epub ファイル名から名前をセットします",
-                "全てのコミックの著者名/作品名をセットしてください",
-                stage,
-                text = repos.getNameList()
-                    .mapIndexed { i, names ->
-                        val (author, title) = epubFiles.getOrElse(i) { Pair("", "") }
-                        listOf(names.first, names.second, author, title)
-                    }
-                    .joinToString(separator = "\n") {
-                        it.joinToString(separator = "\t")
-                    } + "\n",
-                result = { input ->
-                    input.lines().forEach { line ->
-                        val record = line.split("\t")
-                        if (record.size == 4) {
-                            ComicStorage[record[0]]?.let { comic ->
-                                comic.author = record[2]
-                                comic.title = record[3]
+            ComicStorage.all
+                .mapNotNull {
+                    it.coverAll?.let { coverAll ->
+                        Regex("""coverF_(.+?)｜(.+).jpg""")
+                            .find(coverAll)
+                            ?.destructured
+                            ?.let { (author, title) ->
+                                Triple(it.id, author, title)
                             }
-                        }
                     }
-                },
-            )
+                }
+                .forEach { (id, author, title) ->
+                    ComicStorage[id]?.let { comic ->
+                        comic.author = author
+                        comic.title = title
+                    }
+                }
         }
 
         scrollPane.content.setOnScroll {
