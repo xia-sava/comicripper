@@ -17,13 +17,25 @@ class Comic(filename: String = "") {
 
     var id = UUID.randomUUID().toString()
 
-    var author = filename.replace(".jpg", "")
+    var author = filename.replace(".jpg", "").let {
+        if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
+            it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[0]
+        } else {
+            it
+        }
+    }
         set(value) {
             field = value
             invokeListener()
         }
 
-    var title = filename.replace(".jpg", "")
+    var title = filename.replace(".jpg", "").let {
+        if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
+            it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[1]
+        } else {
+            it
+        }
+    }
         set(value) {
             field = value
             invokeListener()
@@ -33,9 +45,10 @@ class Comic(filename: String = "") {
     val files: List<String> get() = _files.sortedBy { numberFormat(it) }
 
     private val _thumbnails = mutableMapOf<String, Image>()
-    val thumbnails get() = _thumbnails.toList()
-        .sortedBy { numberFormat(it.first) }
-        .map { it.second }
+    val thumbnails
+        get() = _thumbnails.toList()
+            .sortedBy { numberFormat(it.first) }
+            .map { it.second }
 
     private fun numberFormat(filename: String): String {
         return """^(\w+)_(\d+)\.""".toRegex().find(filename)?.let {
@@ -88,9 +101,11 @@ class Comic(filename: String = "") {
                 filename.startsWith(COVER_ALBUM_PREFIX) -> {
                     replaced = coverAlbum
                 }
+
                 filename.startsWith(COVER_FULL_PREFIX) -> {
                     replaced = coverFull
                 }
+
                 filename.startsWith(COVER_STRIP_PREFIX) -> {
                     replaced = coverStrip
                 }
