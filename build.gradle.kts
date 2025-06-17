@@ -2,10 +2,10 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    kotlin("jvm") version "1.6.10"
+    kotlin("jvm") version "2.1.21"
     application
-    id("org.openjfx.javafxplugin") version "0.0.12"
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("org.openjfx.javafxplugin") version "0.1.0"
+    id("com.gradleup.shadow") version "8.3.6"
 }
 
 group = "to.sava.comicripper"
@@ -17,17 +17,17 @@ repositories {
 
 dependencies {
     implementation("no.tornado:tornadofx:1.7.20")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.6.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.10.2")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
-    implementation("com.google.code.gson:gson:2.9.0")
-    implementation("org.jsoup:jsoup:1.15.3")
+    implementation("com.google.code.gson:gson:2.13.1")
+    implementation("org.jsoup:jsoup:1.20.1")
 
-    testImplementation("junit", "junit", "4.12")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
 }
 
 kotlin {
     jvmToolchain {
-        (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(11))
+        this.languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -43,6 +43,6 @@ tasks {
 }
 
 javafx {
-    version = "13"
+    version = "21"
     modules = listOf("javafx.controls", "javafx.fxml", "javafx.swing")
 }
