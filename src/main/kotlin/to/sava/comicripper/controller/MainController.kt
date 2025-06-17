@@ -205,7 +205,14 @@ class MainController : Initializable, CoroutineScope {
         ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
             while (change.next()) {
                 when {
-                    change.wasAdded() -> change.addedSubList.forEach { addComic(it) }
+                    change.wasAdded() -> {
+                        change.addedSubList.forEach { comic ->
+                            launch {
+                                addComic(comic)
+                                selectComic(comic)
+                            }
+                        }
+                    }
                     change.wasRemoved() -> change.removed.forEach { removeComic(it) }
                 }
             }
@@ -234,7 +241,7 @@ class MainController : Initializable, CoroutineScope {
         stage.minWidthProperty().bind(minWidthProperty)
     }
 
-    private fun addComic(comic: Comic) = launch {
+    private fun addComic(comic: Comic) {
         val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
         controller.apply {
             comicProperty.set(comic)
