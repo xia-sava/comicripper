@@ -266,7 +266,8 @@ class MainController : Initializable, CoroutineScope {
 
     private fun removeComic(comic: Comic) = launch {
         if (ComicStorage.targetId == comic.id) {
-            selectComic(ComicStorage.all.firstOrNull())
+            // 削除対象以外の Comic を選択
+            selectComic(ComicStorage.all.firstOrNull { it.id != comic.id })
         }
         comicObjs[comic.id]?.let {
             val (controller, pane) = it
@@ -331,6 +332,7 @@ class MainController : Initializable, CoroutineScope {
         comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.removeListener(::setWindowTitle)
         if (comic == null) {
             ComicStorage.targetId = null
+            setWindowTitle()
             return
         }
         val (controller, pane) = comicObjs[comic.id] ?: return
@@ -357,12 +359,15 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
-        launch {
-            comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.let { comic ->
-                author.text = comic.author
-                title.text = comic.title
-                stage?.title = "${author.text} / ${title.text} - $WINDOW_TITLE"
-            } ?: WINDOW_TITLE
+        comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.let { comic ->
+            author.text = comic.author
+            title.text = comic.title
+            stage?.title = "${author.text} / ${title.text} - $WINDOW_TITLE"
+        } ?: run {
+            // Comic がない場合はデフォルトタイトルに戻す
+            author.text = ""
+            title.text = ""
+            stage?.title = WINDOW_TITLE
         }
     }
 
