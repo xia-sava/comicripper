@@ -11,7 +11,6 @@ import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
-import to.sava.comicripper.repository.ComicStorage
 
 class Main : Application(), CoroutineScope {
     private val job = Job()
@@ -59,6 +58,7 @@ class Main : Application(), CoroutineScope {
                             }
                         }
                     }
+
                     JNotify_win32.FILE_ACTION_REMOVED -> synchronized(fileDeletedQueue) {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
                             synchronized(fileDeletedQueue) {
@@ -95,7 +95,7 @@ class Main : Application(), CoroutineScope {
                     }
                 }
             }
-        } catch (ex: UnsatisfiedLinkError) {
+        } catch (_: UnsatisfiedLinkError) {
             // JNotify が正常にインストールされてない気がするけど
             // ファイル見張らないモードで一応起動する．
         }
@@ -109,6 +109,6 @@ class Main : Application(), CoroutineScope {
     }
 
     companion object {
-        const val VERSION = "0.6.4"
+        const val VERSION = "0.6.5"
     }
 }
