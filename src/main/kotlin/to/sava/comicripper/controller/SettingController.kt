@@ -22,6 +22,7 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
     override val coroutineContext get() = Dispatchers.Main + job
 
     @FXML
+    @Suppress("unused")
     private lateinit var settingScene: BorderPane
 
     @FXML

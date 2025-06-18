@@ -18,9 +18,9 @@ import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.InputStreamReader
-import java.net.URL
-import java.nio.file.Files
+import java.net.URI
 import java.nio.file.FileSystems
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.text.Normalizer
@@ -61,6 +61,7 @@ class ComicRepository {
         }
     }
 
+    @Suppress("unused")
     fun listFiles(pattern: String): List<Path> {
         val dirPath = Paths.get(Setting.workDirectory)
         val matcher = FileSystems.getDefault().getPathMatcher("glob:$pattern")
@@ -186,10 +187,17 @@ class ComicRepository {
             Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
         }
         return try {
-            val cmd =
-                """"${Setting.TesseractExe}" "${workFilename(coverFull)}" "$tmp" -l jpn --psm 11"""
             withContext(Dispatchers.IO) {
-                Runtime.getRuntime().exec(cmd).waitFor()
+                ProcessBuilder(
+                    Setting.TesseractExe,
+                    workFilename(coverFull),
+                    tmp.toString(),
+                    "-l", "jpn",
+                    "--psm", "11"
+                )
+                    .inheritIO()
+                    .start()
+                    .waitFor()
             }
 
             File("$tmp.txt").readText()
@@ -204,7 +212,7 @@ class ComicRepository {
                     searchISBN(isbn)
                 }
                 ?: Pair("エラー", "ISBN不明")
-        } catch (ex: UnsatisfiedLinkError) {
+        } catch (_: UnsatisfiedLinkError) {
             Pair("エラー", "cant find Tesseract")
         } finally {
             tmp.toFile().delete()
@@ -270,12 +278,12 @@ class ComicRepository {
                     val title = page.select("#productTitle").first()?.text()
                     val authors =
                         page.select("#bylineInfo .author a")
-                            .map { it.text() ?: "" }
+                            .map { it.text() }
                             .filter { it != "" }
                             .filter { t -> listOf("原著", "著者ページ", "検索結果").all { it !in t } }
                             .ifEmpty {
                                 page.select("#bylineInfo .author a")
-                                    .map { it.text() ?: "" }
+                                    .map { it.text() }
                                     .ifEmpty { listOf("作者不明") }
                             }
                     if (title != null) {
@@ -299,7 +307,7 @@ class ComicRepository {
                 ?.let { page ->
                     val title = page.select("#products_maintitle").first()?.text()
                     val authors = page.select("#js_bookAuthor a")
-                        .map { it.text() ?: "" }
+                        .map { it.text() }
                         .ifEmpty { listOf("作者不明") }
                     if (title != null) {
                         println("Yodobashi $isbn done")
@@ -317,8 +325,10 @@ class ComicRepository {
             Json.createReader(
                 withContext(Dispatchers.IO) {
                     InputStreamReader(
-                        URL("${Setting.googleBookApi}$isbn")
-                            .openStream(), "utf-8"
+                        URI("${Setting.googleBookApi}$isbn")
+                            .toURL()
+                            .openConnection()
+                            .getInputStream(), "utf-8"
                     ).buffered()
                 }
             )
@@ -420,7 +430,7 @@ class ComicRepository {
                 ComicStorage.remove(it)
             }
             true
-        } catch (ex: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -431,6 +441,7 @@ class ComicRepository {
         }
     }
 
+    @Suppress("unused")
     fun setNameList(nameList: List<Triple<String, String, String>>) {
         nameList.forEach { (id, author, title) ->
             ComicStorage[id]?.let {

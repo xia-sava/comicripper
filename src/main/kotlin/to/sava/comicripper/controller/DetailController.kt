@@ -152,10 +152,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "ISBN から著者名/作品名をサーチしてます",
                     stage
                 ) { job ->
-                    val (author_, title_) = repos.searchISBN(isbn.text)
+                    val (searchedAuthor, searchedTitle) = repos.searchISBN(isbn.text)
                     withContext(Dispatchers.Main + job) {
-                        author.text = author_
-                        title.text = title_
+                        author.text = searchedAuthor
+                        title.text = searchedTitle
                     }
                 }
             }
@@ -328,7 +328,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun setImage(num: Int) {
         comic?.let { comic ->
             comic.files.getOrNull(num)?.let { filename ->
-                comic.getFullSizeImage(filename)?.let { image ->
+                comic.getFullSizeImage(filename).let { image ->
                     imageView.image = image
                     this.filename.text = filename
                 }
