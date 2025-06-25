@@ -15,14 +15,12 @@ import javafx.scene.layout.BorderPane
 import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import to.sava.comicripper.Main
-import to.sava.comicripper.ext.*
+import to.sava.comicripper.ext.loadFxml
+import to.sava.comicripper.ext.modalProgressDialog
+import to.sava.comicripper.ext.modalTextAreaDialog
+import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -31,7 +29,6 @@ import tornadofx.add
 import tornadofx.onChange
 import java.net.URL
 import java.util.*
-import kotlin.collections.set
 
 
 private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
@@ -191,6 +188,14 @@ class MainController : Initializable, CoroutineScope {
             stage?.let { SettingController.launchStage(it) }
         }
 
+        comicList.heightProperty().onChange {
+            ComicStorage.targetId?.let { targetId ->
+                comicObjs[targetId]?.let { (_, pane) ->
+                    adjustScrollToShowComic(pane)
+                }
+            }
+        }
+
         launch(Dispatchers.Default + job) {
             while (true) {
                 delay(5_000)
@@ -213,6 +218,7 @@ class MainController : Initializable, CoroutineScope {
                             }
                         }
                     }
+
                     change.wasRemoved() -> change.removed.forEach { removeComic(it) }
                 }
             }
@@ -346,15 +352,34 @@ class MainController : Initializable, CoroutineScope {
         setWindowTitle()
 
         // 選択コミックが画面内に入るようにスクロールする
-        val paneTop = pane.layoutY // 対象位置 px
-        val paneBottom = pane.layoutY + pane.height // 対象下端位置 px
-        val screenHeight = scrollPane.viewportBounds.height
-        val scrollLength = comicList.height - screenHeight
-        if (paneTop < scrollLength * scrollPane.vvalue) {
-            scrollPane.vvalue = paneTop / scrollLength
-        }
-        if ((scrollLength * scrollPane.vvalue + screenHeight) < paneBottom) {
-            scrollPane.vvalue = (paneBottom - screenHeight) / scrollLength
+        adjustScrollToShowComic(pane)
+    }
+
+    private fun adjustScrollToShowComic(pane: VBox) {
+        launch {
+            // pane の高さ変更を待つ
+            delay(50)
+            val paneTop = pane.layoutY // 対象位置 px
+            val paneBottom = pane.layoutY + pane.height // 対象下端位置 px
+            val screenHeight = scrollPane.viewportBounds.height
+            val scrollLength = comicList.height - screenHeight
+
+            if (scrollLength <= 0) return@launch // スクロールが不要な場合
+
+            val currentScrollTop = scrollLength * scrollPane.vvalue
+            val currentScrollBottom = currentScrollTop + screenHeight
+
+            when {
+                paneTop < currentScrollTop -> {
+                    // 上側にはみ出している場合
+                    scrollPane.vvalue = paneTop / scrollLength
+                }
+
+                paneBottom > currentScrollBottom -> {
+                    // 下側にはみ出している場合
+                    scrollPane.vvalue = (paneBottom - screenHeight) / scrollLength
+                }
+            }
         }
     }
 
