@@ -4,6 +4,8 @@ import javafx.scene.image.Image
 import kotlinx.coroutines.yield
 import java.io.File
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 class Comic(filename: String = "") {
     companion object {
@@ -41,14 +43,14 @@ class Comic(filename: String = "") {
             invokeListener()
         }
 
-    private val _files = mutableListOf<String>()
+    private val _files = CopyOnWriteArrayList<String>()
     val files: List<String> get() = _files.sortedBy { numberFormat(it) }
 
-    private val _thumbnails = mutableMapOf<String, Image>()
-    val thumbnails
-        get() = _thumbnails.toList()
-            .sortedBy { numberFormat(it.first) }
-            .map { it.second }
+    private val _thumbnails = ConcurrentHashMap<String, Image>()
+    val thumbnails: List<Image>
+        get() = _thumbnails.entries
+            .sortedBy { numberFormat(it.key) }
+            .map { it.value }
 
     private fun numberFormat(filename: String): String {
         return """^(\w+)_(\d+)\.""".toRegex().find(filename)?.let {
@@ -74,9 +76,9 @@ class Comic(filename: String = "") {
             getFullSizeImage(filename).let { it.width > it.height }
         } ?: false
 
-    private val listeners = mutableListOf<(Comic) -> Unit>()
+    private val listeners = CopyOnWriteArrayList<(Comic) -> Unit>()
 
-    private val imageCache = mutableListOf<Triple<Int, String, Image>>()
+    private val imageCache = CopyOnWriteArrayList<Triple<Int, String, Image>>()
 
     init {
         addFile(filename)
@@ -137,11 +139,9 @@ class Comic(filename: String = "") {
     }
 
     suspend fun reloadImages() {
-        _thumbnails.keys.subtract(files).forEach {
-            _thumbnails.remove(it)
-        }
-        files.forEach {
-            _thumbnails[it] = loadImage(it)
+        (_thumbnails.keys - _files.toSet()).forEach { _thumbnails.remove(it) }
+        _files.forEach { filename ->
+            _thumbnails[filename] = loadImage(filename)
             yield()
         }
     }
@@ -164,13 +164,13 @@ class Comic(filename: String = "") {
 
     private fun loadFullSizeImage(filename: String): Image {
         val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-        if (imageCache.count { it.second == url } > 0) {
-            return imageCache.first { it.second == url }.third
+        imageCache.firstOrNull { it.second == url }?.let {
+            return it.third
         }
         val num = (imageCache.maxByOrNull { it.first }?.first ?: 0) + 1
         val image = Image(url)
         imageCache.add(Triple(num, url, image))
-        if (imageCache.count() > 10) {
+        if (imageCache.size > 10) {
             imageCache.minByOrNull { it.first }?.let {
                 imageCache.remove(it)
             }
@@ -187,8 +187,6 @@ class Comic(filename: String = "") {
     }
 
     private fun invokeListener() {
-        listeners.forEach {
-            it(this)
-        }
+        listeners.forEach { it(this) }
     }
 }
