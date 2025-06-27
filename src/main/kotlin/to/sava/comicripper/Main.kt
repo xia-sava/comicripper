@@ -5,10 +5,10 @@ import javafx.scene.Scene
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import kotlinx.coroutines.*
-import net.contentobjects.jnotify.win32.JNotify_win32
 import to.sava.comicripper.controller.MainController
+import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.ext.loadFxml
-import to.sava.comicripper.model.Comic
+import to.sava.comicripper.infrastructure.service.JNotifyFileWatcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 
@@ -17,9 +17,7 @@ class Main : Application(), CoroutineScope {
     override val coroutineContext get() = Dispatchers.Main + job
 
     private val repos = ComicRepository()
-
-    private val fileCreatedQueue = mutableListOf<String>()
-    private val fileDeletedQueue = mutableListOf<String>()
+    private val fileWatcher: FileWatcher = JNotifyFileWatcher()
 
     override fun start(primaryStage: Stage?) {
         checkNotNull(primaryStage)
@@ -43,66 +41,20 @@ class Main : Application(), CoroutineScope {
             }
         }
 
-        try {
-            JNotify_win32.addWatch(
-                Setting.workDirectory,
-                JNotify_win32.FILE_ACTION_ADDED.toLong() or JNotify_win32.FILE_ACTION_REMOVED.toLong(),
-                false
-            )
-            JNotify_win32.setNotifyListener { _, action, _, filePath ->
-                when (action) {
-                    JNotify_win32.FILE_ACTION_ADDED -> synchronized(fileCreatedQueue) {
-                        if (filePath.matches(Comic.TARGET_REGEX)) {
-                            synchronized(fileCreatedQueue) {
-                                fileCreatedQueue.add(filePath)
-                            }
-                        }
-                    }
-
-                    JNotify_win32.FILE_ACTION_REMOVED -> synchronized(fileDeletedQueue) {
-                        if (filePath.matches(Comic.TARGET_REGEX)) {
-                            synchronized(fileDeletedQueue) {
-                                fileDeletedQueue.add(filePath)
-                            }
-                        }
-                    }
-                }
+        fileWatcher.start(
+            Setting.workDirectory,
+            onFilesAdded = { filenames ->
+                repos.addFiles(filenames)
+            },
+            onFilesDeleted = { filenames ->
+                repos.removeFiles(filenames)
             }
-            launch(Dispatchers.Default + job) {
-                val createdFiles = mutableListOf<String>()
-                val deletedFiles = mutableListOf<String>()
-                while (true) {
-                    synchronized(fileCreatedQueue) {
-                        if (fileCreatedQueue.isNotEmpty()) {
-                            createdFiles.addAll(fileCreatedQueue)
-                            fileCreatedQueue.clear()
-                        }
-                    }
-                    synchronized(fileDeletedQueue) {
-                        if (fileDeletedQueue.isNotEmpty()) {
-                            deletedFiles.addAll(fileDeletedQueue)
-                            fileDeletedQueue.clear()
-                        }
-                    }
-                    delay(200)
-                    if (createdFiles.isNotEmpty()) {
-                        repos.addFiles(createdFiles)
-                        createdFiles.clear()
-                    }
-                    if (deletedFiles.isNotEmpty()) {
-                        repos.removeFiles(deletedFiles)
-                        deletedFiles.clear()
-                    }
-                }
-            }
-        } catch (_: UnsatisfiedLinkError) {
-            // JNotify が正常にインストールされてない気がするけど
-            // ファイル見張らないモードで一応起動する．
-        }
+        )
     }
 
     override fun stop() {
         super.stop()
+        fileWatcher.stop()
         job.cancel()
         Setting.save()
         repos.saveStructure()
