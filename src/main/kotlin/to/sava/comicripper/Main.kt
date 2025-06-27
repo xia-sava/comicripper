@@ -5,10 +5,13 @@ import javafx.scene.Scene
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import kotlinx.coroutines.*
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
+import org.koin.java.KoinJavaComponent.get
+import to.sava.comicripper.application.di.applicationModule
 import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.ext.loadFxml
-import to.sava.comicripper.infrastructure.service.JNotifyFileWatcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 
@@ -16,11 +19,20 @@ class Main : Application(), CoroutineScope {
     private val job = Job()
     override val coroutineContext get() = Dispatchers.Main + job
 
-    private val repos = ComicRepository()
-    private val fileWatcher: FileWatcher = JNotifyFileWatcher()
+    private lateinit var repos: ComicRepository
+    private lateinit var fileWatcher: FileWatcher
 
     override fun start(primaryStage: Stage?) {
         checkNotNull(primaryStage)
+
+        // Koin DIコンテナを初期化
+        startKoin {
+            modules(applicationModule)
+        }
+        
+        // Koinから依存関係を取得
+        repos = get(ComicRepository::class.java)
+        fileWatcher = get(FileWatcher::class.java)
 
         Setting.load()
 
@@ -58,6 +70,7 @@ class Main : Application(), CoroutineScope {
         job.cancel()
         Setting.save()
         repos.saveStructure()
+        stopKoin()
     }
 
     companion object {

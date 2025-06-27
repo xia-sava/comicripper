@@ -21,8 +21,13 @@ dependencies {
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("org.jsoup:jsoup:1.20.1")
-
+    
+    // 依存性注入用のKoin
+    implementation("io.insert-koin:koin-core:4.0.0")
+    
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+    testImplementation("io.insert-koin:koin-test:4.0.0")
+    testImplementation("io.insert-koin:koin-test-junit5:4.0.0")
 }
 
 kotlin {
