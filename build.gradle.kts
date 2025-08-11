@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "to.sava.comicripper"
-version = "0.6.2"
+version = "0.7.0"
 
 repositories {
     mavenCentral()
@@ -21,8 +21,6 @@ dependencies {
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("org.jsoup:jsoup:1.20.1")
-    
-    // 依存性注入用のKoin
     implementation("io.insert-koin:koin-core:4.0.0")
     
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
