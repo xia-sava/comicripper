@@ -27,6 +27,7 @@ import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
 import tornadofx.add
 import tornadofx.onChange
+import java.io.File
 import java.net.URL
 import java.util.*
 
@@ -68,6 +69,8 @@ class MainController : Initializable, CoroutineScope {
     @FXML
     private lateinit var nameAll: Button
 
+    @FXML
+    private lateinit var extractEpub: Button
 
     @FXML
     private lateinit var scrollPane: ScrollPane
@@ -154,6 +157,13 @@ class MainController : Initializable, CoroutineScope {
             )
         }
 
+        extractEpub.setOnAction {
+            launch(Dispatchers.IO) {
+                ProcessBuilder("cmd.exe", "/c", "start", "zsh.exe", "-c", "epub2comic.py --delete *.epub")
+                    .directory(File(Setting.workDirectory))
+                    .start()
+            }
+        }
 
         scrollPane.content.setOnScroll {
             when {
