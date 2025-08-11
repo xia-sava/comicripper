@@ -68,8 +68,6 @@ class MainController : Initializable, CoroutineScope {
     @FXML
     private lateinit var nameAll: Button
 
-    @FXML
-    private lateinit var nameEpub: Button
 
     @FXML
     private lateinit var scrollPane: ScrollPane
@@ -156,25 +154,6 @@ class MainController : Initializable, CoroutineScope {
             )
         }
 
-        nameEpub.setOnAction {
-            ComicStorage.all
-                .mapNotNull {
-                    it.coverFull?.let { coverFull ->
-                        Regex("""coverF_(.+?)｜(.+).jpg""")
-                            .find(coverFull)
-                            ?.destructured
-                            ?.let { (author, title) ->
-                                Triple(it.id, author, title)
-                            }
-                    }
-                }
-                .forEach { (id, author, title) ->
-                    ComicStorage[id]?.let { comic ->
-                        comic.author = author
-                        comic.title = title
-                    }
-                }
-        }
 
         scrollPane.content.setOnScroll {
             when {
