@@ -159,7 +159,7 @@ class MainController : Initializable, CoroutineScope {
 
         extractEpub.setOnAction {
             launch(Dispatchers.IO) {
-                ProcessBuilder("cmd.exe", "/c", "start", "zsh.exe", "-c", "epub2comic.py --delete *.epub")
+                ProcessBuilder("cmd.exe", "/c", "start", "zsh.exe", "-c", "epub2comic.py")
                     .directory(File(Setting.workDirectory))
                     .start()
             }
