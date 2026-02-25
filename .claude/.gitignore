@@ -1,0 +1,8 @@
+# Local configuration files
+*.local.*
+settings.local.json
+
+# Claude temporary files
+*.tmp
+*.temp
+*.cache

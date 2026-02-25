@@ -24,6 +24,7 @@ import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
 import tornadofx.*
+import java.io.File
 import java.net.URL
 import java.util.*
 
@@ -46,6 +47,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     @FXML
     private lateinit var releaseImage: Button
+
+    @FXML
+    private lateinit var deleteImage: Button
 
     @FXML
     private lateinit var reloadImages: Button
@@ -137,6 +141,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
         releaseImage.setOnAction {
             releaseImage()
+        }
+
+        deleteImage.setOnAction {
+            comic?.files?.getOrNull(slider.value.toInt())?.let { filename ->
+                File("${Setting.workDirectory}/$filename").delete()
+            }
         }
 
         reloadImages.setOnAction {
@@ -320,7 +330,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             pageNumber.text = imageNum.toString()
             slider.max = imageNum.toDouble() - 1
             if (imageNum > 0) {
-                setImage(if (slider.value.toInt() > imageNum) imageNum - 1 else slider.value.toInt())
+                if (slider.value.toInt() >= imageNum) {
+                    slider.value = imageNum.toDouble() - 1
+                }
+                setImage(slider.value.toInt())
+            } else {
+                stage?.close()
             }
         }
     }

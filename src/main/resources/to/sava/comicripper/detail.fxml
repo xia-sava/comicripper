@@ -16,6 +16,7 @@
                 <Label fx:id="notifyLabel" alignment="CENTER" />
             </Pane>
 
+            <Button fx:id="deleteImage" text="画像削除" />
             <Button fx:id="releaseImage" text="画像リリース" />
             <Button fx:id="reloadImages" text="画像リロード" />
             <fx:include source="parts/separator.fxml" />
