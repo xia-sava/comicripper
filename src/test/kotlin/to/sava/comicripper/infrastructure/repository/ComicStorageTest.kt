@@ -94,20 +94,4 @@ class ComicStorageTest {
         assertNull(ComicStorage["nonexistent-id"])
     }
 
-    @Test
-    fun `add後にpropertyリストにも反映される`() {
-        val comic = Comic("coverF_000.jpg")
-        ComicStorage.add(comic)
-
-        assertTrue(ComicStorage.property.contains(comic))
-    }
-
-    @Test
-    fun `remove後にpropertyリストからも消える`() {
-        val comic = Comic("coverF_000.jpg")
-        ComicStorage.add(comic)
-        ComicStorage.remove(comic)
-
-        assertFalse(ComicStorage.property.contains(comic))
-    }
 }

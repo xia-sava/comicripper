@@ -6,6 +6,7 @@ plugins {
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
     id("com.gradleup.shadow") version "8.3.6"
+    jacoco
 }
 
 group = "to.sava.comicripper"
@@ -45,6 +46,14 @@ tasks {
     }
     test {
         useJUnitPlatform()
+        finalizedBy(jacocoTestReport)
+    }
+    jacocoTestReport {
+        dependsOn(test)
+        reports {
+            html.required.set(true)
+            xml.required.set(true)
+        }
     }
 }
 
