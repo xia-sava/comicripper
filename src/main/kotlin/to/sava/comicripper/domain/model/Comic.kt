@@ -16,6 +16,23 @@ class Comic(filename: String = "") {
         const val PAGE_PREFIX = "page"
         val TARGET_REGEX =
             "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
+
+        private val defaultThumbnailLoader: (String) -> Image? = { filename ->
+            val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
+            Image(url, 512.0, 512.0, true, true)
+        }
+        private val defaultFullSizeImageLoader: (String) -> Image? = { filename ->
+            val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
+            Image(url)
+        }
+
+        var thumbnailLoader = defaultThumbnailLoader
+        var fullSizeImageLoader = defaultFullSizeImageLoader
+
+        fun resetImageLoaders() {
+            thumbnailLoader = defaultThumbnailLoader
+            fullSizeImageLoader = defaultFullSizeImageLoader
+        }
     }
 
     var id = UUID.randomUUID().toString()
@@ -115,7 +132,7 @@ class Comic(filename: String = "") {
             }
             replaced?.let { removeFile(it, prependListener = false) }
             _files.add(filename)
-            _thumbnails[filename] = loadImage(filename)
+            loadImage(filename)?.let { _thumbnails[filename] = it }
             if (prependListener.not()) {
                 invokeListener()
             }
@@ -142,7 +159,7 @@ class Comic(filename: String = "") {
     suspend fun reloadImages() {
         (_thumbnails.keys - _files.toSet()).forEach { _thumbnails.remove(it) }
         _files.forEach { filename ->
-            _thumbnails[filename] = loadImage(filename)
+            loadImage(filename)?.let { _thumbnails[filename] = it }
             yield()
         }
     }
@@ -158,10 +175,7 @@ class Comic(filename: String = "") {
                 (src.coverStrip.isNullOrEmpty().not() && coverStrip.isNullOrEmpty().not()))
     }
 
-    private fun loadImage(filename: String): Image {
-        val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-        return Image(url, 512.0, 512.0, true, true)
-    }
+    private fun loadImage(filename: String): Image? = thumbnailLoader(filename)
 
     private fun loadFullSizeImage(filename: String): Image {
         val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
@@ -169,7 +183,7 @@ class Comic(filename: String = "") {
             return it.third
         }
         val num = (imageCache.maxByOrNull { it.first }?.first ?: 0) + 1
-        val image = Image(url)
+        val image = checkNotNull(fullSizeImageLoader(filename)) { "no image for $filename" }
         imageCache.add(Triple(num, url, image))
         if (imageCache.size > 10) {
             imageCache.minByOrNull { it.first }?.let {

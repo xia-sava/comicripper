@@ -43,6 +43,9 @@ tasks {
         archiveFileName.set("comicripper.jar")
         mergeServiceFiles()
     }
+    test {
+        useJUnitPlatform()
+    }
 }
 
 javafx {

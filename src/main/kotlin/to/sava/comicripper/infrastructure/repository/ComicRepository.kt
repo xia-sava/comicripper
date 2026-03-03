@@ -224,12 +224,8 @@ class ComicRepository {
         }
     }
 
-    suspend fun searchISBN(pIsbn: String): Pair<String, String> {
-        // ISBN 10桁→13桁変換
-        val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
-
-        // 共通の正規化処理
-        fun normalizeText(text: String): String {
+    // 共通の正規化処理
+    internal fun normalizeText(text: String): String {
             return Normalizer.normalize(text, Normalizer.Form.NFKC)
                 .replace(Character.codePointOf("FULLWIDTH TILDE").toChar(), '～')
                 .replace(Character.codePointOf("WAVE DASH").toChar(), '～')
@@ -242,9 +238,9 @@ class ComicRepository {
                 .replace('~', '～').replace('/', '／')
                 .replace('\\', '￥')
 
-        }
+    }
 
-        fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
+    internal fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
             val a = authors.joinToString("／") {
                 normalizeText(it).replace(" ", "")
             }
@@ -265,7 +261,11 @@ class ComicRepository {
                 .trimEnd()
                 .replace("""\s*<?(\d+)>?[\d<> ]*$""".toRegex(), " ($1)")
             return Pair(a, t)
-        }
+    }
+
+    suspend fun searchISBN(pIsbn: String): Pair<String, String> {
+        // ISBN 10桁→13桁変換
+        val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
 
         // Amazon.com スクレイピング
         try {
@@ -473,6 +473,11 @@ object ComicStorage {
 
     fun removeEmpty() {
         storage.removeAll(all.filter { it.files.isEmpty() }.toSet())
+    }
+
+    fun clear() {
+        storage.clear()
+        targetId = null
     }
 
     operator fun get(id: String?): Comic? {
