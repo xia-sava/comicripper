@@ -169,7 +169,7 @@ object Setting {
             TesseractExeProperty.value = value
         }
 
-    private val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
+    internal val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
     val structureFile get() = File("${workDirectory}/.comicripperStructure")
 
     private val propFields get() = javaClass.declaredFields.filter { it.name.endsWith("Property") }
