@@ -8,7 +8,7 @@ import to.sava.comicripper.infrastructure.service.JNotifyFileWatcher
 val applicationModule = module {
     // ファイル監視
     single<FileWatcher> { JNotifyFileWatcher() }
-    
+
     // リポジトリ層
     single { ComicRepository() }
 }

@@ -5,7 +5,6 @@ import javafx.beans.property.SimpleDoubleProperty
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.beans.property.SimpleStringProperty
 import java.io.File
-import java.lang.Exception
 import java.util.*
 
 object Setting {

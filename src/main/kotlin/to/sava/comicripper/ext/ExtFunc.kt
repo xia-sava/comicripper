@@ -12,12 +12,7 @@ import javafx.scene.image.ImageView
 import javafx.scene.layout.VBox
 import javafx.stage.Modality
 import javafx.stage.Stage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import to.sava.comicripper.model.Setting
 import tornadofx.add
 import tornadofx.paddingAll
@@ -120,6 +115,7 @@ fun modalTextAreaDialog(
         })
     }
 }
+
 fun CoroutineScope.modalProgressDialog(
     title: String,
     text: String,

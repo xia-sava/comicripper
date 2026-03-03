@@ -2,8 +2,8 @@ package to.sava.comicripper.infrastructure.service
 
 import kotlinx.coroutines.*
 import net.contentobjects.jnotify.win32.JNotify_win32
-import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.domain.service.FileWatcher
 
 class JNotifyFileWatcher : FileWatcher, CoroutineScope {
     private val job = Job()
@@ -11,7 +11,7 @@ class JNotifyFileWatcher : FileWatcher, CoroutineScope {
 
     private val fileCreatedQueue = mutableListOf<String>()
     private val fileDeletedQueue = mutableListOf<String>()
-    
+
     private var isRunning = false
 
     override fun start(
@@ -37,6 +37,7 @@ class JNotifyFileWatcher : FileWatcher, CoroutineScope {
                             }
                         }
                     }
+
                     JNotify_win32.FILE_ACTION_REMOVED -> {
                         if (filePath.matches(Comic.TARGET_REGEX)) {
                             synchronized(fileDeletedQueue) {
@@ -46,7 +47,7 @@ class JNotifyFileWatcher : FileWatcher, CoroutineScope {
                     }
                 }
             }
-            
+
             launch {
                 val createdFiles = mutableListOf<String>()
                 val deletedFiles = mutableListOf<String>()

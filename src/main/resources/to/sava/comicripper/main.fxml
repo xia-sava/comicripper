@@ -2,7 +2,6 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="to.sava.comicripper.controller.MainController"
@@ -11,12 +10,12 @@
             styleClass="main"
 >
     <top>
-        <ToolBar prefHeight="40.0" >
+        <ToolBar prefHeight="40.0">
             <Label fx:id="author"/>
             <fx:include source="parts/separator.fxml"/>
             <Label fx:id="title"/>
 
-            <Pane HBox.hgrow="ALWAYS" />
+            <Pane HBox.hgrow="ALWAYS"/>
             <Button text="OCR" fx:id="ocrIsbn"/>
             <fx:include source="parts/separator.fxml"/>
             <Button text="ZIP作成＆全削除" fx:id="zip"/>

@@ -226,41 +226,41 @@ class ComicRepository {
 
     // 共通の正規化処理
     internal fun normalizeText(text: String): String {
-            return Normalizer.normalize(text, Normalizer.Form.NFKC)
-                .replace(Character.codePointOf("FULLWIDTH TILDE").toChar(), '～')
-                .replace(Character.codePointOf("WAVE DASH").toChar(), '～')
-                .replace('!', '！').replace('\'', '’')
-                .replace('"', '”').replace('%', '％')
-                .replace('&', '＆').replace(':', '：')
-                .replace('*', '＊').replace('?', '？')
-                .replace('?', '／').replace('<', '＜')
-                .replace('>', '＞').replace('|', '｜')
-                .replace('~', '～').replace('/', '／')
-                .replace('\\', '￥')
+        return Normalizer.normalize(text, Normalizer.Form.NFKC)
+            .replace(Character.codePointOf("FULLWIDTH TILDE").toChar(), '～')
+            .replace(Character.codePointOf("WAVE DASH").toChar(), '～')
+            .replace('!', '！').replace('\'', '’')
+            .replace('"', '”').replace('%', '％')
+            .replace('&', '＆').replace(':', '：')
+            .replace('*', '＊').replace('?', '？')
+            .replace('?', '／').replace('<', '＜')
+            .replace('>', '＞').replace('|', '｜')
+            .replace('~', '～').replace('/', '／')
+            .replace('\\', '￥')
 
     }
 
     internal fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
-            val a = authors.joinToString("／") {
-                normalizeText(it).replace(" ", "")
-            }
-            val t = normalizeText(title)
-                .replace('(', '<').replace(')', '>')
-                .replace('[', '<').replace(']', '>')
-                .replace('{', '<').replace('}', '>')
-                .replace('＜', '<').replace('＞', '>')
-                .replace('「', '<').replace('」', '>')
-                .replace('〔', '<').replace('〕', '>')
-                .replace('【', '<').replace('】', '>')
-                .replace('『', '<').replace('』', '>')
-                .replace('《', '<').replace('》', '>')
-                .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
-                .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
-                .replace("""：\s*(\d+)""".toRegex(), " <$1>")
-                .replace("<>", "")
-                .trimEnd()
-                .replace("""\s*<?(\d+)>?[\d<> ]*$""".toRegex(), " ($1)")
-            return Pair(a, t)
+        val a = authors.joinToString("／") {
+            normalizeText(it).replace(" ", "")
+        }
+        val t = normalizeText(title)
+            .replace('(', '<').replace(')', '>')
+            .replace('[', '<').replace(']', '>')
+            .replace('{', '<').replace('}', '>')
+            .replace('＜', '<').replace('＞', '>')
+            .replace('「', '<').replace('」', '>')
+            .replace('〔', '<').replace('〕', '>')
+            .replace('【', '<').replace('】', '>')
+            .replace('『', '<').replace('』', '>')
+            .replace('《', '<').replace('》', '>')
+            .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
+            .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
+            .replace("""：\s*(\d+)""".toRegex(), " <$1>")
+            .replace("<>", "")
+            .trimEnd()
+            .replace("""\s*<?(\d+)>?[\d<> ]*$""".toRegex(), " ($1)")
+        return Pair(a, t)
     }
 
     suspend fun searchISBN(pIsbn: String): Pair<String, String> {

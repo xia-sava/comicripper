@@ -21,7 +21,10 @@ import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.model.Comic
-import tornadofx.*
+import tornadofx.add
+import tornadofx.clear
+import tornadofx.onChange
+import tornadofx.paddingAll
 import java.net.URL
 import java.util.*
 
@@ -92,21 +95,21 @@ class ComicController : VBox(), Initializable, CoroutineScope {
 
     private fun truncateForDisplay(text: String, maxLength: Int): String {
         if (text.length <= maxLength) return text
-        
+
         val ellipsis = " … "
         val remainingLength = maxLength - ellipsis.length
         val frontLength = remainingLength / 2
         val backLength = remainingLength - frontLength
-        
+
         return text.take(frontLength) + ellipsis + text.takeLast(backLength)
     }
 
     private fun updateComic() {
         val comic = this.comic ?: return
-        
+
         val maxAuthorLength = 20
         val maxTitleLength = 40
-        
+
         author.text = truncateForDisplay(comic.author, maxAuthorLength)
         title.text = truncateForDisplay(comic.title, maxTitleLength)
 

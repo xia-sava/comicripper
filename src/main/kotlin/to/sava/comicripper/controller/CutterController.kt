@@ -22,7 +22,9 @@ import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
-import tornadofx.*
+import tornadofx.hide
+import tornadofx.minus
+import tornadofx.onChange
 import java.net.URL
 import java.util.*
 import kotlin.math.max
@@ -77,21 +79,25 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
                 KeyCode.ESCAPE -> {
                     stage?.close()
                 }
+
                 KeyCode.LEFT -> {
                     when (it.isShiftDown) {
                         true -> rightLimit.value = max(rightLimit.value - unit, rightLimit.min)
                         false -> leftLimit.value = max(leftLimit.value - unit, leftLimit.min)
                     }
                 }
+
                 KeyCode.RIGHT -> {
                     when (it.isShiftDown) {
                         true -> rightLimit.value = min(rightLimit.value + unit, rightLimit.max)
                         false -> leftLimit.value = min(leftLimit.value + unit, leftLimit.max)
                     }
                 }
+
                 KeyCode.ENTER -> {
                     cut()
                 }
+
                 else -> return@setOnKeyPressed
             }
             it.consume()

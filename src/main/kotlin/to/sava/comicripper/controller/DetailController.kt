@@ -10,11 +10,7 @@ import javafx.scene.input.MouseButton
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import javafx.util.StringConverter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
@@ -23,7 +19,8 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
-import tornadofx.*
+import tornadofx.minus
+import tornadofx.onChange
 import java.io.File
 import java.net.URL
 import java.util.*

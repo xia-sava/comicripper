@@ -29,7 +29,7 @@ class Main : Application(), CoroutineScope {
         startKoin {
             modules(applicationModule)
         }
-        
+
         // Koinから依存関係を取得
         repos = get(ComicRepository::class.java)
         fileWatcher = get(FileWatcher::class.java)
