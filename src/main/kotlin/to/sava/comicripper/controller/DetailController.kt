@@ -1,5 +1,6 @@
 package to.sava.comicripper.controller
 
+import javafx.beans.binding.Bindings
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Scene
@@ -19,8 +20,6 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
-import tornadofx.minus
-import tornadofx.onChange
 import java.io.File
 import java.net.URL
 import java.util.*
@@ -118,8 +117,8 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
         }
 
-        author.textProperty().onChange {
-            ComicStorage[comic?.id]?.let { comic -> comic.author = it ?: "" }
+        author.textProperty().addListener { _, _, newValue ->
+            ComicStorage[comic?.id]?.let { comic -> comic.author = newValue ?: "" }
         }
         author.setOnKeyPressed {
             if (it.code == KeyCode.ENTER) {
@@ -127,8 +126,8 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
         }
 
-        title.textProperty().onChange {
-            ComicStorage[comic?.id]?.let { comic -> comic.title = it ?: "" }
+        title.textProperty().addListener { _, _, newValue ->
+            ComicStorage[comic?.id]?.let { comic -> comic.title = newValue ?: "" }
         }
         title.setOnKeyPressed {
             if (it.code == KeyCode.ENTER) {
@@ -158,9 +157,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "ISBN検索",
                     "ISBN から著者名/作品名をサーチしてます",
                     stage
-                ) { job ->
+                ) {
                     val (searchedAuthor, searchedTitle) = repos.searchISBN(isbn.text)
-                    withContext(Dispatchers.Main + job) {
+                    withContext(Dispatchers.Main) {
                         author.text = searchedAuthor
                         title.text = searchedTitle
                     }
@@ -186,10 +185,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "OCRしています",
                     "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                     stage
-                ) { job ->
-                    launch(Dispatchers.IO + job) {
+                ) {
+                    launch(Dispatchers.IO) {
                         repos.ocrISBN(comic)?.let {
-                            withContext(Dispatchers.Main + job) {
+                            withContext(Dispatchers.Main) {
                                 comic.author = it.first
                                 comic.title = it.second
                             }
@@ -209,9 +208,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     "ZIPしています",
                     "コミックをZIP化しています",
                     stage
-                ) { job ->
+                ) {
                     repos.zipComic(comic)
-                    withContext(Dispatchers.Main + job) {
+                    withContext(Dispatchers.Main) {
                         stage?.close()
                     }
                 }
@@ -224,7 +223,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
         imageView.apply {
             fitWidthProperty().bind(detailScene.widthProperty())
-            fitHeightProperty().bind(detailScene.heightProperty() - 80.0)
+            fitHeightProperty().bind(
+                Bindings.createDoubleBinding(
+                    { detailScene.heightProperty().get() - 80.0 },
+                    detailScene.heightProperty()
+                )
+            )
             isPreserveRatio = true
         }
         imageView.setOnMouseClicked { event ->
@@ -247,9 +251,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
         bottomBar.prefWidthProperty().bind(detailScene.widthProperty())
 
-        slider.valueProperty().onChange {
-            setImage(it.toInt())
-            currentNumber.text = it.toInt().toString()
+        slider.valueProperty().addListener { _, _, newValue ->
+            setImage(newValue.toInt())
+            currentNumber.text = newValue.toInt().toString()
         }
         slider.labelFormatter = object : StringConverter<Double>() {
             override fun fromString(value: String?) = (value?.toDouble() ?: 1.0) - 1.0
@@ -283,10 +287,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             if (Setting.detailWindowPosY >= 0.0) {
                 y = Setting.detailWindowPosY
             }
-            Setting.detailWindowWidthProperty.bind(widthProperty())
-            Setting.detailWindowHeightProperty.bind(heightProperty())
-            Setting.detailWindowPosXProperty.bind(xProperty())
-            Setting.detailWindowPosYProperty.bind(yProperty())
+            widthProperty().addListener { _, _, v -> Setting.detailWindowWidth = v.toDouble() }
+            heightProperty().addListener { _, _, v -> Setting.detailWindowHeight = v.toDouble() }
+            xProperty().addListener { _, _, v -> Setting.detailWindowPosX = v.toDouble() }
+            yProperty().addListener { _, _, v -> Setting.detailWindowPosY = v.toDouble() }
 
             setOnCloseRequest {
                 job.cancel()

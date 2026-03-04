@@ -54,16 +54,48 @@ class SettingTest {
     }
 
     @Test
-    fun `var経由の設定変更がPropertyに反映される`() {
+    fun `var経由の設定変更がFlowに反映される`() {
         Setting.workDirectory = "/new/path"
 
-        assertEquals("/new/path", Setting.workDirectoryProperty.value)
+        assertEquals("/new/path", Setting.workDirectoryFlow.value)
     }
 
     @Test
-    fun `Property経由の設定変更がvarに反映される`() {
-        Setting.workDirectoryProperty.value = "/prop/path"
+    fun `Flow経由の設定変更がvarに反映される`() {
+        Setting.workDirectoryFlow.value = "/prop/path"
 
         assertEquals("/prop/path", Setting.workDirectory)
+    }
+
+    @Test
+    fun `全設定項目がsaveとloadでラウンドトリップする`() {
+        Setting.mainWindowWidth = 111.0
+        Setting.mainWindowHeight = 222.0
+        Setting.workDirectory = "/round/trip"
+        Setting.storeDirectory = "/store/trip"
+        Setting.cutterLeftPercent = 20.0
+        Setting.cutterRightPercent = 60.0
+        Setting.save()
+
+        Setting.mainWindowWidth = 0.0
+        Setting.mainWindowHeight = 0.0
+        Setting.workDirectory = ""
+        Setting.storeDirectory = ""
+        Setting.cutterLeftPercent = 0.0
+        Setting.cutterRightPercent = 0.0
+        Setting.load()
+
+        assertEquals(111.0, Setting.mainWindowWidth)
+        assertEquals(222.0, Setting.mainWindowHeight)
+        assertEquals("/round/trip", Setting.workDirectory)
+        assertEquals("/store/trip", Setting.storeDirectory)
+        assertEquals(20.0, Setting.cutterLeftPercent)
+        assertEquals(60.0, Setting.cutterRightPercent)
+    }
+
+    @Test
+    fun `structureFileがworkDirectory配下にある`() {
+        Setting.workDirectory = "/some/dir"
+        assertTrue(Setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))
     }
 }

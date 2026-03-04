@@ -1,8 +1,8 @@
 package to.sava.comicripper.controller
 
-import javafx.beans.property.SimpleObjectProperty
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
+import javafx.geometry.Insets
 import javafx.geometry.Orientation
 import javafx.scene.canvas.Canvas
 import javafx.scene.control.Label
@@ -21,10 +21,6 @@ import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.model.Comic
-import tornadofx.add
-import tornadofx.clear
-import tornadofx.onChange
-import tornadofx.paddingAll
 import java.net.URL
 import java.util.*
 
@@ -44,8 +40,8 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     @FXML
     private lateinit var imagesPane: HBox
 
-    val comicProperty = SimpleObjectProperty<Comic?>(null)
-    private val comic get() = comicProperty.value
+    var comic: Comic? = null
+        private set
 
     private var stage: Stage? = null
 
@@ -67,9 +63,6 @@ class ComicController : VBox(), Initializable, CoroutineScope {
                 else -> invokeKeyPressedListener(it.code)
             }
         }
-        comicProperty.onChange {
-            it?.let { setComic(it) }
-        }
     }
 
     fun destroy() {
@@ -84,7 +77,8 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         }
     }
 
-    private fun setComic(comic: Comic) {
+    fun setComic(comic: Comic) {
+        this.comic = comic
         updateComic()
         comic.addListener {
             launch {
@@ -113,20 +107,20 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         author.text = truncateForDisplay(comic.author, maxAuthorLength)
         title.text = truncateForDisplay(comic.title, maxTitleLength)
 
-        imagesPane.clear()
+        imagesPane.children.clear()
         val thumbnails = comic.thumbnails
         if (thumbnails.isNotEmpty()) {
-            imagesPane.add(ImageView().apply {
+            imagesPane.children.add(ImageView().apply {
                 fitImage(thumbnails.first(), 256.0, 128.0)
             })
             val images = thumbnails.drop(1)
             if (images.isNotEmpty()) {
-                imagesPane.add(Separator().apply {
+                imagesPane.children.add(Separator().apply {
                     orientation = Orientation.VERTICAL
-                    paddingAll = 4.0
+                    padding = Insets(4.0)
                 })
 
-                imagesPane.add(Canvas().apply {
+                imagesPane.children.add(Canvas().apply {
                     val gc = graphicsContext2D
                     width = 128.0 + (images.size - 1) * 3.0
                     height = 128.0
@@ -141,8 +135,8 @@ class ComicController : VBox(), Initializable, CoroutineScope {
             }
         }
 
-        comicScene.layoutBoundsProperty().onChange {
-            comicScene.minWidth = it?.width ?: 0.0
+        comicScene.layoutBoundsProperty().addListener { _, _, bounds ->
+            comicScene.minWidth = bounds?.width ?: 0.0
         }
     }
 
@@ -166,10 +160,6 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         clickListeners.add(listener)
     }
 
-//    fun removeClickListener(listener: () -> Unit) {
-//        clickListeners.remove(listener)
-//    }
-
     private fun invokeClickListener() {
         clickListeners.forEach {
             it()
@@ -179,10 +169,6 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     fun addKeyPressedListener(listener: (KeyCode) -> Unit) {
         keyPressedListeners.add(listener)
     }
-
-//    fun removeKeyPressedListener(listener: () -> Unit) {
-//        keyPressedListeners.remove(listener)
-//    }
 
     private fun invokeKeyPressedListener(code: KeyCode) {
         keyPressedListeners.forEach {

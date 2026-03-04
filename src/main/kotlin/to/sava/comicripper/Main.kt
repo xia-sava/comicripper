@@ -46,7 +46,7 @@ class Main : Application(), CoroutineScope {
         repos.loadStructure()
         repos.reScanFiles()
 
-        launch(Dispatchers.IO + job) {
+        launch(Dispatchers.IO) {
             while (true) {
                 delay(30_000)
                 repos.saveStructure()

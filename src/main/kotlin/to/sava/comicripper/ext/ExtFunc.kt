@@ -1,6 +1,7 @@
 package to.sava.comicripper.ext
 
 import javafx.fxml.FXMLLoader
+import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Scene
 import javafx.scene.control.Button
@@ -14,8 +15,6 @@ import javafx.stage.Modality
 import javafx.stage.Stage
 import kotlinx.coroutines.*
 import to.sava.comicripper.model.Setting
-import tornadofx.add
-import tornadofx.paddingAll
 
 object Loader
 
@@ -73,9 +72,9 @@ private fun modalDialog(
         initModality(Modality.WINDOW_MODAL)
         initOwner(owner)
         scene = Scene(VBox().apply {
-            paddingAll = 8.0
+            padding = Insets(8.0)
             alignment = Pos.CENTER
-            add(Label(text))
+            children.add(Label(text))
             block()
         })
         setOnCloseRequest {
@@ -99,8 +98,8 @@ fun modalTextAreaDialog(
             promptText = prompt
 
         }
-        add(textArea)
-        add(VBox(10.0, Button("完了").apply {
+        children.add(textArea)
+        children.add(VBox(10.0, Button("完了").apply {
             setOnAction {
                 result(textArea.text)
                 (scene.window as Stage).close()
@@ -120,23 +119,23 @@ fun CoroutineScope.modalProgressDialog(
     title: String,
     text: String,
     owner: Stage?,
-    block: suspend (job: Job) -> Any?
+    block: suspend CoroutineScope.() -> Any?
 ) {
-    val job = Job()
+    val modalScope = CoroutineScope(coroutineContext + Job(coroutineContext.job))
     val modal = modalDialog(title, text, owner) {
-        add(ProgressIndicator().apply {
+        children.add(ProgressIndicator().apply {
             setPrefSize(24.0, 24.0)
         })
     }
     modal.setOnCloseRequest {
-        job.cancel()
+        modalScope.cancel()
     }
-    launch(Dispatchers.IO + job) {
-        when (val result = block(job)) {
+    modalScope.launch(Dispatchers.IO) {
+        when (val result = block()) {
             is Job -> result.join()
             is Iterable<*> -> result.filterIsInstance<Job>().joinAll()
         }
-        withContext(Dispatchers.Main + job) {
+        withContext(Dispatchers.Main) {
             modal.close()
         }
     }

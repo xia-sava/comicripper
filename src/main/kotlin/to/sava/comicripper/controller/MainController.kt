@@ -1,7 +1,6 @@
 package to.sava.comicripper.controller
 
 import javafx.beans.property.SimpleDoubleProperty
-import javafx.collections.ListChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Cursor
@@ -16,6 +15,7 @@ import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
@@ -25,8 +25,6 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
-import tornadofx.add
-import tornadofx.onChange
 import java.io.File
 import java.net.URL
 import java.util.*
@@ -96,9 +94,9 @@ class MainController : Initializable, CoroutineScope {
                 "OCRしています",
                 "画像から ISBN を読み取って著者名/作品名をサーチしてます",
                 stage
-            ) { job ->
+            ) {
                 ComicStorage.all.filter { it.coverFull.isNullOrEmpty().not() }.map { comic ->
-                    launch(Dispatchers.IO + job) {
+                    launch(Dispatchers.IO) {
                         repos.ocrISBN(comic)?.let {
                             comic.author = it.first
                             comic.title = it.second
@@ -114,7 +112,7 @@ class MainController : Initializable, CoroutineScope {
                 stage
             ) {
                 ComicStorage.all.filter { it.files.size > 3 }.map { comic ->
-                    launch(Dispatchers.IO + job) {
+                    launch(Dispatchers.IO) {
                         repos.zipComic(comic)
                     }
                 }
@@ -122,13 +120,13 @@ class MainController : Initializable, CoroutineScope {
         }
         pagesToComic.setOnAction {
             ComicStorage.target?.let { comic ->
-                launch(Dispatchers.IO + job) {
+                launch(Dispatchers.IO) {
                     repos.pagesToComic(comic)
                 }
             }
         }
         reload.setOnAction {
-            launch(Dispatchers.IO + job) {
+            launch(Dispatchers.IO) {
                 repos.reScanFiles()
                 repos.saveStructure()
             }
@@ -177,7 +175,7 @@ class MainController : Initializable, CoroutineScope {
             stage?.let { SettingController.launchStage(it) }
         }
 
-        comicList.heightProperty().onChange {
+        comicList.heightProperty().addListener { _, _, _ ->
             ComicStorage.targetId?.let { targetId ->
                 comicObjs[targetId]?.let { (_, pane) ->
                     adjustScrollToShowComic(pane)
@@ -185,31 +183,29 @@ class MainController : Initializable, CoroutineScope {
             }
         }
 
-        launch(Dispatchers.Default + job) {
+        launch(Dispatchers.Default) {
             while (true) {
                 delay(5_000)
                 val runtime = Runtime.getRuntime()
                 val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-                withContext(Dispatchers.Main + job) {
+                withContext(Dispatchers.Main) {
                     notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
                 }
             }
         }
 
-        ComicStorage.property.onChange { change: ListChangeListener.Change<out Comic> ->
-            while (change.next()) {
-                when {
-                    change.wasAdded() -> {
-                        change.addedSubList.forEach { comic ->
-                            launch {
-                                addComic(comic)
-                                selectComic(comic)
-                            }
-                        }
-                    }
-
-                    change.wasRemoved() -> change.removed.forEach { removeComic(it) }
+        launch(Dispatchers.Main) {
+            var previousList = emptyList<Comic>()
+            ComicStorage.storage.collect { currentList ->
+                val currentSet = currentList.toSet()
+                val added = currentList.filter { it !in previousList.toSet() }
+                val removed = previousList.filter { it !in currentSet }
+                removed.forEach { removeComic(it) }
+                added.forEach { comic ->
+                    addComic(comic)
+                    selectComic(comic)
                 }
+                previousList = currentList
             }
         }
     }
@@ -228,10 +224,10 @@ class MainController : Initializable, CoroutineScope {
             }
             title = WINDOW_TITLE
 
-            Setting.mainWindowWidthProperty.bind(widthProperty())
-            Setting.mainWindowHeightProperty.bind(heightProperty())
-            Setting.mainWindowPosXProperty.bind(xProperty())
-            Setting.mainWindowPosYProperty.bind(yProperty())
+            widthProperty().addListener { _, _, v -> Setting.mainWindowWidth = v.toDouble() }
+            heightProperty().addListener { _, _, v -> Setting.mainWindowHeight = v.toDouble() }
+            xProperty().addListener { _, _, v -> Setting.mainWindowPosX = v.toDouble() }
+            yProperty().addListener { _, _, v -> Setting.mainWindowPosY = v.toDouble() }
         }
         stage.minWidthProperty().bind(minWidthProperty)
     }
@@ -239,7 +235,7 @@ class MainController : Initializable, CoroutineScope {
     private fun addComic(comic: Comic) {
         val (pane, controller) = loadFxml<VBox, ComicController>("comic.fxml")
         controller.apply {
-            comicProperty.set(comic)
+            setComic(comic)
             stage?.let { initStage(it) }
             addClickListener {
                 selectComic(comic)
@@ -249,13 +245,13 @@ class MainController : Initializable, CoroutineScope {
             }
         }
         pane.apply {
-            minWidthProperty().onChange {
+            minWidthProperty().addListener { _, _, _ ->
                 minWidthProperty.value =
                     8.0 + (comicList.children.maxOfOrNull { it.layoutBounds.width } ?: 0.0)
             }
             setDragAndDrop(this, comic)
         }
-        comicList.add(pane)
+        comicList.children.add(pane)
         comicObjs[comic.id] = Pair(controller, pane)
     }
 
@@ -324,7 +320,7 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun selectComic(comic: Comic?) {
-        comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.removeListener(::setWindowTitle)
+        comicObjs[ComicStorage.targetId]?.first?.comic?.removeListener(::setWindowTitle)
         if (comic == null) {
             ComicStorage.targetId = null
             setWindowTitle()
@@ -337,7 +333,7 @@ class MainController : Initializable, CoroutineScope {
             pane.styleClass.add("selected")
         }
         ComicStorage.targetId = comic.id
-        controller.comicProperty.value?.addListener(::setWindowTitle)
+        controller.comic?.addListener(::setWindowTitle)
         setWindowTitle()
 
         // 選択コミックが画面内に入るようにスクロールする
@@ -373,7 +369,7 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
-        comicObjs[ComicStorage.targetId]?.first?.comicProperty?.value?.let { comic ->
+        comicObjs[ComicStorage.targetId]?.first?.comic?.let { comic ->
             author.text = comic.author
             title.text = comic.title
             stage?.title = "${author.text} / ${title.text} - $WINDOW_TITLE"

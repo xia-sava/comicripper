@@ -37,18 +37,20 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         listOf(
-            "作業ディレクトリ" to Setting.workDirectoryProperty,
-            "格納ディレクトリ" to Setting.storeDirectoryProperty,
-            "Tesseract 実行ファイル" to Setting.TesseractExeProperty
-        ).forEachIndexed { row, pair ->
-            val (propText, property) = pair
+            "作業ディレクトリ" to Setting.workDirectoryFlow,
+            "格納ディレクトリ" to Setting.storeDirectoryFlow,
+            "Tesseract 実行ファイル" to Setting.TesseractExeFlow
+        ).forEachIndexed { row, (propText, flow) ->
             val label = Label().apply {
                 styleClass.add("label")
                 text = propText
             }
             val field = TextField().apply {
                 styleClass.add("input")
-                textProperty().bindBidirectional(property)
+                text = flow.value
+                textProperty().addListener { _, _, newValue ->
+                    flow.value = newValue
+                }
             }
             settingGrid.add(label, 0, row)
             settingGrid.add(field, 1, row)
@@ -71,10 +73,10 @@ class SettingController : BorderPane(), Initializable, CoroutineScope {
             if (Setting.settingWindowPosY >= 0.0) {
                 y = Setting.settingWindowPosY
             }
-            Setting.settingWindowWidthProperty.bind(widthProperty())
-            Setting.settingWindowHeightProperty.bind(heightProperty())
-            Setting.settingWindowPosXProperty.bind(xProperty())
-            Setting.settingWindowPosYProperty.bind(yProperty())
+            widthProperty().addListener { _, _, v -> Setting.settingWindowWidth = v.toDouble() }
+            heightProperty().addListener { _, _, v -> Setting.settingWindowHeight = v.toDouble() }
+            xProperty().addListener { _, _, v -> Setting.settingWindowPosX = v.toDouble() }
+            yProperty().addListener { _, _, v -> Setting.settingWindowPosY = v.toDouble() }
 
             setOnCloseRequest {
                 job.cancel()

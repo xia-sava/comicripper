@@ -94,4 +94,41 @@ class ComicStorageTest {
         assertNull(ComicStorage["nonexistent-id"])
     }
 
+    @Test
+    fun `flowのvalueがallと一致する`() {
+        val comic = Comic("coverF_000.jpg")
+        ComicStorage.add(comic)
+
+        assertEquals(ComicStorage.all, ComicStorage.storage.value)
+    }
+
+    @Test
+    fun `addでflowのvalueが更新される`() {
+        val comic = Comic("coverF_000.jpg")
+        ComicStorage.add(comic)
+
+        assertTrue(ComicStorage.storage.value.contains(comic))
+    }
+
+    @Test
+    fun `removeでflowのvalueが更新される`() {
+        val comic = Comic("coverF_000.jpg")
+        ComicStorage.add(comic)
+        ComicStorage.remove(comic)
+
+        assertFalse(ComicStorage.storage.value.contains(comic))
+    }
+
+    @Test
+    fun `clearでflowのvalueが空になる`() {
+        ComicStorage.add(Comic("coverF_000.jpg"), Comic("page_000.jpg"))
+        ComicStorage.clear()
+
+        assertTrue(ComicStorage.storage.value.isEmpty())
+    }
+
+    @Test
+    fun `getNullIdでnull`() {
+        assertNull(ComicStorage[null])
+    }
 }

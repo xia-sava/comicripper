@@ -1,19 +1,20 @@
 package to.sava.comicripper.infrastructure.repository
 
-import javafx.beans.property.SimpleListProperty
 import javafx.embed.swing.SwingFXUtils
 import javafx.geometry.Rectangle2D
 import javafx.scene.SnapshotParameters
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
-import tornadofx.observableListOf
 import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
@@ -453,36 +454,34 @@ class ComicRepository {
 }
 
 object ComicStorage {
-    private val storage = SimpleListProperty<Comic>(observableListOf())
+    private val _storage = MutableStateFlow<List<Comic>>(emptyList())
+    val storage: StateFlow<List<Comic>> get() = _storage
     var targetId: String? = null
 
-    val property get() = storage
-    val all get() = storage.value.toList()
-    val files get() = storage.value.toList().flatMap { it.files }
+    val all get() = _storage.value.toList()
+    val files get() = _storage.value.flatMap { it.files }
     val target get() = targetId?.let { this[it] }
 
     fun add(vararg comics: Comic) {
-        storage.addAll(comics)
+        _storage.update { it + comics }
     }
 
     fun remove(vararg comics: Comic) {
-        comics.forEach { comic ->
-            storage.remove(comic)
-        }
+        _storage.update { list -> list.filterNot { it in comics.toSet() } }
     }
 
     fun removeEmpty() {
-        storage.removeAll(all.filter { it.files.isEmpty() }.toSet())
+        _storage.update { list -> list.filter { it.files.isNotEmpty() } }
     }
 
     fun clear() {
-        storage.clear()
+        _storage.value = emptyList()
         targetId = null
     }
 
     operator fun get(id: String?): Comic? {
-        return id?.let {
-            storage.firstOrNull { it.id == id }
+        return id?.let { targetId ->
+            _storage.value.firstOrNull { it.id == targetId }
         }
     }
 }

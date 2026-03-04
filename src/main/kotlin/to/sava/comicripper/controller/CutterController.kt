@@ -1,5 +1,6 @@
 package to.sava.comicripper.controller
 
+import javafx.beans.binding.Bindings
 import javafx.fxml.FXML
 import javafx.fxml.Initializable
 import javafx.scene.Group
@@ -22,9 +23,6 @@ import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
-import tornadofx.hide
-import tornadofx.minus
-import tornadofx.onChange
 import java.net.URL
 import java.util.*
 import kotlin.math.max
@@ -104,26 +102,31 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         }
 
         leftLimit.value = Setting.cutterLeftPercent
-        Setting.cutterLeftPercentProperty.bind(leftLimit.valueProperty())
-        leftLimit.valueProperty().onChange {
+        leftLimit.valueProperty().addListener { _, _, newValue ->
+            Setting.cutterLeftPercent = newValue.toDouble()
             rescaleLimiter()
         }
-        leftLimit.focusedProperty().onChange {
+        leftLimit.focusedProperty().addListener { _, _, _ ->
             imageView.requestFocus()
         }
 
         rightLimit.value = Setting.cutterRightPercent
-        Setting.cutterRightPercentProperty.bind(rightLimit.valueProperty())
-        rightLimit.valueProperty().onChange {
+        rightLimit.valueProperty().addListener { _, _, newValue ->
+            Setting.cutterRightPercent = newValue.toDouble()
             rescaleLimiter()
         }
-        rightLimit.focusedProperty().onChange {
+        rightLimit.focusedProperty().addListener { _, _, _ ->
             imageView.requestFocus()
         }
 
         imageView.apply {
             fitWidthProperty().bind(cutterScene.widthProperty())
-            fitHeightProperty().bind(cutterScene.heightProperty() - 80.0)
+            fitHeightProperty().bind(
+                Bindings.createDoubleBinding(
+                    { cutterScene.heightProperty().get() - 80.0 },
+                    cutterScene.heightProperty()
+                )
+            )
             isPreserveRatio = true
         }
 
@@ -153,10 +156,10 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
             if (Setting.cutterWindowPosY >= 0.0) {
                 y = Setting.cutterWindowPosY
             }
-            Setting.cutterWindowWidthProperty.bind(widthProperty())
-            Setting.cutterWindowHeightProperty.bind(heightProperty())
-            Setting.cutterWindowPosXProperty.bind(xProperty())
-            Setting.cutterWindowPosYProperty.bind(yProperty())
+            widthProperty().addListener { _, _, v -> Setting.cutterWindowWidth = v.toDouble() }
+            heightProperty().addListener { _, _, v -> Setting.cutterWindowHeight = v.toDouble() }
+            xProperty().addListener { _, _, v -> Setting.cutterWindowPosX = v.toDouble() }
+            yProperty().addListener { _, _, v -> Setting.cutterWindowPosY = v.toDouble() }
 
             setOnCloseRequest {
                 job.cancel()
@@ -173,7 +176,8 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         }
 
         comic.coverAlbum?.let {
-            toDetailBox.hide()
+            toDetailBox.isVisible = false
+            toDetailBox.isManaged = false
         }
 
         resizeScreen()

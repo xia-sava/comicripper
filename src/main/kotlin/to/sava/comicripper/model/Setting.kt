@@ -1,211 +1,228 @@
 package to.sava.comicripper.model
 
-import javafx.beans.property.Property
-import javafx.beans.property.SimpleDoubleProperty
-import javafx.beans.property.SimpleIntegerProperty
-import javafx.beans.property.SimpleStringProperty
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.util.*
 
 object Setting {
-    val mainWindowWidthProperty = SimpleDoubleProperty(960.0)
+    val mainWindowWidthFlow = MutableStateFlow(960.0)
     var mainWindowWidth: Double
-        get() = mainWindowWidthProperty.value
+        get() = mainWindowWidthFlow.value
         set(value) {
-            mainWindowWidthProperty.value = value
+            mainWindowWidthFlow.value = value
         }
 
-    val mainWindowHeightProperty = SimpleDoubleProperty(720.0)
+    val mainWindowHeightFlow = MutableStateFlow(720.0)
     var mainWindowHeight: Double
-        get() = mainWindowHeightProperty.value
+        get() = mainWindowHeightFlow.value
         set(value) {
-            mainWindowHeightProperty.value = value
+            mainWindowHeightFlow.value = value
         }
 
-    val mainWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    val mainWindowPosXFlow = MutableStateFlow(-1.0)
     var mainWindowPosX: Double
-        get() = mainWindowPosXProperty.value
+        get() = mainWindowPosXFlow.value
         set(value) {
-            mainWindowPosXProperty.value = value
+            mainWindowPosXFlow.value = value
         }
 
-    val mainWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    val mainWindowPosYFlow = MutableStateFlow(-1.0)
     var mainWindowPosY: Double
-        get() = mainWindowPosYProperty.value
+        get() = mainWindowPosYFlow.value
         set(value) {
-            mainWindowPosYProperty.value = value
+            mainWindowPosYFlow.value = value
         }
 
-    val detailWindowWidthProperty = SimpleDoubleProperty(1280.0)
+    val detailWindowWidthFlow = MutableStateFlow(1280.0)
     var detailWindowWidth: Double
-        get() = detailWindowWidthProperty.value
+        get() = detailWindowWidthFlow.value
         set(value) {
-            detailWindowWidthProperty.value = value
+            detailWindowWidthFlow.value = value
         }
 
-    val detailWindowHeightProperty = SimpleDoubleProperty(720.0)
+    val detailWindowHeightFlow = MutableStateFlow(720.0)
     var detailWindowHeight: Double
-        get() = detailWindowHeightProperty.value
+        get() = detailWindowHeightFlow.value
         set(value) {
-            detailWindowHeightProperty.value = value
+            detailWindowHeightFlow.value = value
         }
 
-    val detailWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    val detailWindowPosXFlow = MutableStateFlow(-1.0)
     var detailWindowPosX: Double
-        get() = detailWindowPosXProperty.value
+        get() = detailWindowPosXFlow.value
         set(value) {
-            detailWindowPosXProperty.value = value
+            detailWindowPosXFlow.value = value
         }
 
-    val detailWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    val detailWindowPosYFlow = MutableStateFlow(-1.0)
     var detailWindowPosY: Double
-        get() = detailWindowPosYProperty.value
+        get() = detailWindowPosYFlow.value
         set(value) {
-            detailWindowPosYProperty.value = value
+            detailWindowPosYFlow.value = value
         }
 
-    val cutterWindowWidthProperty = SimpleDoubleProperty(1280.0)
+    val cutterWindowWidthFlow = MutableStateFlow(1280.0)
     var cutterWindowWidth: Double
-        get() = cutterWindowWidthProperty.value
+        get() = cutterWindowWidthFlow.value
         set(value) {
-            cutterWindowWidthProperty.value = value
+            cutterWindowWidthFlow.value = value
         }
 
-    val cutterWindowHeightProperty = SimpleDoubleProperty(720.0)
+    val cutterWindowHeightFlow = MutableStateFlow(720.0)
     var cutterWindowHeight: Double
-        get() = cutterWindowHeightProperty.value
+        get() = cutterWindowHeightFlow.value
         set(value) {
-            cutterWindowHeightProperty.value = value
+            cutterWindowHeightFlow.value = value
         }
 
-    val cutterWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    val cutterWindowPosXFlow = MutableStateFlow(-1.0)
     var cutterWindowPosX: Double
-        get() = cutterWindowPosXProperty.value
+        get() = cutterWindowPosXFlow.value
         set(value) {
-            cutterWindowPosXProperty.value = value
+            cutterWindowPosXFlow.value = value
         }
 
-    val cutterWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    val cutterWindowPosYFlow = MutableStateFlow(-1.0)
     var cutterWindowPosY: Double
-        get() = cutterWindowPosYProperty.value
+        get() = cutterWindowPosYFlow.value
         set(value) {
-            cutterWindowPosYProperty.value = value
+            cutterWindowPosYFlow.value = value
         }
 
-    val settingWindowWidthProperty = SimpleDoubleProperty(720.0)
+    val settingWindowWidthFlow = MutableStateFlow(720.0)
     var settingWindowWidth: Double
-        get() = settingWindowWidthProperty.value
+        get() = settingWindowWidthFlow.value
         set(value) {
-            settingWindowWidthProperty.value = value
+            settingWindowWidthFlow.value = value
         }
 
-    val settingWindowHeightProperty = SimpleDoubleProperty(720.0)
+    val settingWindowHeightFlow = MutableStateFlow(720.0)
     var settingWindowHeight: Double
-        get() = settingWindowHeightProperty.value
+        get() = settingWindowHeightFlow.value
         set(value) {
-            settingWindowHeightProperty.value = value
+            settingWindowHeightFlow.value = value
         }
 
-    val settingWindowPosXProperty = SimpleDoubleProperty(-1.0)
+    val settingWindowPosXFlow = MutableStateFlow(-1.0)
     var settingWindowPosX: Double
-        get() = settingWindowPosXProperty.value
+        get() = settingWindowPosXFlow.value
         set(value) {
-            settingWindowPosXProperty.value = value
+            settingWindowPosXFlow.value = value
         }
 
-    val settingWindowPosYProperty = SimpleDoubleProperty(-1.0)
+    val settingWindowPosYFlow = MutableStateFlow(-1.0)
     var settingWindowPosY: Double
-        get() = settingWindowPosYProperty.value
+        get() = settingWindowPosYFlow.value
         set(value) {
-            settingWindowPosYProperty.value = value
+            settingWindowPosYFlow.value = value
         }
 
-    val cutterLeftPercentProperty = SimpleDoubleProperty(15.0)
+    val cutterLeftPercentFlow = MutableStateFlow(15.0)
     var cutterLeftPercent: Double
-        get() = cutterLeftPercentProperty.value
+        get() = cutterLeftPercentFlow.value
         set(value) {
-            cutterLeftPercentProperty.value = value
+            cutterLeftPercentFlow.value = value
         }
 
-    val cutterRightPercentProperty = SimpleDoubleProperty(48.5)
+    val cutterRightPercentFlow = MutableStateFlow(48.5)
     var cutterRightPercent: Double
-        get() = cutterRightPercentProperty.value
+        get() = cutterRightPercentFlow.value
         set(value) {
-            cutterRightPercentProperty.value = value
+            cutterRightPercentFlow.value = value
         }
 
-    val workDirectoryProperty = SimpleStringProperty("C:/tmp/C")
+    val workDirectoryFlow = MutableStateFlow("C:/tmp/C")
     var workDirectory: String
-        get() = workDirectoryProperty.value
+        get() = workDirectoryFlow.value
         set(value) {
-            workDirectoryProperty.value = value
+            workDirectoryFlow.value = value
         }
 
-    val storeDirectoryProperty = SimpleStringProperty("C:/tmp/B")
+    val storeDirectoryFlow = MutableStateFlow("C:/tmp/B")
     var storeDirectory: String
-        get() = storeDirectoryProperty.value
+        get() = storeDirectoryFlow.value
         set(value) {
-            storeDirectoryProperty.value = value
+            storeDirectoryFlow.value = value
         }
 
-    val googleBookApiUrlProperty = SimpleStringProperty("https://www.googleapis.com/books/v1/volumes?q=isbn:")
+    val googleBookApiUrlFlow = MutableStateFlow("https://www.googleapis.com/books/v1/volumes?q=isbn:")
     var googleBookApi: String
-        get() = googleBookApiUrlProperty.value
+        get() = googleBookApiUrlFlow.value
         set(value) {
-            googleBookApiUrlProperty.value = value
+            googleBookApiUrlFlow.value = value
         }
 
-    val YodobashiSearchUrlProperty = SimpleStringProperty("https://www.yodobashi.com/?word=")
+    val YodobashiSearchUrlFlow = MutableStateFlow("https://www.yodobashi.com/?word=")
     var YodobashiSearchUrl: String
-        get() = YodobashiSearchUrlProperty.value
+        get() = YodobashiSearchUrlFlow.value
         set(value) {
-            YodobashiSearchUrlProperty.value = value
+            YodobashiSearchUrlFlow.value = value
         }
 
-    val TesseractExeProperty = SimpleStringProperty("C:/Program Files/Tesseract-OCR/tesseract.exe")
+    val TesseractExeFlow = MutableStateFlow("C:/Program Files/Tesseract-OCR/tesseract.exe")
     var TesseractExe: String
-        get() = TesseractExeProperty.value
+        get() = TesseractExeFlow.value
         set(value) {
-            TesseractExeProperty.value = value
+            TesseractExeFlow.value = value
         }
 
     internal val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
     val structureFile get() = File("${workDirectory}/.comicripperStructure")
 
-    private val propFields get() = javaClass.declaredFields.filter { it.name.endsWith("Property") }
+    private val flowEntries: List<Pair<String, MutableStateFlow<*>>> = listOf(
+        "mainWindowWidth" to mainWindowWidthFlow,
+        "mainWindowHeight" to mainWindowHeightFlow,
+        "mainWindowPosX" to mainWindowPosXFlow,
+        "mainWindowPosY" to mainWindowPosYFlow,
+        "detailWindowWidth" to detailWindowWidthFlow,
+        "detailWindowHeight" to detailWindowHeightFlow,
+        "detailWindowPosX" to detailWindowPosXFlow,
+        "detailWindowPosY" to detailWindowPosYFlow,
+        "cutterWindowWidth" to cutterWindowWidthFlow,
+        "cutterWindowHeight" to cutterWindowHeightFlow,
+        "cutterWindowPosX" to cutterWindowPosXFlow,
+        "cutterWindowPosY" to cutterWindowPosYFlow,
+        "settingWindowWidth" to settingWindowWidthFlow,
+        "settingWindowHeight" to settingWindowHeightFlow,
+        "settingWindowPosX" to settingWindowPosXFlow,
+        "settingWindowPosY" to settingWindowPosYFlow,
+        "cutterLeftPercent" to cutterLeftPercentFlow,
+        "cutterRightPercent" to cutterRightPercentFlow,
+        "workDirectory" to workDirectoryFlow,
+        "storeDirectory" to storeDirectoryFlow,
+        "googleBookApiUrl" to googleBookApiUrlFlow,
+        "YodobashiSearchUrl" to YodobashiSearchUrlFlow,
+        "TesseractExe" to TesseractExeFlow,
+    )
 
     fun save() {
         val props = Properties()
-        propFields.forEach {
-            props.setProperty(
-                it.name.replace("Property", ""),
-                (it.get(this) as Property<*>).value.toString()
-            )
+        flowEntries.forEach { (name, flow) ->
+            props.setProperty(name, flow.value.toString())
         }
         settingFile.outputStream().use {
             props.store(it, "comicripper")
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun load(): Boolean {
         return try {
             val props = Properties()
             settingFile.inputStream().use {
                 props.load(it)
             }
-            propFields.forEach {
-                val field = it.get(this)
-                val value = props.getProperty(it.name.replace("Property", ""))
-                value?.let {
-                    when (field) {
-                        is SimpleStringProperty -> field.value = value
-                        is SimpleIntegerProperty -> field.value = value.toInt()
-                        is SimpleDoubleProperty -> field.value = value.toDouble()
+            flowEntries.forEach { (name, flow) ->
+                props.getProperty(name)?.let { value ->
+                    when (flow.value) {
+                        is String -> (flow as MutableStateFlow<String>).value = value
+                        is Double -> (flow as MutableStateFlow<Double>).value = value.toDouble()
+                        is Int -> (flow as MutableStateFlow<Int>).value = value.toInt()
                     }
                 }
             }
             true
-        } catch (ex: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
