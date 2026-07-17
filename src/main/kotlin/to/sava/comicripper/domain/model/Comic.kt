@@ -1,6 +1,9 @@
 package to.sava.comicripper.domain.model
 
 import javafx.scene.image.Image
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.yield
 import to.sava.comicripper.model.Setting
 import java.io.File
@@ -94,7 +97,11 @@ class Comic(filename: String = "") {
             getFullSizeImage(filename).let { it.width > it.height }
         } ?: false
 
-    private val listeners = CopyOnWriteArrayList<(Comic) -> Unit>()
+    private val _changeFlow = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val changeFlow: SharedFlow<Unit> = _changeFlow
 
     private val imageCache = CopyOnWriteArrayList<Triple<Int, String, Image>>()
 
@@ -193,15 +200,7 @@ class Comic(filename: String = "") {
         return image
     }
 
-    fun addListener(listener: (Comic) -> Unit) {
-        listeners.add(listener)
-    }
-
-    fun removeListener(listener: (Comic) -> Unit) {
-        listeners.remove(listener)
-    }
-
     private fun invokeListener() {
-        listeners.forEach { it(this) }
+        _changeFlow.tryEmit(Unit)
     }
 }

@@ -304,8 +304,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     fun setComic(comic: Comic) {
         this.comic = comic
         updateComic()
-        comic.addListener {
-            updateComic()
+        launch {
+            comic.changeFlow.collect {
+                updateComic()
+            }
         }
         if (comic.files.size > 1 && comic.files[1] == comic.coverFull) {
             slider.value = 1.0

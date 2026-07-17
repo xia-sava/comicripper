@@ -15,7 +15,6 @@ import javafx.scene.layout.FlowPane
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
 import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
@@ -87,6 +86,8 @@ class MainController : Initializable, CoroutineScope {
     private val minWidthProperty = SimpleDoubleProperty(0.0)
 
     private val comicObjs = mutableMapOf<String, Pair<ComicController, VBox>>()
+
+    private var titleListenerJob: Job? = null
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         ocrIsbn.setOnAction {
@@ -320,7 +321,7 @@ class MainController : Initializable, CoroutineScope {
     }
 
     private fun selectComic(comic: Comic?) {
-        comicObjs[ComicStorage.targetId]?.first?.comic?.removeListener(::setWindowTitle)
+        titleListenerJob?.cancel()
         if (comic == null) {
             ComicStorage.targetId = null
             setWindowTitle()
@@ -333,7 +334,11 @@ class MainController : Initializable, CoroutineScope {
             pane.styleClass.add("selected")
         }
         ComicStorage.targetId = comic.id
-        controller.comic?.addListener(::setWindowTitle)
+        titleListenerJob = controller.comic?.let { c ->
+            launch {
+                c.changeFlow.collect { setWindowTitle() }
+            }
+        }
         setWindowTitle()
 
         // 選択コミックが画面内に入るようにスクロールする
@@ -368,7 +373,7 @@ class MainController : Initializable, CoroutineScope {
         }
     }
 
-    private fun setWindowTitle(@Suppress("UNUSED_PARAMETER") target: Comic? = null) {
+    private fun setWindowTitle() {
         comicObjs[ComicStorage.targetId]?.first?.comic?.let { comic ->
             author.text = comic.author
             title.text = comic.title

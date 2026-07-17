@@ -80,8 +80,8 @@ class ComicController : VBox(), Initializable, CoroutineScope {
     fun setComic(comic: Comic) {
         this.comic = comic
         updateComic()
-        comic.addListener {
-            launch {
+        launch {
+            comic.changeFlow.collect {
                 updateComic()
             }
         }
