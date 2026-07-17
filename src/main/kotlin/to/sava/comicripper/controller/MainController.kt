@@ -158,7 +158,10 @@ class MainController : Initializable, CoroutineScope {
 
         extractEpub.setOnAction {
             launch(Dispatchers.IO) {
-                ProcessBuilder("cmd.exe", "/c", "start", "zsh.exe", "-c", "epub2comic.py")
+                ProcessBuilder(
+                    "cmd.exe", "/c", "start", "zsh.exe", "-c",
+                    "epub2comic.py || read -k 1 '?エラーが発生しました。何かキーを押すと閉じます...'",
+                )
                     .directory(File(Setting.workDirectory))
                     .start()
             }

@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "to.sava.comicripper"
-version = "0.7.2"
+version = "0.7.4"
 
 repositories {
     mavenCentral()
