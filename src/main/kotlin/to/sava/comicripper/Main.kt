@@ -15,6 +15,8 @@ import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
+import to.sava.comicripper.ui.ComposeWindowHost
+import kotlin.system.exitProcess
 
 class Main : Application(), CoroutineScope {
     private val job = Job()
@@ -63,6 +65,8 @@ class Main : Application(), CoroutineScope {
                 repos.removeFiles(filenames)
             }
         )
+
+        ComposeWindowHost.start()
     }
 
     override fun stop() {
@@ -72,6 +76,7 @@ class Main : Application(), CoroutineScope {
         Setting.save()
         repos.saveStructure()
         stopKoin()
+        exitProcess(0)
     }
 
     companion object {
