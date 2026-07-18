@@ -52,6 +52,7 @@ class Main : Application(), CoroutineScope {
         launch(Dispatchers.IO) {
             while (true) {
                 delay(30_000)
+                Setting.save()
                 repos.saveStructure()
             }
         }
