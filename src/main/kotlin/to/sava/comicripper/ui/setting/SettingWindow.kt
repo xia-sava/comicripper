@@ -27,6 +27,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import to.sava.comicripper.model.Setting
+import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.rememberWindowIconPainter
 
 /**
@@ -62,6 +63,7 @@ fun SettingWindow(onCloseRequest: () -> Unit) {
         title = "設定",
         icon = rememberWindowIconPainter(),
     ) {
+        BringToFrontOnFirstShow()
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(

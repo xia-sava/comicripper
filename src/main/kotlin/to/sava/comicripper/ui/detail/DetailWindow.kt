@@ -58,6 +58,7 @@ import to.sava.comicripper.Main
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
+import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
@@ -271,6 +272,7 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
             }
         },
     ) {
+        BringToFrontOnFirstShow()
         LaunchedEffect(Unit) {
             if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
                 isbnFocus.requestFocus()

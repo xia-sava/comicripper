@@ -59,6 +59,7 @@ import to.sava.comicripper.Main
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
+import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
@@ -211,6 +212,7 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
             }
         },
     ) {
+        BringToFrontOnFirstShow()
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
