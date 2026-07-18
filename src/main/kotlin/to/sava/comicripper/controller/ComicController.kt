@@ -22,6 +22,7 @@ import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.ext.toFxImage
 import to.sava.comicripper.model.Comic
+import to.sava.comicripper.ui.cutter.showCutterWindow
 import java.net.URL
 import java.util.*
 
@@ -149,7 +150,7 @@ class ComicController : VBox(), Initializable, CoroutineScope {
                     comic.coverAlbum.isNullOrEmpty() &&
                     comic.isCoverFullLandscape
                 ) {
-                    CutterController.launchStage(stage, comic)
+                    showCutterWindow(stage, comic)
                 } else {
                     DetailController.launchStage(stage, comic)
                 }

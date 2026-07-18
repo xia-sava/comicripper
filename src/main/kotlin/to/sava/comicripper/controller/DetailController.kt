@@ -25,6 +25,7 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
+import to.sava.comicripper.ui.cutter.showCutterWindow
 import java.io.File
 import java.net.URL
 import java.util.*
@@ -393,7 +394,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun launchCutter() {
         comic?.let { comic ->
             stage?.let { stage ->
-                CutterController.launchStage(stage, comic)
+                showCutterWindow(stage, comic)
             }
         }
     }

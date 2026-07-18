@@ -40,31 +40,6 @@
     -fx-font-weight: bold;
 }
 
-#cutterScene Button {
-    -fx-pref-width: 150.0;
-}
-
-#cutterScene #cutterScreen {
-    -fx-background-color: gray;
-}
-
-#cutterScene .limitLine .outerLine {
-    -fx-border-color: black;
-    -fx-border-width: 0.5;
-    -fx-border-style: dashed;
-}
-
-#cutterScene .limitLine .innerLine {
-    -fx-border-color: white;
-    -fx-border-width: 0.5;
-    -fx-border-style: dashed;
-}
-
-#cutterScene .limitLine .triangle {
-    -fx-stroke: white;
-    -fx-fill: black;
-}
-
 #settingScene .label {
     -fx-min-width: 200.0;
 }
