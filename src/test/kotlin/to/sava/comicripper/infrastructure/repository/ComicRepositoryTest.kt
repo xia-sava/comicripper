@@ -1,5 +1,6 @@
 package to.sava.comicripper.infrastructure.repository
 
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -15,6 +16,7 @@ import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.model.Setting
 import java.io.File
 import java.nio.file.Path
+import javax.imageio.ImageIO
 
 class ComicRepositoryTest : KoinComponent {
 
@@ -333,6 +335,44 @@ class ComicRepositoryTest : KoinComponent {
 
             assertEquals(1, ComicStorage.all.size)
             assertTrue(target.files.contains("page_000.jpg"))
+        }
+    }
+
+    @Nested
+    inner class `cutCover` {
+
+        @Test
+        fun `crop座標通りの幅高さでcoverAが生成される`() = runTest {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, 200, 100)
+            repository.addFiles(listOf(coverF))
+            val comic = ComicStorage.all.first()
+
+            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
+
+            val outputFile = File("${Setting.workDirectory}/coverA_000.jpg")
+            assertTrue(outputFile.exists())
+            val outputImage = ImageIO.read(outputFile)
+            assertEquals(110, outputImage.width)
+            assertEquals(100, outputImage.height)
+        }
+
+        @Test
+        fun `既存coverAがある場合旧ファイルを削除し新しい連番で出力する`() = runTest {
+            val coverF = "coverF_000.jpg"
+            val coverA = "coverA_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, 200, 100)
+            ComicTestHelper.createDummyJpeg(coverA, 50, 50)
+            repository.addFiles(listOf(coverF, coverA))
+            val comic = ComicStorage.all.first()
+            assertEquals(coverA, comic.coverAlbum)
+            // 他Comic由来の連番先取りファイル
+            ComicTestHelper.createDummyJpeg("coverA_001.jpg", 10, 10)
+
+            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
+
+            assertFalse(File("${Setting.workDirectory}/coverA_000.jpg").exists())
+            assertTrue(File("${Setting.workDirectory}/coverA_002.jpg").exists())
         }
     }
 

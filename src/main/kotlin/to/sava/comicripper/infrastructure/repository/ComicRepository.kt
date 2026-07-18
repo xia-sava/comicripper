@@ -1,10 +1,5 @@
 package to.sava.comicripper.infrastructure.repository
 
-import javafx.embed.swing.SwingFXUtils
-import javafx.geometry.Rectangle2D
-import javafx.scene.SnapshotParameters
-import javafx.scene.image.ImageView
-import javafx.scene.image.WritableImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +10,7 @@ import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
+import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
@@ -112,27 +108,25 @@ class ComicRepository {
             File("${Setting.workDirectory}/${comic.coverAlbum}").delete()
         }
 
-        val coverFullImage = checkNotNull(comic.coverFullImage)
-        val imageView = ImageView().apply {
-            image = coverFullImage
-        }
-        val imageWidth = coverFullImage.width
-        val imageHeight = coverFullImage.height
-        val leftX = imageWidth * (leftPercent / 100.0)
-        val rightX = imageWidth * (rightPercent / 100.0) + rightMargin
-        val croppedWidth = rightX - leftX
-        val croppedFxImage = WritableImage(croppedWidth.toInt(), imageHeight.toInt())
-        val ssParams = SnapshotParameters().apply {
-            viewport = Rectangle2D(leftX, 0.0, croppedWidth, imageHeight)
-        }
-        imageView.snapshot(ssParams, croppedFxImage)
-        val croppedSwImage = SwingFXUtils.fromFXImage(croppedFxImage, null)
-        val outputImage =
-            BufferedImage(croppedWidth.toInt(), imageHeight.toInt(), BufferedImage.OPAQUE)
-        outputImage.createGraphics().drawImage(croppedSwImage, 0, 0, null)
-        val outputFile =
-            File("${Setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
         withContext(Dispatchers.IO) {
+            val coverFull = checkNotNull(comic.coverFull)
+            val coverFullImage = checkNotNull(ImageIO.read(File(workFilename(coverFull)))) {
+                "no image for $coverFull"
+            }
+            val imageWidth = coverFullImage.width.toDouble()
+            val imageHeight = coverFullImage.height
+            val leftX = imageWidth * (leftPercent / 100.0)
+            val rightX = imageWidth * (rightPercent / 100.0) + rightMargin
+            val croppedWidth = rightX - leftX
+
+            val outputImage = BufferedImage(croppedWidth.toInt(), imageHeight, BufferedImage.TYPE_INT_RGB)
+            outputImage.createGraphics().apply {
+                color = Color.WHITE
+                fillRect(0, 0, outputImage.width, outputImage.height)
+                drawImage(coverFullImage, -leftX.toInt(), 0, null)
+                dispose()
+            }
+            val outputFile = File("${Setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
             ImageIO.write(outputImage, "jpeg", outputFile)
         }
     }

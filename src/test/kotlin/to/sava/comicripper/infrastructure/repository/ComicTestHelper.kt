@@ -24,6 +24,13 @@ object ComicTestHelper {
         return file
     }
 
+    fun createDummyJpeg(filename: String, width: Int, height: Int): File {
+        val file = File("${Setting.workDirectory}/$filename")
+        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        ImageIO.write(image, "jpg", file)
+        return file
+    }
+
     fun setupDirectories(workDir: File, storeDir: File) {
         workDir.mkdirs()
         storeDir.mkdirs()
