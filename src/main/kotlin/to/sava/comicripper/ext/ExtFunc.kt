@@ -1,5 +1,6 @@
 package to.sava.comicripper.ext
 
+import javafx.embed.swing.SwingFXUtils
 import javafx.fxml.FXMLLoader
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -15,6 +16,7 @@ import javafx.stage.Modality
 import javafx.stage.Stage
 import kotlinx.coroutines.*
 import to.sava.comicripper.model.Setting
+import java.awt.image.BufferedImage
 
 object Loader
 
@@ -54,6 +56,11 @@ fun ImageView.fitImage(image: Image, fitX: Double, fitY: Double) {
     fitWidth = width
     fitHeight = height
 }
+
+/**
+ * BufferedImage を JavaFX 表示用の Image に変換する．
+ */
+fun BufferedImage.toFxImage(): Image = SwingFXUtils.toFXImage(this, null)
 
 fun workFilename(filename: String): String {
     return "${Setting.workDirectory}/$filename"

@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.setWindowIcon
+import to.sava.comicripper.ext.toFxImage
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -172,7 +173,7 @@ class CutterController : BorderPane(), Initializable, CoroutineScope {
         this.stage?.title = "${comic.title} ${comic.author} - $WINDOW_TITLE"
 
         comic.coverFullImage?.let {
-            imageView.image = it
+            imageView.image = it.toFxImage()
         }
 
         comic.coverAlbum?.let {

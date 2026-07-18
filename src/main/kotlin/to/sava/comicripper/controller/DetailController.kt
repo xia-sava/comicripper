@@ -11,6 +11,7 @@ import javafx.scene.input.KeyCodeCombination
 import javafx.scene.input.KeyCombination
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.BorderPane
+import javafx.scene.image.Image
 import javafx.stage.Stage
 import javafx.util.StringConverter
 import kotlinx.coroutines.*
@@ -18,6 +19,7 @@ import to.sava.comicripper.Main
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.ext.setWindowIcon
+import to.sava.comicripper.ext.toFxImage
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -103,6 +105,8 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private var comic: Comic? = null
 
     private var stage: Stage? = null
+
+    private var lastFxImage: Pair<String, Image>? = null
 
     override fun initialize(location: URL?, resources: ResourceBundle?) {
         detailScene.setOnKeyPressed {
@@ -361,10 +365,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private fun setImage(num: Int) {
         comic?.let { comic ->
             comic.files.getOrNull(num)?.let { filename ->
-                comic.getFullSizeImage(filename).let { image ->
-                    imageView.image = image
-                    this.filename.text = filename
-                }
+                val fxImage = lastFxImage
+                    ?.takeIf { it.first == filename }?.second
+                    ?: comic.getFullSizeImage(filename).toFxImage()
+                        .also { lastFxImage = filename to it }
+                imageView.image = fxImage
+                this.filename.text = filename
             }
         }
     }

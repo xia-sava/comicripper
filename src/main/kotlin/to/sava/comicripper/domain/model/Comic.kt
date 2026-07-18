@@ -1,15 +1,18 @@
 package to.sava.comicripper.domain.model
 
-import javafx.scene.image.Image
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.yield
 import to.sava.comicripper.model.Setting
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.File
+import java.io.IOException
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.imageio.ImageIO
 
 class Comic(filename: String = "") {
     companion object {
@@ -20,13 +23,13 @@ class Comic(filename: String = "") {
         val TARGET_REGEX =
             "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
 
-        private val defaultThumbnailLoader: (String) -> Image? = { filename ->
-            val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-            Image(url, 512.0, 512.0, true, true)
+        private const val THUMBNAIL_MAX_PX = 512
+
+        private val defaultThumbnailLoader: (String) -> BufferedImage? = { filename ->
+            readImageOrNull(filename)?.let { scaleToFit(it, THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX) }
         }
-        private val defaultFullSizeImageLoader: (String) -> Image? = { filename ->
-            val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-            Image(url)
+        private val defaultFullSizeImageLoader: (String) -> BufferedImage? = { filename ->
+            readImageOrNull(filename)
         }
 
         var thumbnailLoader = defaultThumbnailLoader
@@ -35,6 +38,41 @@ class Comic(filename: String = "") {
         fun resetImageLoaders() {
             thumbnailLoader = defaultThumbnailLoader
             fullSizeImageLoader = defaultFullSizeImageLoader
+        }
+
+        private fun readImageOrNull(filename: String): BufferedImage? {
+            return try {
+                ImageIO.read(File("${Setting.workDirectory}/$filename"))
+            } catch (e: IOException) {
+                println("image load failed: $filename: ${e.message}")
+                null
+            }
+        }
+
+        /**
+         * maxWidth x maxHeight に収まるサイズへアスペクト比を保って縮小する．
+         * 元がそれ以下のサイズならそのまま返す．
+         */
+        private fun scaleToFit(source: BufferedImage, maxWidth: Int, maxHeight: Int): BufferedImage {
+            val ratio = minOf(
+                maxWidth.toDouble() / source.width,
+                maxHeight.toDouble() / source.height,
+            )
+            if (ratio >= 1.0) {
+                return source
+            }
+            val width = maxOf(1, (source.width * ratio).toInt())
+            val height = maxOf(1, (source.height * ratio).toInt())
+            return BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { scaled ->
+                scaled.createGraphics().apply {
+                    setRenderingHint(
+                        RenderingHints.KEY_INTERPOLATION,
+                        RenderingHints.VALUE_INTERPOLATION_BILINEAR,
+                    )
+                    drawImage(source, 0, 0, width, height, null)
+                    dispose()
+                }
+            }
         }
     }
 
@@ -67,8 +105,8 @@ class Comic(filename: String = "") {
     private val _files = CopyOnWriteArrayList<String>()
     val files: List<String> get() = _files.sortedBy { numberFormat(it) }
 
-    private val _thumbnails = ConcurrentHashMap<String, Image>()
-    val thumbnails: List<Image>
+    private val _thumbnails = ConcurrentHashMap<String, BufferedImage>()
+    val thumbnails: List<BufferedImage>
         get() = _thumbnails.entries
             .sortedBy { numberFormat(it.key) }
             .map { it.value }
@@ -89,7 +127,7 @@ class Comic(filename: String = "") {
     val coverStrip: String?
         get() = _files.firstOrNull { it.startsWith(COVER_STRIP_PREFIX) }
 
-    val coverFullImage: Image?
+    val coverFullImage: BufferedImage?
         get() = coverFull?.let { getFullSizeImage(it) }
 
     val isCoverFullLandscape: Boolean
@@ -103,13 +141,13 @@ class Comic(filename: String = "") {
     )
     val changeFlow: SharedFlow<Unit> = _changeFlow
 
-    private val imageCache = CopyOnWriteArrayList<Triple<Int, String, Image>>()
+    private val imageCache = CopyOnWriteArrayList<Triple<Int, String, BufferedImage>>()
 
     init {
         addFile(filename)
     }
 
-    fun getFullSizeImage(filename: String): Image {
+    fun getFullSizeImage(filename: String): BufferedImage {
         return loadFullSizeImage(filename)
     }
 
@@ -182,16 +220,15 @@ class Comic(filename: String = "") {
                 (src.coverStrip.isNullOrEmpty().not() && coverStrip.isNullOrEmpty().not()))
     }
 
-    private fun loadImage(filename: String): Image? = thumbnailLoader(filename)
+    private fun loadImage(filename: String): BufferedImage? = thumbnailLoader(filename)
 
-    private fun loadFullSizeImage(filename: String): Image {
-        val url = File("${Setting.workDirectory}/$filename").toURI().toURL().toString()
-        imageCache.firstOrNull { it.second == url }?.let {
+    private fun loadFullSizeImage(filename: String): BufferedImage {
+        imageCache.firstOrNull { it.second == filename }?.let {
             return it.third
         }
         val num = (imageCache.maxByOrNull { it.first }?.first ?: 0) + 1
         val image = checkNotNull(fullSizeImageLoader(filename)) { "no image for $filename" }
-        imageCache.add(Triple(num, url, image))
+        imageCache.add(Triple(num, filename, image))
         if (imageCache.size > 10) {
             imageCache.minByOrNull { it.first }?.let {
                 imageCache.remove(it)

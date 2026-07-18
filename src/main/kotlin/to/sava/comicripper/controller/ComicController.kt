@@ -20,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
+import to.sava.comicripper.ext.toFxImage
 import to.sava.comicripper.model.Comic
 import java.net.URL
 import java.util.*
@@ -108,7 +109,7 @@ class ComicController : VBox(), Initializable, CoroutineScope {
         title.text = truncateForDisplay(comic.title, maxTitleLength)
 
         imagesPane.children.clear()
-        val thumbnails = comic.thumbnails
+        val thumbnails = comic.thumbnails.map { it.toFxImage() }
         if (thumbnails.isNotEmpty()) {
             imagesPane.children.add(ImageView().apply {
                 fitImage(thumbnails.first(), 256.0, 128.0)
