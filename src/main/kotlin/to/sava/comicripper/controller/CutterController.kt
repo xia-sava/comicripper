@@ -14,10 +14,10 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.Region
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import to.sava.comicripper.Main
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.ext.toFxImage
@@ -33,7 +33,7 @@ private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class CutterController : BorderPane(), Initializable, CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     private val repos = ComicRepository()
 

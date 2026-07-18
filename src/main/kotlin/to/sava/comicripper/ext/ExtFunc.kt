@@ -142,7 +142,7 @@ fun CoroutineScope.modalProgressDialog(
             is Job -> result.join()
             is Iterable<*> -> result.filterIsInstance<Job>().joinAll()
         }
-        withContext(Dispatchers.Main) {
+        withContext(FxDispatcher) {
             modal.close()
         }
     }

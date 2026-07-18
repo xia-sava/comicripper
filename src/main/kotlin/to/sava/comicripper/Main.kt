@@ -11,13 +11,14 @@ import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.application.di.applicationModule
 import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.domain.service.FileWatcher
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 
 class Main : Application(), CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     private lateinit var repos: ComicRepository
     private lateinit var fileWatcher: FileWatcher

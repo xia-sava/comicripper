@@ -15,9 +15,9 @@ import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.fitImage
 import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.ext.toFxImage
@@ -27,7 +27,7 @@ import java.util.*
 
 class ComicController : VBox(), Initializable, CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     @FXML
     private lateinit var comicScene: VBox

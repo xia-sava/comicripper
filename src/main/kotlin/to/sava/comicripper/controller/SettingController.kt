@@ -11,8 +11,8 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.Pane
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.setWindowIcon
 import to.sava.comicripper.model.Setting
@@ -21,7 +21,7 @@ import java.util.*
 
 class SettingController : BorderPane(), Initializable, CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     @FXML
     @Suppress("unused")

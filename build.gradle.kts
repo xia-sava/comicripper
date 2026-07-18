@@ -20,7 +20,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
     implementation("org.glassfish:javax.json:1.1.4")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("com.google.code.gson:gson:2.13.1")

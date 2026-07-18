@@ -16,6 +16,7 @@ import javafx.stage.Stage
 import javafx.util.StringConverter
 import kotlinx.coroutines.*
 import to.sava.comicripper.Main
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.ext.setWindowIcon
@@ -32,7 +33,7 @@ private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class DetailController : BorderPane(), Initializable, CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     private val repos = ComicRepository()
 
@@ -169,7 +170,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     stage
                 ) {
                     val (searchedAuthor, searchedTitle) = repos.searchISBN(isbn.text)
-                    withContext(Dispatchers.Main) {
+                    withContext(FxDispatcher) {
                         author.text = searchedAuthor
                         title.text = searchedTitle
                     }
@@ -198,7 +199,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                 ) {
                     launch(Dispatchers.IO) {
                         repos.ocrISBN(comic)?.let {
-                            withContext(Dispatchers.Main) {
+                            withContext(FxDispatcher) {
                                 comic.author = it.first
                                 comic.title = it.second
                             }
@@ -220,7 +221,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
                     stage
                 ) {
                     repos.zipComic(comic)
-                    withContext(Dispatchers.Main) {
+                    withContext(FxDispatcher) {
                         stage?.close()
                     }
                 }

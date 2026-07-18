@@ -16,6 +16,7 @@ import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import kotlinx.coroutines.*
 import to.sava.comicripper.Main
+import to.sava.comicripper.ext.FxDispatcher
 import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.ext.modalProgressDialog
 import to.sava.comicripper.ext.modalTextAreaDialog
@@ -33,7 +34,7 @@ private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
 
 class MainController : Initializable, CoroutineScope {
     private val job = Job()
-    override val coroutineContext get() = Dispatchers.Main + job
+    override val coroutineContext get() = FxDispatcher + job
 
     @Suppress("unused")
     @FXML
@@ -192,13 +193,13 @@ class MainController : Initializable, CoroutineScope {
                 delay(5_000)
                 val runtime = Runtime.getRuntime()
                 val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-                withContext(Dispatchers.Main) {
+                withContext(FxDispatcher) {
                     notifyLabel.text = "Free Memory: %dMB".format(free / 1024 / 1024)
                 }
             }
         }
 
-        launch(Dispatchers.Main) {
+        launch(FxDispatcher) {
             var previousList = emptyList<Comic>()
             ComicStorage.storage.collect { currentList ->
                 val currentSet = currentList.toSet()
