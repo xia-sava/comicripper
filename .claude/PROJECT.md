@@ -33,13 +33,14 @@ src/main/kotlin/to/sava/comicripper/
 │   └── di/ApplicationModule.kt     # Koin DI設定
 ├── controller/                      # プレゼンテーション層
 │   ├── MainController.kt           # メインウィンドウ（一覧・D&Dマージ・一括操作）
-│   ├── ComicController.kt          # コミックカード表示
-│   ├── DetailController.kt         # 画像ビューア・メタデータ編集
-│   └── CutterController.kt         # カバー切り出しツール
+│   └── ComicController.kt          # コミックカード表示
 ├── ui/                               # Compose Desktop プレゼンテーション層（JavaFXから段階移行中）
 │   ├── ComposeWindowHost.kt         # JVM常駐の Compose application スコープを保持し、JavaFX側から Compose ウィンドウの開閉を仲介するホスト
 │   ├── ComposeExt.kt                # Compose 用拡張関数（アイコン Painter 生成など）
-│   └── setting/SettingWindow.kt     # 設定画面（旧 SettingController + setting.fxml の置き換え）
+│   ├── ProgressOverlay.kt           # ウィンドウ内に被せる進捗オーバーレイの共通部品
+│   ├── setting/SettingWindow.kt     # 設定画面（旧 SettingController + setting.fxml の置き換え）
+│   ├── cutter/CutterWindow.kt       # カバー切り出しツール（旧 CutterController + cutter.fxml の置き換え）
+│   └── detail/DetailWindow.kt       # 画像ビューア・メタデータ編集（旧 DetailController + detail.fxml の置き換え）
 ├── model/
 │   ├── Comic.kt                    # typealias → domain.model.Comic
 │   └── Setting.kt                  # アプリ設定シングルトン（Kotlin Flow）
@@ -60,7 +61,7 @@ src/test/kotlin/to/sava/comicripper/
 ```
 
 ### リソース
-- FXML: main, comic, detail, cutter（+ parts/separator）
+- FXML: main, comic（+ parts/separator）
 - CSS: common.css
 - アイコン: icon.png, icon.ico
 

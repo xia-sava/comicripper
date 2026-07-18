@@ -23,6 +23,7 @@ import to.sava.comicripper.ext.fitSize
 import to.sava.comicripper.ext.toFxImage
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.ui.cutter.showCutterWindow
+import to.sava.comicripper.ui.detail.showDetailWindow
 import java.net.URL
 import java.util.*
 
@@ -144,16 +145,14 @@ class ComicController : VBox(), Initializable, CoroutineScope {
 
     private fun launchDetailWindow() {
         comic?.let { comic ->
-            stage?.let { stage ->
-                if (
-                    comic.coverFull.isNullOrEmpty().not() &&
-                    comic.coverAlbum.isNullOrEmpty() &&
-                    comic.isCoverFullLandscape
-                ) {
-                    showCutterWindow(stage, comic)
-                } else {
-                    DetailController.launchStage(stage, comic)
-                }
+            if (
+                comic.coverFull.isNullOrEmpty().not() &&
+                comic.coverAlbum.isNullOrEmpty() &&
+                comic.isCoverFullLandscape
+            ) {
+                showCutterWindow(comic)
+            } else {
+                showDetailWindow(comic)
             }
         }
     }

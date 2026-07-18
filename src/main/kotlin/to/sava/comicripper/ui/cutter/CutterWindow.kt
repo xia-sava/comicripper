@@ -50,19 +50,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
-import javafx.application.Platform
-import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import to.sava.comicripper.Main
-import to.sava.comicripper.controller.DetailController
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import kotlin.math.min
 
@@ -83,9 +81,9 @@ private val cutterScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
  * Comic ごとに1枚まで（同一 Comic で既に開いていれば何もしない）。
  * 異なる Comic の Cutter は同時に複数開ける。
  */
-fun showCutterWindow(ownerStage: Stage, comic: Comic) {
+fun showCutterWindow(comic: Comic) {
     ComposeWindowHost.show(key = "cutter:${comic.id}") { onCloseRequest ->
-        CutterWindow(comic = comic, ownerStage = ownerStage, onCloseRequest = onCloseRequest)
+        CutterWindow(comic = comic, onCloseRequest = onCloseRequest)
     }
 }
 
@@ -96,7 +94,7 @@ fun showCutterWindow(ownerStage: Stage, comic: Comic) {
  * 描画され、切り出し結果と画面表示が一致する。
  */
 @Composable
-fun CutterWindow(comic: Comic, ownerStage: Stage, onCloseRequest: () -> Unit) {
+fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
     val state = rememberWindowState(
         size = DpSize(Setting.cutterWindowWidth.dp, Setting.cutterWindowHeight.dp),
         position = if (Setting.cutterWindowPosX >= 0.0) {
@@ -163,9 +161,7 @@ fun CutterWindow(comic: Comic, ownerStage: Stage, onCloseRequest: () -> Unit) {
 
     fun openDetail() {
         onCloseRequest()
-        Platform.runLater {
-            DetailController.launchStage(ownerStage, comic)
-        }
+        showDetailWindow(comic)
     }
 
     fun cut() {
