@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -27,6 +28,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -40,7 +42,10 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
@@ -139,6 +144,21 @@ fun CutterWindow(comic: Comic, ownerStage: Stage, onCloseRequest: () -> Unit) {
         }
     }
 
+    // スライダーの表示幅・位置を、実際に表示されている画像の矩形（drawCutterGuidesと同じ計算）に
+    // 追従させる。画像が表示領域いっぱいに広がらない場合でも、スライダーの操作感とガイド線の
+    // 位置が一致するようにするため。
+    var imageBoxSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val (imageLeftDp, imageWidthDp) = remember(imageBoxSize, coverImage, density) {
+        val bitmap = coverImage
+        if (bitmap == null || imageBoxSize.width <= 0 || imageBoxSize.height <= 0) {
+            with(density) { 0.dp to imageBoxSize.width.toFloat().toDp() }
+        } else {
+            val rect = imageDisplayRect(imageBoxSize.width.toFloat(), imageBoxSize.height.toFloat(), bitmap)
+            with(density) { rect.left.toDp() to rect.width.toDp() }
+        }
+    }
+
     val repos = remember { ComicRepository() }
 
     fun openDetail() {
@@ -198,21 +218,32 @@ fun CutterWindow(comic: Comic, ownerStage: Stage, onCloseRequest: () -> Unit) {
         MaterialTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                        Slider(
-                            value = leftPercent.toFloat(),
-                            onValueChange = { updateLeft(it.toDouble()) },
-                            valueRange = 0f..100f,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Slider(
-                            value = rightPercent.toFloat(),
-                            onValueChange = { updateRight(it.toDouble()) },
-                            valueRange = 0f..100f,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier
+                                .width(imageWidthDp)
+                                .offset(x = imageLeftDp),
+                        ) {
+                            Slider(
+                                value = leftPercent.toFloat(),
+                                onValueChange = { updateLeft(it.toDouble()) },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Slider(
+                                value = rightPercent.toFloat(),
+                                onValueChange = { updateRight(it.toDouble()) },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
-                    Box(modifier = Modifier.fillMaxWidth().weight(1.0f)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1.0f)
+                            .onSizeChanged { imageBoxSize = it },
+                    ) {
                         coverImage?.let { bitmap ->
                             Image(
                                 bitmap = bitmap,
@@ -253,26 +284,32 @@ private const val GUIDE_TRIANGLE_WIDTH = 10f
 private const val GUIDE_TRIANGLE_HEIGHT = 30f
 
 /**
+ * ContentScale.Fit と同じ計算で、コンテナ内に実際に表示される画像の矩形を求める。
+ * ガイド線描画とスライダーの表示位置合わせの両方で使う。
+ */
+private fun imageDisplayRect(containerWidth: Float, containerHeight: Float, bitmap: ImageBitmap): Rect {
+    val scale = min(containerWidth / bitmap.width, containerHeight / bitmap.height)
+    val imageWidth = bitmap.width * scale
+    val imageHeight = bitmap.height * scale
+    val left = (containerWidth - imageWidth) / 2f
+    val top = (containerHeight - imageHeight) / 2f
+    return Rect(left, top, left + imageWidth, top + imageHeight)
+}
+
+/**
  * 左右の切り出しガイド線を描画する。
- * ContentScale.Fit と同じ計算で表示画像矩形を求め、
- * その幅に対する percent 位置に縦線を引く。
+ * 表示画像矩形の幅に対する percent 位置に縦線を引く。
  */
 private fun DrawScope.drawCutterGuides(
     bitmap: ImageBitmap,
     leftPercent: Double,
     rightPercent: Double,
 ) {
-    val scale = min(size.width / bitmap.width, size.height / bitmap.height)
-    val imageWidth = bitmap.width * scale
-    val imageHeight = bitmap.height * scale
-    val imageLeft = (size.width - imageWidth) / 2f
-    val imageTop = (size.height - imageHeight) / 2f
-    val imageBottom = imageTop + imageHeight
-
-    val leftX = imageLeft + (imageWidth * leftPercent / 100.0).toFloat()
-    val rightX = imageLeft + (imageWidth * rightPercent / 100.0).toFloat()
-    drawGuideLine(leftX, imageTop, imageBottom, triangleTowardRight = true)
-    drawGuideLine(rightX, imageTop, imageBottom, triangleTowardRight = false)
+    val imageRect = imageDisplayRect(size.width, size.height, bitmap)
+    val leftX = imageRect.left + (imageRect.width * leftPercent / 100.0).toFloat()
+    val rightX = imageRect.left + (imageRect.width * rightPercent / 100.0).toFloat()
+    drawGuideLine(leftX, imageRect.top, imageRect.bottom, triangleTowardRight = true)
+    drawGuideLine(rightX, imageRect.top, imageRect.bottom, triangleTowardRight = false)
 }
 
 /**
