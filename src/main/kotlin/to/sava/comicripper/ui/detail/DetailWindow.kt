@@ -43,7 +43,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.CancellationException
@@ -56,6 +55,7 @@ import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.CompactSlider
@@ -73,10 +73,11 @@ private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
  * Detail ウィンドウを開く。
  * Comic ごとに1枚まで（同一 Comic で既に開いていれば何もしない）。
  * 任意のスレッドから呼び出せる。
+ * owner を渡すとそのウィンドウのオーナー付きダイアログとして開き、owner が背面に固定される。
  */
-fun showDetailWindow(comic: Comic) {
+fun showDetailWindow(comic: Comic, owner: java.awt.Window? = null) {
     ComposeWindowHost.show(key = "detail:${comic.id}") { onCloseRequest ->
-        DetailWindow(comic = comic, onCloseRequest = onCloseRequest)
+        DetailWindow(comic = comic, owner = owner, onCloseRequest = onCloseRequest)
     }
 }
 
@@ -87,7 +88,7 @@ fun showDetailWindow(comic: Comic) {
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
+fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val state = rememberWindowState(
         size = DpSize(Setting.detailWindowWidth.dp, Setting.detailWindowHeight.dp),
         position = if (Setting.detailWindowPosX >= 0.0) {
@@ -251,11 +252,12 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
     val sliderFocus = remember { FocusRequester() }
     val isbnFocus = remember { FocusRequester() }
 
-    Window(
+    ComicRipperWindow(
         onCloseRequest = onCloseRequest,
         state = state,
         title = "$titleText $authorText - $WINDOW_TITLE",
         icon = rememberWindowIconPainter(),
+        owner = owner,
         onPreviewKeyEvent = { event ->
             when {
                 progress.isActive -> true
@@ -319,7 +321,7 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                             VerticalDivider(modifier = Modifier.height(24.dp))
                             CompactButton(onClick = { ocrIsbn() }) { Text("OCR") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = { showCutterWindow(comic) }) { Text("表紙カット") }
+                            CompactButton(onClick = { showCutterWindow(comic, owner = window) }) { Text("表紙カット") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
                             CompactButton(onClick = { createZip() }) { Text("ZIP作成") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
@@ -334,7 +336,7 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                                         if (comic.coverFull.isNullOrEmpty().not() &&
                                             comic.coverAlbum.isNullOrEmpty()
                                         ) {
-                                            showCutterWindow(comic)
+                                            showCutterWindow(comic, owner = window)
                                         }
                                     },
                                     onClick = { sliderFocus.requestFocus() },

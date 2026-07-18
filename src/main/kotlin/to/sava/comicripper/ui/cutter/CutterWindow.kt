@@ -44,7 +44,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +57,7 @@ import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
@@ -81,10 +81,11 @@ private val cutterScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
  * Cutter ウィンドウを開く。
  * Comic ごとに1枚まで（同一 Comic で既に開いていれば何もしない）。
  * 異なる Comic の Cutter は同時に複数開ける。
+ * owner を渡すとそのウィンドウのオーナー付きダイアログとして開き、owner が背面に固定される。
  */
-fun showCutterWindow(comic: Comic) {
+fun showCutterWindow(comic: Comic, owner: java.awt.Window? = null) {
     ComposeWindowHost.show(key = "cutter:${comic.id}") { onCloseRequest ->
-        CutterWindow(comic = comic, onCloseRequest = onCloseRequest)
+        CutterWindow(comic = comic, owner = owner, onCloseRequest = onCloseRequest)
     }
 }
 
@@ -95,7 +96,7 @@ fun showCutterWindow(comic: Comic) {
  * 描画され、切り出し結果と画面表示が一致する。
  */
 @Composable
-fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
+fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val state = rememberWindowState(
         size = DpSize(Setting.cutterWindowWidth.dp, Setting.cutterWindowHeight.dp),
         position = if (Setting.cutterWindowPosX >= 0.0) {
@@ -160,6 +161,8 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
 
     val repos = remember { ComicRepository() }
 
+    // Cutter は直後に閉じるため、開く Detail の owner にはしない
+    // （owner の dispose に owned ウィンドウが連鎖して Detail まで破棄されるため）。
     fun openDetail() {
         onCloseRequest()
         showDetailWindow(comic)
@@ -175,11 +178,12 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
         openDetail()
     }
 
-    Window(
+    ComicRipperWindow(
         onCloseRequest = onCloseRequest,
         state = state,
         title = "${comic.title} ${comic.author} - $WINDOW_TITLE",
         icon = rememberWindowIconPainter(),
+        owner = owner,
         onPreviewKeyEvent = { event ->
             if (event.type != KeyEventType.KeyDown) {
                 false
