@@ -74,6 +74,6 @@ class Main : Application(), CoroutineScope {
     }
 
     companion object {
-        const val VERSION = "0.7.4"
+        const val VERSION = "0.7.5"
     }
 }

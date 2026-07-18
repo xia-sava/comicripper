@@ -37,6 +37,7 @@
     </center>
     <bottom>
         <ToolBar fx:id="bottomBar" minHeight="32.0" prefHeight="32.0">
+            <Button fx:id="firstButton" text="◀◀"/>
             <Button fx:id="leftButton" text="◀"/>
             <fx:include source="parts/separator.fxml"/>
             <StackPane HBox.hgrow="ALWAYS">
@@ -55,6 +56,7 @@
             </StackPane>
             <fx:include source="parts/separator.fxml"/>
             <Button fx:id="rightButton" text="▶"/>
+            <Button fx:id="lastButton" text="▶▶"/>
         </ToolBar>
     </bottom>
 </BorderPane>

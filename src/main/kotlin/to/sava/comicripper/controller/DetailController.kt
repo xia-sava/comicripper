@@ -75,6 +75,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
     private lateinit var bottomBar: ToolBar
 
     @FXML
+    private lateinit var firstButton: Button
+
+    @FXML
     private lateinit var leftButton: Button
 
     @FXML
@@ -91,6 +94,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
 
     @FXML
     private lateinit var rightButton: Button
+
+    @FXML
+    private lateinit var lastButton: Button
 
     private var comic: Comic? = null
 
@@ -267,11 +273,17 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             }
         }
 
+        firstButton.setOnAction {
+            firstImage()
+        }
         leftButton.setOnAction {
             leftImage()
         }
         rightButton.setOnAction {
             rightImage()
+        }
+        lastButton.setOnAction {
+            lastImage()
         }
     }
 
@@ -370,6 +382,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
     }
 
+    private fun firstImage() {
+        slider.value = slider.min
+    }
+
     private fun leftImage() {
         if (slider.value > slider.min) {
             slider.value -= 1
@@ -380,6 +396,10 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         if (slider.value < slider.max) {
             slider.value += 1
         }
+    }
+
+    private fun lastImage() {
+        slider.value = slider.max
     }
 
     companion object {
