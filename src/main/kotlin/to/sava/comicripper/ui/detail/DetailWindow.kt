@@ -13,10 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.onClick
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -59,6 +55,10 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.CompactButton
+import to.sava.comicripper.ui.CompactOutlinedTextField
+import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
@@ -280,7 +280,7 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                 sliderFocus.requestFocus()
             }
         }
-        MaterialTheme {
+        ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Column(
@@ -304,9 +304,9 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                             Text("題名:")
                             ToolbarTextField(titleText, { updateTitle(it) }, 300.dp, onEnter = onCloseRequest)
                             Spacer(modifier = Modifier.weight(1.0f))
-                            Button(onClick = { deleteCurrentImage() }) { Text("画像削除") }
-                            Button(onClick = { releaseCurrentImage() }) { Text("画像リリース") }
-                            Button(onClick = { reloadImages() }) { Text("画像リロード") }
+                            CompactButton(onClick = { deleteCurrentImage() }) { Text("画像削除") }
+                            CompactButton(onClick = { releaseCurrentImage() }) { Text("画像リリース") }
+                            CompactButton(onClick = { reloadImages() }) { Text("画像リロード") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
                             ToolbarTextField(
                                 isbnText,
@@ -315,15 +315,15 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                                 onEnter = { searchIsbn() },
                                 modifier = Modifier.focusRequester(isbnFocus),
                             )
-                            Button(onClick = { searchIsbn() }) { Text("ISBN検索") }
+                            CompactButton(onClick = { searchIsbn() }) { Text("ISBN検索") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            Button(onClick = { ocrIsbn() }) { Text("OCR") }
+                            CompactButton(onClick = { ocrIsbn() }) { Text("OCR") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            Button(onClick = { showCutterWindow(comic) }) { Text("表紙カット") }
+                            CompactButton(onClick = { showCutterWindow(comic) }) { Text("表紙カット") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            Button(onClick = { createZip() }) { Text("ZIP作成") }
+                            CompactButton(onClick = { createZip() }) { Text("ZIP作成") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            Button(onClick = onCloseRequest) { Text("閉じる") }
+                            CompactButton(onClick = onCloseRequest) { Text("閉じる") }
                         }
                         Box(
                             modifier = Modifier
@@ -355,13 +355,13 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Button(onClick = { firstImage() }) { Text("◀◀") }
-                            Button(onClick = { leftImage() }) { Text("◀") }
+                            CompactButton(onClick = { firstImage() }) { Text("◀◀") }
+                            CompactButton(onClick = { leftImage() }) { Text("◀") }
                             Box(
                                 modifier = Modifier.weight(1.0f),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Slider(
+                                CompactSlider(
                                     value = currentPage.toFloat(),
                                     onValueChange = { value ->
                                         currentPage = value.roundToInt()
@@ -389,8 +389,8 @@ fun DetailWindow(comic: Comic, onCloseRequest: () -> Unit) {
                                 )
                                 Text("${currentPage + 1} / $pageCount (${currentFilename ?: ""})")
                             }
-                            Button(onClick = { rightImage() }) { Text("▶") }
-                            Button(onClick = { lastImage() }) { Text("▶▶") }
+                            CompactButton(onClick = { rightImage() }) { Text("▶") }
+                            CompactButton(onClick = { lastImage() }) { Text("▶▶") }
                         }
                     }
                     ProgressOverlay(progress)
@@ -412,7 +412,7 @@ private fun ToolbarTextField(
     onEnter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
+    CompactOutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,

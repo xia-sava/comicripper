@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +25,9 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.CompactButton
+import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.rememberWindowIconPainter
 
 /**
@@ -64,17 +64,17 @@ fun SettingWindow(onCloseRequest: () -> Unit) {
         icon = rememberWindowIconPainter(),
     ) {
         BringToFrontOnFirstShow()
-        MaterialTheme {
+        ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SettingTextField("作業ディレクトリ", Setting.workDirectoryFlow)
                     SettingTextField("格納ディレクトリ", Setting.storeDirectoryFlow)
                     SettingTextField("Tesseract 実行ファイル", Setting.TesseractExeFlow)
                     Spacer(modifier = Modifier.weight(1.0f))
-                    Button(
+                    CompactButton(
                         onClick = onCloseRequest,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     ) {
@@ -89,14 +89,14 @@ fun SettingWindow(onCloseRequest: () -> Unit) {
 @Composable
 private fun SettingTextField(label: String, flow: MutableStateFlow<String>) {
     var text by remember { mutableStateOf(flow.value) }
-    OutlinedTextField(
+    CompactOutlinedTextField(
         value = text,
         onValueChange = { newValue ->
             text = newValue
             flow.value = newValue
         },
+        modifier = Modifier.fillMaxWidth(),
         label = { Text(label) },
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
     )
 }

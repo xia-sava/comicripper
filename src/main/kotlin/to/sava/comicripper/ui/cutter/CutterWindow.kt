@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -60,6 +57,9 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.CompactButton
+import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
@@ -213,7 +213,7 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
         },
     ) {
         BringToFrontOnFirstShow()
-        MaterialTheme {
+        ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -222,13 +222,13 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
                                 .width(imageWidthDp)
                                 .offset(x = imageLeftDp),
                         ) {
-                            Slider(
+                            CompactSlider(
                                 value = leftPercent.toFloat(),
                                 onValueChange = { updateLeft(it.toDouble()) },
                                 valueRange = 0f..100f,
                                 modifier = Modifier.fillMaxWidth(),
                             )
-                            Slider(
+                            CompactSlider(
                                 value = rightPercent.toFloat(),
                                 onValueChange = { updateRight(it.toDouble()) },
                                 valueRange = 0f..100f,
@@ -259,15 +259,15 @@ fun CutterWindow(comic: Comic, onCloseRequest: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Button(onClick = { cut() }, modifier = Modifier.width(150.dp)) {
+                        CompactButton(onClick = { cut() }) {
                             Text("決定")
                         }
-                        Button(onClick = onCloseRequest, modifier = Modifier.width(150.dp)) {
+                        CompactButton(onClick = onCloseRequest) {
                             Text("キャンセル")
                         }
                         if (comic.coverAlbum == null) {
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            Button(onClick = { openDetail() }, modifier = Modifier.width(150.dp)) {
+                            CompactButton(onClick = { openDetail() }) {
                                 Text("詳細画面へ")
                             }
                         }
