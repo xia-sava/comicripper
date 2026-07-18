@@ -6,6 +6,8 @@ plugins {
     application
     id("org.openjfx.javafxplugin") version "0.1.0"
     id("com.gradleup.shadow") version "8.3.6"
+    id("org.jetbrains.compose") version "1.8.2"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
     jacoco
 }
 
@@ -14,6 +16,7 @@ version = "0.7.5"
 
 repositories {
     mavenCentral()
+    google()
 }
 
 dependencies {
@@ -23,7 +26,9 @@ dependencies {
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("org.jsoup:jsoup:1.20.1")
     implementation("io.insert-koin:koin-core:4.0.0")
-    
+    implementation(compose.desktop.currentOs)
+    implementation(compose.material3)
+
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
     testImplementation("io.insert-koin:koin-test:4.0.0")
