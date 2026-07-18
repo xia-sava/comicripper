@@ -25,6 +25,8 @@ import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.repository.ComicStorage
+import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.setting.SettingWindow
 import java.io.File
 import java.net.URL
 import java.util.*
@@ -177,7 +179,9 @@ class MainController : Initializable, CoroutineScope {
         }
 
         setting.setOnAction {
-            stage?.let { SettingController.launchStage(it) }
+            ComposeWindowHost.show(key = "setting") { onCloseRequest ->
+                SettingWindow(onCloseRequest = onCloseRequest)
+            }
         }
 
         comicList.heightProperty().addListener { _, _, _ ->

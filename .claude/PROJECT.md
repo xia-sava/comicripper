@@ -35,8 +35,11 @@ src/main/kotlin/to/sava/comicripper/
 │   ├── MainController.kt           # メインウィンドウ（一覧・D&Dマージ・一括操作）
 │   ├── ComicController.kt          # コミックカード表示
 │   ├── DetailController.kt         # 画像ビューア・メタデータ編集
-│   ├── CutterController.kt         # カバー切り出しツール
-│   └── SettingController.kt        # 設定画面
+│   └── CutterController.kt         # カバー切り出しツール
+├── ui/                               # Compose Desktop プレゼンテーション層（JavaFXから段階移行中）
+│   ├── ComposeWindowHost.kt         # JVM常駐の Compose application スコープを保持し、JavaFX側から Compose ウィンドウの開閉を仲介するホスト
+│   ├── ComposeExt.kt                # Compose 用拡張関数（アイコン Painter 生成など）
+│   └── setting/SettingWindow.kt     # 設定画面（旧 SettingController + setting.fxml の置き換え）
 ├── model/
 │   ├── Comic.kt                    # typealias → domain.model.Comic
 │   └── Setting.kt                  # アプリ設定シングルトン（Kotlin Flow）
@@ -57,7 +60,7 @@ src/test/kotlin/to/sava/comicripper/
 ```
 
 ### リソース
-- FXML: main, comic, detail, cutter, setting（+ parts/separator）
+- FXML: main, comic, detail, cutter（+ parts/separator）
 - CSS: common.css
 - アイコン: icon.png, icon.ico
 
@@ -84,7 +87,8 @@ src/test/kotlin/to/sava/comicripper/
 
 ## 技術スタック
 - Kotlin 2.1.21, JavaFX 21
-- Koin 4.0.0（DI）, kotlinx-coroutines-javafx 1.10.2
+- Compose Desktop 1.8.2 (Material3)
+- Koin 4.0.0（DI）, kotlinx-coroutines-swing 1.10.2
 - JNotify 0.94（ファイル監視）, Jsoup 1.20.1（Webスクレイピング）, Gson 2.13.1, javax.json 1.1.4（一部APIのJSONパース）
 - Gradle 8.12, Shadow JAR, JaCoCo
 - テスト: JUnit5 + Koin Test + kotlinx-coroutines-test
@@ -106,5 +110,5 @@ src/test/kotlin/to/sava/comicripper/
 2. javax.json を kotlinx.serialization 等へ置き換え検討
 
 ### 長期
-1. Compose Desktop 移行（MVVM + Material3、コントローラ層の JavaFX 依存を置き換える本丸）
+1. Compose Desktop 移行（MVVM + Material3、コントローラ層の JavaFX 依存を置き換える本丸）。ComposeWindowHost 基盤を整備し、設定画面から画面単位での置き換えに着手済み
 2. 画像処理の並列化・メモリ最適化
