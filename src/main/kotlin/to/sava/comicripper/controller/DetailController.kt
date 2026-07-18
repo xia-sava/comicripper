@@ -7,6 +7,8 @@ import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.image.ImageView
 import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyCodeCombination
+import javafx.scene.input.KeyCombination
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
@@ -146,9 +148,7 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
 
         deleteImage.setOnAction {
-            comic?.files?.getOrNull(slider.value.toInt())?.let { filename ->
-                File("${Setting.workDirectory}/$filename").delete()
-            }
+            deleteCurrentImage()
         }
 
         reloadImages.setOnAction {
@@ -310,6 +310,9 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             setOnShown {
                 slider.requestFocus()
             }
+            scene.accelerators[KeyCodeCombination(KeyCode.D, KeyCombination.CONTROL_DOWN)] = Runnable {
+                deleteCurrentImage()
+            }
         }
     }
 
@@ -374,6 +377,12 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
         }
     }
 
+    private fun deleteCurrentImage() {
+        comic?.files?.getOrNull(slider.value.toInt())?.let { filename ->
+            File("${Setting.workDirectory}/$filename").delete()
+        }
+    }
+
     private fun launchCutter() {
         comic?.let { comic ->
             stage?.let { stage ->
@@ -407,8 +416,8 @@ class DetailController : BorderPane(), Initializable, CoroutineScope {
             val (detailPane, detailController) = loadFxml<BorderPane, DetailController>("detail.fxml")
             Stage().apply {
                 initOwner(owner)
-                detailController.initStage(this)
                 scene = Scene(detailPane)
+                detailController.initStage(this)
                 show()
             }
             detailController.setComic(comic)
