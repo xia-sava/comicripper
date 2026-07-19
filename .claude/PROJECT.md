@@ -61,9 +61,17 @@ src/main/kotlin/to/sava/comicripper/
 ```
 src/test/kotlin/to/sava/comicripper/
 ├── application/di/TestModule.kt              # テスト用Koin DI設定
-└── infrastructure/service/
-    ├── FileWatcherTest.kt                    # FileWatcher のテスト（JUnit5 + Koin）
-    └── TestFileWatcher.kt                    # FileWatcher のテスト用モック実装
+├── domain/model/ComicTest.kt                 # Comic のテスト（changeFlow・merge・ファイル管理）
+├── model/SettingTest.kt                      # Setting のsave/load・Flow連動のテスト
+└── infrastructure/
+    ├── repository/
+    │   ├── ComicRepositoryTest.kt             # ComicRepository のテスト（振り分け・正規化・保存復元・
+    │   │                                        merge/release・reScanFiles・cutCover・zipComic・一括命名等）
+    │   ├── ComicStorageTest.kt                 # ComicStorage のテスト
+    │   └── ComicTestHelper.kt                  # テスト用ダミーJPEG生成・ディレクトリ設定ヘルパ
+    └── service/
+        ├── FileWatcherTest.kt                 # FileWatcher のテスト（JUnit5 + Koin）
+        └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
 
 ### リソース
@@ -94,9 +102,12 @@ src/test/kotlin/to/sava/comicripper/
 ## 技術スタック
 - Kotlin 2.1.21
 - Compose Desktop 1.8.2 (Material3)。JavaFXは完全に除去済み
-- Koin 4.0.0（DI）, kotlinx-coroutines-swing 1.10.2（Dispatchers.MainをAWT EDTに解決するために必須）
+- Koin 4.0.0（DI）, kotlinx-coroutines-swing 1.10.2（Dispatchers.MainをAWT EDTに解決するために必須）。
+  `ComicRepository`はUI層も含め全箇所`KoinJavaComponent.get()`経由で取得し単一インスタンスを共有する
 - JNotify 0.94（ファイル監視）, Jsoup 1.20.1（Webスクレイピング）, kotlinx-serialization-json 1.7.3（Google Books APIのJSON解析）
-- Gradle 8.12, Shadow JAR, JaCoCo
+- Gradle 8.12, JaCoCo
+- 配布: Compose Desktopの`nativeDistributions`（jpackageベース）でWindows向けexe/msiを生成。
+  JDK同梱・起動オプション埋め込み済みで、単一ファイル化のためのShadow JARは廃止した
 - テスト: JUnit5 + Koin Test + kotlinx-coroutines-test
 
 ## テスト戦略（方針）
@@ -106,16 +117,22 @@ src/test/kotlin/to/sava/comicripper/
 
 ## 今後の展望
 
+以下は意図的に別ブランチ/別セッションで進める方針の項目（このブランチのスコープには含めない）。
+
 ### 短期
-1. 重要なビジネスロジックのテスト追加（ファイル振り分け・ZIP作成）
-2. ComicRepository のテスト化（インメモリ実装・ファイルI/O抽象化）
-3. Setting クラスの DI 対応
+1. Setting クラスの DI 対応（Setting/ComicStorageをKoin管理下に置くか）。ドメイン層含む広範囲の変更に
+   なるため、着手する際は専用の設計フェーズを設ける
 
 ### 中期
-1. 外部API処理の改善・統合テスト
+1. 外部API処理の改善・統合テスト（`searchISBN`/`ocrISBN`のテスト化。外部サイトへの実通信が絡むため
+   HTTPモック基盤の整備が前提）
+2. GitHub ActionsでのMSI自動ビルド＋アプリからの自動更新。バージョニング・署名（未署名だとSmartScreen
+   警告が出る）等の設計が別途必要
 
 ### 長期
 1. 画像処理の並列化・メモリ最適化
+2. GraalVM Native Image化の実現性検証（Compose DesktopのSkia binding・JNotifyのJNI依存がネックになりうる
+   ため、小さなスパイクでの検証が前提。exe/msi化とは無関係の別軸の話）
 
 ## 完了した移行
 
@@ -123,3 +140,12 @@ src/test/kotlin/to/sava/comicripper/
   メイン画面の順に画面単位で置き換え、最後にJavaFXプラグイン・関連コードを除去した。詳細な移行過程・
   設計判断は`.claude/COMPOSE_MIGRATION.local.md`（gitignore対象）を参照。
 - **javax.json → kotlinx.serialization 置き換え**: 完了。ついでに未使用だったGson依存も除去した。
+- **Koin利用箇所の統一**: 完了。`ComicRepository`を`single`登録していたのにUI層が各々
+  `remember { ComicRepository() }`で別インスタンスを生成していた不整合を修正し、全箇所Koin経由の
+  取得に統一した。
+- **ComicRepositoryのテスト拡充**: 完了。`removeFiles`/`removeFile`・`getNameList`/`setNameList`・
+  `ocrISBN`の早期returnにテストを追加（`searchISBN`は実通信絡みのため対象外）。
+- **Compose Desktopネイティブ配布の整備**: 完了。`nativeDistributions`でWindows向けexe/msi
+  （jpackageベース、JDK同梱）を生成できるようにし、手動起動コマンドで指定していたJVMオプションは
+  パッケージ済みランチャーへ埋め込んだ。Shadow JARは役割が無くなったため除去した。MSIの
+  `upgradeUuid`も固定発行済み。
