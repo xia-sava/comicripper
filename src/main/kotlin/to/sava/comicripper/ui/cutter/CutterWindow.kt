@@ -51,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -159,7 +160,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
     }
 
-    val repos = remember { ComicRepository() }
+    val repos: ComicRepository = remember { get(ComicRepository::class.java) }
 
     // Cutter は直後に閉じるため、開く Detail の owner にはしない
     // （owner の dispose に owned ウィンドウが連鎖して Detail まで破棄されるため）。

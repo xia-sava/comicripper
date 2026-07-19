@@ -59,6 +59,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -126,7 +127,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
-    val repos = remember { ComicRepository() }
+    val repos: ComicRepository = remember { get(ComicRepository::class.java) }
     val progress = rememberProgressOverlayState()
     val nameAll = rememberTextAreaOverlayState()
     val comics by ComicStorage.storage.collectAsState()
