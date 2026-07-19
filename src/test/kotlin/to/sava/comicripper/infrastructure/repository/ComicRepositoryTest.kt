@@ -298,6 +298,103 @@ class ComicRepositoryTest : KoinComponent {
     }
 
     @Nested
+    inner class `ファイル削除` {
+
+        @Test
+        fun `removeFilesで対象ファイルが全Comicから取り除かれる`() {
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(page)
+            repository.addFiles(listOf(coverF, page))
+            val comic = ComicStorage.all.first()
+
+            repository.removeFiles(listOf(page))
+
+            assertFalse(comic.files.contains(page))
+            assertTrue(comic.files.contains(coverF))
+        }
+
+        @Test
+        fun `removeFilesで空になったComicはComicStorageから除去される`() {
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(page)
+            repository.addFiles(listOf(page))
+            assertEquals(1, ComicStorage.all.size)
+
+            repository.removeFiles(listOf(page))
+
+            assertEquals(0, ComicStorage.all.size)
+        }
+
+        @Test
+        fun `removeFilesは対象外のComicに影響しない`() {
+            val coverF1 = "coverF_000.jpg"
+            val coverF2 = "coverF_001.jpg"
+            ComicTestHelper.createDummyJpeg(coverF1)
+            ComicTestHelper.createDummyJpeg(coverF2)
+            repository.addFiles(listOf(coverF1))
+            repository.addFiles(listOf(coverF2))
+
+            repository.removeFiles(listOf(coverF1))
+
+            assertEquals(1, ComicStorage.all.size)
+            assertTrue(ComicStorage.all.first().files.contains(coverF2))
+        }
+    }
+
+    @Nested
+    inner class `一括命名` {
+
+        @Test
+        fun `getNameListが全Comicのid_著者_題名を返す`() {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF)
+            repository.addFiles(listOf(coverF))
+            val comic = ComicStorage.all.first()
+            comic.author = "著者A"
+            comic.title = "タイトルA"
+
+            val nameList = repository.getNameList()
+
+            assertEquals(listOf(Triple(comic.id, "著者A", "タイトルA")), nameList)
+        }
+
+        @Test
+        fun `setNameListで対象Comicの著者title名が更新される`() {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF)
+            repository.addFiles(listOf(coverF))
+            val comic = ComicStorage.all.first()
+
+            repository.setNameList(listOf(Triple(comic.id, "新著者", "新タイトル")))
+
+            assertEquals("新著者", comic.author)
+            assertEquals("新タイトル", comic.title)
+        }
+
+        @Test
+        fun `setNameListで存在しないidは無視される`() {
+            assertDoesNotThrow {
+                repository.setNameList(listOf(Triple("nonexistent-id", "著者", "タイトル")))
+            }
+        }
+    }
+
+    @Nested
+    inner class `ocrISBN` {
+
+        @Test
+        fun `coverFullが無いComicはnullを返す`() = runTest {
+            val comic = Comic("page_000.jpg")
+
+            val result = repository.ocrISBN(comic)
+
+            assertNull(result)
+        }
+    }
+
+    @Nested
     inner class `reScanFiles` {
 
         @Test
