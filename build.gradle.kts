@@ -57,6 +57,8 @@ compose.desktop {
                 iconFile.set(project.file("src/main/resources/to/sava/comicripper/icon.ico"))
                 shortcut = true
                 menu = true
+                // MSIの上書きアップグレードを可能にするための固定UUID。バージョンを跨いで変更しないこと。
+                upgradeUuid = "5A22A65E-EAC9-4228-B0E7-391B0A0D4C6A"
             }
         }
     }
