@@ -55,7 +55,9 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
@@ -66,8 +68,12 @@ import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.ProgressOverlay
+import to.sava.comicripper.ui.TextAreaOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.detail.showDetailWindow
+import to.sava.comicripper.ui.rememberProgressOverlayState
+import to.sava.comicripper.ui.rememberTextAreaOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.setting.SettingWindow
 import java.awt.Cursor
@@ -119,6 +125,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     }
 
     val repos = remember { ComicRepository() }
+    val progress = rememberProgressOverlayState()
+    val nameAll = rememberTextAreaOverlayState()
     val comics by ComicStorage.storage.collectAsState()
 
     var selectedId by remember { mutableStateOf(ComicStorage.targetId) }
@@ -206,6 +214,57 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    fun ocrAll() {
+        progress.launchTask("OCRしています", "表紙画像から ISBN をまとめて読み取って著者名/作品名をサーチしてます") {
+            // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護する。
+            supervisorScope {
+                ComicStorage.all
+                    .filter { it.coverFull.isNullOrEmpty().not() }
+                    .map { comic ->
+                        launch {
+                            runCatching {
+                                repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
+                                    comic.author = ocrAuthor
+                                    comic.title = ocrTitle
+                                }
+                            }.onFailure { println("ocrAll failed: ${comic.id}: ${it.javaClass.simpleName}: ${it.message}") }
+                        }
+                    }
+                    .joinAll()
+            }
+        }
+    }
+
+    fun zipAll() {
+        progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
+            supervisorScope {
+                ComicStorage.all
+                    .filter { it.files.size > 3 }
+                    .map { comic ->
+                        launch {
+                            runCatching { repos.zipComic(comic) }
+                                .onFailure { println("zipAll failed: ${comic.id}: ${it.javaClass.simpleName}: ${it.message}") }
+                        }
+                    }
+                    .joinAll()
+            }
+        }
+    }
+
+    fun showNameAll() {
+        val text = repos.getNameList().joinToString("\n") { (id, author, title) -> "$id\t$author\t$title" }
+        nameAll.show("一括命名", "1行を \"id\\t著者名\\t題名\" として編集してください", text) { result ->
+            val nameList = result.lineSequence()
+                .filter { it.isNotBlank() }
+                .mapNotNull { line ->
+                    val parts = line.split("\t", limit = 3)
+                    if (parts.size == 3) Triple(parts[0], parts[1], parts[2]) else null
+                }
+                .toList()
+            repos.setNameList(nameList)
+        }
+    }
+
     val dragState = remember { ComicDragState() }
 
     fun onMerge(srcId: String, dstId: String) {
@@ -266,10 +325,14 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         title = windowTitle,
         icon = rememberWindowIconPainter(),
         onPreviewKeyEvent = { event ->
-            if (event.type != KeyEventType.KeyDown) {
-                false
-            } else {
-                when (event.key) {
+            when {
+                // 進捗中は全キー遮断。
+                progress.isActive -> true
+                // 一括命名のテキストエリアは複数行入力で矢印/Enterによるキャレット移動が必要なため、
+                // ウィンドウレベルでキーを奪わない。
+                nameAll.isActive -> false
+                event.type != KeyEventType.KeyDown -> false
+                else -> when (event.key) {
                     Key.DirectionRight, Key.DirectionDown -> {
                         moveSelection(1)
                         true
@@ -291,75 +354,82 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         LaunchedEffect(window) { ownerWindow = window }
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    TopToolbar(
-                        author = headerAuthor,
-                        title = headerTitle,
-                        onReScan = { reScan() },
-                        onPagesToComic = { pagesToComic() },
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(1.0f)
-                            .fillMaxWidth()
-                            .background(ListBackground)
-                            .pointerHoverIcon(
-                                icon = if (dragState.draggingId != null) MoveCursorIcon else PointerIcon.Default,
-                                overrideDescendants = dragState.draggingId != null,
-                            )
-                            .onSizeChanged { viewportHeightPx = it.height }
-                            .onPointerEvent(PointerEventType.Scroll, pass = PointerEventPass.Initial) { event ->
-                                // ドラッグ中はホイールを選択移動に使わず、スクロールへ委ねる。
-                                if (dragState.draggingId != null) {
-                                    return@onPointerEvent
-                                }
-                                // verticalScroll より先に消費して、スクロールではなく選択移動に変換する。
-                                event.changes.forEach { it.consume() }
-                                runCatching {
-                                    val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                                    when {
-                                        deltaY > 0f -> moveSelection(1)
-                                        deltaY < 0f -> moveSelection(-1)
-                                    }
-                                }.onFailure { println("wheel select failed: ${it.message}") }
-                            },
-                    ) {
-                        FlowRow(
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        TopToolbar(
+                            author = headerAuthor,
+                            title = headerTitle,
+                            onReScan = { reScan() },
+                            onPagesToComic = { pagesToComic() },
+                            onOcrAll = { ocrAll() },
+                            onZipAll = { zipAll() },
+                            onNameAll = { showNameAll() },
+                        )
+                        Box(
                             modifier = Modifier
+                                .weight(1.0f)
                                 .fillMaxWidth()
-                                .verticalScroll(scrollState)
-                                .padding(2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                                .background(ListBackground)
+                                .pointerHoverIcon(
+                                    icon = if (dragState.draggingId != null) MoveCursorIcon else PointerIcon.Default,
+                                    overrideDescendants = dragState.draggingId != null,
+                                )
+                                .onSizeChanged { viewportHeightPx = it.height }
+                                .onPointerEvent(PointerEventType.Scroll, pass = PointerEventPass.Initial) { event ->
+                                    // ドラッグ中はホイールを選択移動に使わず、スクロールへ委ねる。
+                                    if (dragState.draggingId != null) {
+                                        return@onPointerEvent
+                                    }
+                                    // verticalScroll より先に消費して、スクロールではなく選択移動に変換する。
+                                    event.changes.forEach { it.consume() }
+                                    runCatching {
+                                        val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                        when {
+                                            deltaY > 0f -> moveSelection(1)
+                                            deltaY < 0f -> moveSelection(-1)
+                                        }
+                                    }.onFailure { println("wheel select failed: ${it.message}") }
+                                },
                         ) {
-                            comics.forEach { comic ->
-                                key(comic.id) {
-                                    ComicCard(
-                                        comic = comic,
-                                        selected = comic.id == selectedId,
-                                        isDragged = comic.id == dragState.draggingId,
-                                        isDropTarget = comic.id == dragState.dropTargetId,
-                                        dragState = dragState,
-                                        onSelect = { selectComic(comic.id) },
-                                        onOpen = { openComic(comic, window) },
-                                        onBoundsInParent = { cardBounds[comic.id] = it },
-                                        onMerge = { src, dst -> onMerge(src, dst) },
-                                    )
+                            FlowRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .verticalScroll(scrollState)
+                                    .padding(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                comics.forEach { comic ->
+                                    key(comic.id) {
+                                        ComicCard(
+                                            comic = comic,
+                                            selected = comic.id == selectedId,
+                                            isDragged = comic.id == dragState.draggingId,
+                                            isDropTarget = comic.id == dragState.dropTargetId,
+                                            dragState = dragState,
+                                            onSelect = { selectComic(comic.id) },
+                                            onOpen = { openComic(comic, window) },
+                                            onBoundsInParent = { cardBounds[comic.id] = it },
+                                            onMerge = { src, dst -> onMerge(src, dst) },
+                                        )
+                                    }
                                 }
                             }
+                            VerticalScrollbar(
+                                adapter = rememberScrollbarAdapter(scrollState),
+                                modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            )
                         }
-                        VerticalScrollbar(
-                            adapter = rememberScrollbarAdapter(scrollState),
-                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                        BottomBar(
+                            onOpenSetting = {
+                                ComposeWindowHost.show(key = "setting") { onClose ->
+                                    SettingWindow(onCloseRequest = onClose, owner = window)
+                                }
+                            },
                         )
                     }
-                    BottomBar(
-                        onOpenSetting = {
-                            ComposeWindowHost.show(key = "setting") { onClose ->
-                                SettingWindow(onCloseRequest = onClose, owner = window)
-                            }
-                        },
-                    )
+                    ProgressOverlay(progress)
+                    TextAreaOverlay(nameAll)
                 }
             }
         }
@@ -368,7 +438,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
 /**
  * 上部ツールバー。左に選択中の著者名・題名、右に操作ボタンを並べる。
- * OCR・ZIP作成・一括命名・epub展開は配置のみ（後続の作業単位で配線する）。
+ * epub展開は配置のみ（後続の作業単位で配線する）。
  */
 @Composable
 private fun TopToolbar(
@@ -376,6 +446,9 @@ private fun TopToolbar(
     title: String,
     onReScan: () -> Unit,
     onPagesToComic: () -> Unit,
+    onOcrAll: () -> Unit,
+    onZipAll: () -> Unit,
+    onNameAll: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -386,11 +459,11 @@ private fun TopToolbar(
         VerticalDivider(modifier = Modifier.height(16.dp))
         Text(title, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.weight(1.0f))
-        CompactButton(onClick = {}, enabled = false) { Text("OCR") }
-        CompactButton(onClick = {}, enabled = false) { Text("ZIP作成＆全削除") }
+        CompactButton(onClick = onOcrAll) { Text("OCR") }
+        CompactButton(onClick = onZipAll) { Text("ZIP作成＆全削除") }
         CompactButton(onClick = onPagesToComic) { Text("全pageを集約") }
         CompactButton(onClick = onReScan) { Text("フォルダ再スキャン") }
-        CompactButton(onClick = {}, enabled = false) { Text("一括命名") }
+        CompactButton(onClick = onNameAll) { Text("一括命名") }
         CompactButton(onClick = {}, enabled = false) { Text("epub展開") }
     }
 }

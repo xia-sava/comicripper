@@ -436,7 +436,6 @@ class ComicRepository {
         }
     }
 
-    @Suppress("unused")
     fun setNameList(nameList: List<Triple<String, String, String>>) {
         nameList.forEach { (id, author, title) ->
             ComicStorage[id]?.let {
