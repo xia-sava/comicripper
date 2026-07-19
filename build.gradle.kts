@@ -4,7 +4,6 @@ plugins {
     java
     kotlin("jvm") version "2.1.21"
     application
-    id("org.openjfx.javafxplugin") version "0.1.0"
     id("com.gradleup.shadow") version "8.3.6"
     id("org.jetbrains.compose") version "1.8.2"
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
@@ -61,9 +60,4 @@ tasks {
             xml.required.set(true)
         }
     }
-}
-
-javafx {
-    version = "21"
-    modules = listOf("javafx.controls", "javafx.fxml", "javafx.swing")
 }
