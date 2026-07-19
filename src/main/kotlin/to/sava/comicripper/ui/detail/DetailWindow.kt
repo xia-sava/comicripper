@@ -151,7 +151,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val pageCount = files.size
     val currentFilename = files.getOrNull(currentPage)
 
-    // 直前に表示した1枚の (ファイル名, ImageBitmap) を保持する（JavaFX 版 lastFxImage 相当）。
+    // 直前に表示した1枚の (ファイル名, ImageBitmap) を保持する。
     // フルサイズ BufferedImage 自体は Comic.imageCache が保持するので、ここは変換結果のみ。
     var loadedImage by remember { mutableStateOf<Pair<String, ImageBitmap>?>(null) }
     LaunchedEffect(currentFilename) {

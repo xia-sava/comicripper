@@ -14,7 +14,7 @@ import javax.imageio.ImageIO
 import javax.swing.SwingUtilities
 
 /**
- * アイコン PNG の Painter を作成（Stage.setWindowIcon() の Compose 版）
+ * アイコン PNG の Painter を作成する。
  */
 @Composable
 fun rememberWindowIconPainter(): Painter? = remember {
@@ -27,7 +27,7 @@ fun rememberWindowIconPainter(): Painter? = remember {
 /**
  * ウィンドウの初回表示時に最前面化してフォーカスを要求する。
  * Compose Desktop の Window は表示時に isVisible = true を設定するだけで前面化を行なわず、
- * 別ツールキット（JavaFX）のウィンドウがフォアグラウンドを持っていると
+ * 他のウィンドウ（オーナーウィンドウ等）がフォアグラウンドを持っていると
  * OS が新規ウィンドウのアクティベーションを拒否して背面に出ることがあるため、
  * Window の content 先頭で呼んで明示的に前面化する。
  */
