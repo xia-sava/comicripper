@@ -16,6 +16,21 @@
 この辺の作業をなるべく省力化したくて作ったもんである．
 
 
+### 動かし方 ###
+
+開発中に動かすだけなら
+
+    ./gradlew run
+
+配布用のexe/msiが欲しければ
+
+    ./gradlew packageExe
+    ./gradlew packageMsi
+
+で `build/compose/binaries/main/{exe,msi}/` に出てくる。JDK同梱なので、
+出来上がったexe/msiがある環境には別途JavaやJavaFXを入れる必要は無い。
+
+
 ### アプリ動作環境 ###
 
 基本的に Java なので run anywhere かもしれないけど，
