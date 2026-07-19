@@ -1,22 +1,28 @@
 package to.sava.comicripper.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.window.LocalWindowExceptionHandlerFactory
+import androidx.compose.ui.window.WindowExceptionHandler
+import androidx.compose.ui.window.WindowExceptionHandlerFactory
 import androidx.compose.ui.window.application
 import kotlinx.coroutines.awaitCancellation
+import java.awt.event.WindowEvent
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 
 /**
  * JVM 中に1つだけ常駐する Compose Desktop の application スコープを保持し、
- * JavaFX 側から Compose ウィンドウの開閉を行なうためのホスト。
+ * key を指定して Compose ウィンドウの開閉を行なうためのホスト。
  *
  * application {} スコープは終了させず（exitApplication() を呼ばず）、
  * 個々のウィンドウの表示状態のみを windows リストで管理する。
- * プロセス終了は Main.stop() の exitProcess() が担う。
+ * プロセス終了は Main.kt の exitProcess() が担う。
  */
 object ComposeWindowHost {
     private class WindowEntry(
@@ -29,9 +35,14 @@ object ComposeWindowHost {
 
     /**
      * ホストスレッドを起動する。2回目以降の呼び出しは no-op。
-     * Main.start() から先行起動しておくと，初回の show() が skiko 初期化待ちにならない。
+     * main() から先行起動しておくと，初回の show() が skiko 初期化待ちにならない。
+     *
+     * @param onTerminated application {} ブロックの終了（正常・異常問わず）で1度だけ呼ばれる。
+     *   ルートウィンドウを Compose に載せた構成では，ここでプロセスの生存管理を終了させる
+     *   （このフックが無いと未捕捉例外で application {} が死んだ際に main が待ち続けてゾンビ化する）。
      */
-    fun start() {
+    @OptIn(ExperimentalComposeUiApi::class)
+    fun start(onTerminated: (() -> Unit)? = null) {
         if (!started.compareAndSet(false, true)) {
             return
         }
@@ -44,16 +55,35 @@ object ComposeWindowHost {
                     LaunchedEffect(Unit) {
                         awaitCancellation()
                     }
-                    for (entry in windows) {
-                        key(entry) {
-                            entry.content { close(entry) }
+                    // ウィンドウ単位の未捕捉例外を，ログ出力＋当該ウィンドウのクローズに留める。
+                    // デフォルトハンドラは再スローするため daemon スレッドごと死に，
+                    // 1つのウィンドウの例外がホスト全体（全 Compose 画面）を道連れにしてしまう。
+                    CompositionLocalProvider(
+                        LocalWindowExceptionHandlerFactory provides windowExceptionHandlerFactory,
+                    ) {
+                        for (entry in windows) {
+                            key(entry) {
+                                entry.content { close(entry) }
+                            }
                         }
                     }
                 }
             } catch (e: Throwable) {
                 System.err.println("ComposeWindowHost failed: ${e.javaClass.name}: ${e.message}")
                 e.printStackTrace()
+            } finally {
+                onTerminated?.invoke()
             }
+        }
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    private val windowExceptionHandlerFactory = WindowExceptionHandlerFactory { window ->
+        WindowExceptionHandler { throwable ->
+            System.err.println("window exception: ${throwable.javaClass.name}: ${throwable.message}")
+            throwable.printStackTrace()
+            window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING))
+            // 再スローしない: ホスト全体を巻き込まず，例外の発生したウィンドウのみ閉じる。
         }
     }
 

@@ -19,13 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
+import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.rememberWindowIconPainter
@@ -34,7 +34,7 @@ import to.sava.comicripper.ui.rememberWindowIconPainter
  * 設定画面。ウィンドウ位置・サイズと各設定値を Setting の Flow と同期する。
  */
 @Composable
-fun SettingWindow(onCloseRequest: () -> Unit) {
+fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
     val state = rememberWindowState(
         size = DpSize(Setting.settingWindowWidth.dp, Setting.settingWindowHeight.dp),
         position = if (Setting.settingWindowPosX >= 0.0) {
@@ -57,11 +57,12 @@ fun SettingWindow(onCloseRequest: () -> Unit) {
             }
         }
     }
-    Window(
+    ComicRipperWindow(
         onCloseRequest = onCloseRequest,
         state = state,
         title = "設定",
         icon = rememberWindowIconPainter(),
+        owner = owner,
     ) {
         BringToFrontOnFirstShow()
         ComicRipperTheme {

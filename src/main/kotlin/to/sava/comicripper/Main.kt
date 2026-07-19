@@ -1,86 +1,73 @@
 package to.sava.comicripper
 
-import javafx.application.Application
-import javafx.scene.Scene
-import javafx.scene.layout.BorderPane
-import javafx.stage.Stage
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.application.di.applicationModule
-import to.sava.comicripper.controller.MainController
 import to.sava.comicripper.domain.service.FileWatcher
-import to.sava.comicripper.ext.FxDispatcher
-import to.sava.comicripper.ext.loadFxml
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.main.MainWindow
+import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
-class Main : Application(), CoroutineScope {
-    private val job = Job()
-    override val coroutineContext get() = FxDispatcher + job
+const val VERSION = "0.7.5"
 
-    private lateinit var repos: ComicRepository
-    private lateinit var fileWatcher: FileWatcher
+private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    override fun start(primaryStage: Stage?) {
-        checkNotNull(primaryStage)
+/** プロセスの生存を握るラッチ。メインウィンドウのクローズかホスト終了で解放される。 */
+private val shutdownRequested = CountDownLatch(1)
 
-        // Koin DIコンテナを初期化
-        startKoin {
-            modules(applicationModule)
-        }
+fun main() {
+    startKoin { modules(applicationModule) }
+    val repos: ComicRepository = get(ComicRepository::class.java)
+    val fileWatcher: FileWatcher = get(FileWatcher::class.java)
+    Setting.load()
 
-        // Koinから依存関係を取得
-        repos = get(ComicRepository::class.java)
-        fileWatcher = get(FileWatcher::class.java)
+    // application {} の終了（正常・異常問わず）を生存管理へ直結させ，
+    // Compose 側の未捕捉例外時にプロセスがゾンビ化しないようにする。
+    ComposeWindowHost.start(onTerminated = { shutdownRequested.countDown() })
+    ComposeWindowHost.show(key = "main") { onCloseRequest ->
+        MainWindow(onCloseRequest = {
+            onCloseRequest()
+            shutdownRequested.countDown()
+        })
+    }
 
-        Setting.load()
+    repos.loadStructure()
+    repos.reScanFiles()
 
-        val (mainPane, mainController) = loadFxml<BorderPane, MainController>("main.fxml")
-        primaryStage.apply {
-            mainController.initStage(this)
-            scene = Scene(mainPane)
-            show()
-        }
-
-        repos.loadStructure()
-        repos.reScanFiles()
-
-        launch(Dispatchers.IO) {
-            while (true) {
-                delay(30_000)
+    val autosaveJob = appScope.launch(Dispatchers.IO) {
+        while (true) {
+            delay(30_000)
+            runCatching {
                 Setting.save()
                 repos.saveStructure()
-            }
+            }.onFailure { println("autosave failed: ${it.javaClass.simpleName}: ${it.message}") }
         }
-
-        fileWatcher.start(
-            Setting.workDirectory,
-            onFilesAdded = { filenames ->
-                repos.addFiles(filenames)
-            },
-            onFilesDeleted = { filenames ->
-                repos.removeFiles(filenames)
-            }
-        )
-
-        ComposeWindowHost.start()
     }
 
-    override fun stop() {
-        super.stop()
-        fileWatcher.stop()
-        job.cancel()
-        Setting.save()
-        repos.saveStructure()
-        stopKoin()
-        exitProcess(0)
-    }
+    fileWatcher.start(
+        Setting.workDirectory,
+        onFilesAdded = { filenames -> repos.addFiles(filenames) },
+        onFilesDeleted = { filenames -> repos.removeFiles(filenames) },
+    )
 
-    companion object {
-        const val VERSION = "0.7.5"
-    }
+    shutdownRequested.await()
+
+    fileWatcher.stop()
+    // 保存中のキャンセルによる二重書き込みを避けるため join してから最終保存する。
+    runBlocking { autosaveJob.cancelAndJoin() }
+    Setting.save()
+    repos.saveStructure()
+    stopKoin()
+    exitProcess(0)
 }

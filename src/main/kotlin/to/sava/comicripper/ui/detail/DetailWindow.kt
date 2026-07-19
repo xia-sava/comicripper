@@ -49,7 +49,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import to.sava.comicripper.Main
+import to.sava.comicripper.VERSION
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -67,7 +67,7 @@ import to.sava.comicripper.ui.rememberWindowIconPainter
 import java.io.File
 import kotlin.math.roundToInt
 
-private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
+private const val WINDOW_TITLE = "comicripper $VERSION"
 
 /**
  * Detail ウィンドウを開く。

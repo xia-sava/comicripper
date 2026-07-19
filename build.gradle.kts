@@ -42,7 +42,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("to.sava.comicripper.Main")
+    mainClass.set("to.sava.comicripper.MainKt")
 }
 
 tasks {

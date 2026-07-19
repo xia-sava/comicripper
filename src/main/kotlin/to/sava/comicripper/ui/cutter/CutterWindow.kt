@@ -51,7 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import to.sava.comicripper.Main
+import to.sava.comicripper.VERSION
 import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.repository.ComicRepository
@@ -65,7 +65,7 @@ import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import kotlin.math.min
 
-private const val WINDOW_TITLE = "comicripper ${Main.VERSION}"
+private const val WINDOW_TITLE = "comicripper $VERSION"
 
 /** キー操作1回あたりのガイド移動量（%） */
 private const val CUTTER_KEY_STEP = 0.1
