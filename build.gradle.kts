@@ -20,9 +20,8 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
-    implementation("org.glassfish:javax.json:1.1.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("net.contentobjects.jnotify:jnotify:0.94")
-    implementation("com.google.code.gson:gson:2.13.1")
     implementation("org.jsoup:jsoup:1.20.1")
     implementation("io.insert-koin:koin-core:4.0.0")
     implementation(compose.desktop.currentOs)

@@ -5,6 +5,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import to.sava.comicripper.ext.workFilename
@@ -26,8 +32,6 @@ import java.util.stream.Collectors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
-import javax.json.Json
-import javax.json.JsonString
 
 class ComicRepository {
 
@@ -317,29 +321,26 @@ class ComicRepository {
         // Google Book API
         try {
             println("Google $isbn start")
-            Json.createReader(
-                withContext(Dispatchers.IO) {
-                    InputStreamReader(
-                        URI("${Setting.googleBookApi}$isbn")
-                            .toURL()
-                            .openConnection()
-                            .getInputStream(), "utf-8"
-                    ).buffered()
+            val responseText = withContext(Dispatchers.IO) {
+                InputStreamReader(
+                    URI("${Setting.googleBookApi}$isbn")
+                        .toURL()
+                        .openConnection()
+                        .getInputStream(), "utf-8"
+                ).buffered().readText()
+            }
+            val json = Json.parseToJsonElement(responseText).jsonObject
+            val totalItems = json["totalItems"]?.jsonPrimitive?.intOrNull ?: 0
+            if (totalItems > 0) {
+                val info = json["items"]?.jsonArray?.getOrNull(0)?.jsonObject
+                    ?.get("volumeInfo")?.jsonObject
+                val authors = info?.get("authors")?.jsonArray?.map { it.jsonPrimitive.content }
+                val title = info?.get("title")?.jsonPrimitive?.contentOrNull
+                if (authors != null && title != null) {
+                    println("Google $isbn done")
+                    return normalize(authors, title)
                 }
-            )
-                .readObject()?.let { json ->
-                    if (json.getInt("totalItems") > 0) {
-                        val info =
-                            json.getJsonArray("items")?.getJsonObject(0)?.getJsonObject("volumeInfo")
-                        val authors =
-                            info?.getJsonArray("authors")?.map { (it as JsonString).string ?: "" }
-                        val title = info?.getString("title")
-                        if (authors != null && title != null) {
-                            println("Google $isbn done")
-                            return normalize(authors, title)
-                        }
-                    }
-                }
+            }
         } catch (e: HttpStatusException) {
             // ステータスエラーは握り潰しちゃうよ
             println("Google $isbn error: ${e.message}")
