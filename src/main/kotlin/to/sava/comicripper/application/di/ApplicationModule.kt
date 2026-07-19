@@ -3,12 +3,18 @@ package to.sava.comicripper.application.di
 import org.koin.dsl.module
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.infrastructure.service.JNotifyFileWatcher
+import to.sava.comicripper.model.Setting
 
 val applicationModule = module {
     // ファイル監視
     single<FileWatcher> { JNotifyFileWatcher() }
 
+    // 設定・インメモリストレージ
+    single { Setting() }
+    single { ComicStorage() }
+
     // リポジトリ層
-    single { ComicRepository() }
+    single { ComicRepository(get(), get()) }
 }

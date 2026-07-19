@@ -59,7 +59,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
-import org.koin.java.KoinJavaComponent.get
+import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.repository.ComicRepository
@@ -104,33 +104,36 @@ private val appTaskScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainWindow(onCloseRequest: () -> Unit) {
+    val setting: Setting = koinInject()
+    val comicStorage: ComicStorage = koinInject()
+
     val state = rememberWindowState(
-        size = DpSize(Setting.mainWindowWidth.dp, Setting.mainWindowHeight.dp),
-        position = if (Setting.mainWindowPosX >= 0.0) {
-            WindowPosition.Absolute(Setting.mainWindowPosX.dp, Setting.mainWindowPosY.dp)
+        size = DpSize(setting.mainWindowWidth.dp, setting.mainWindowHeight.dp),
+        position = if (setting.mainWindowPosX >= 0.0) {
+            WindowPosition.Absolute(setting.mainWindowPosX.dp, setting.mainWindowPosY.dp)
         } else {
             WindowPosition.PlatformDefault
         },
     )
     LaunchedEffect(state) {
         snapshotFlow { state.size }.collect { size ->
-            Setting.mainWindowWidth = size.width.value.toDouble()
-            Setting.mainWindowHeight = size.height.value.toDouble()
+            setting.mainWindowWidth = size.width.value.toDouble()
+            setting.mainWindowHeight = size.height.value.toDouble()
         }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.position }.collect { position ->
             if (position is WindowPosition.Absolute) {
-                Setting.mainWindowPosX = position.x.value.toDouble()
-                Setting.mainWindowPosY = position.y.value.toDouble()
+                setting.mainWindowPosX = position.x.value.toDouble()
+                setting.mainWindowPosY = position.y.value.toDouble()
             }
         }
     }
 
-    val repos: ComicRepository = remember { get(ComicRepository::class.java) }
+    val repos: ComicRepository = koinInject()
     val progress = rememberProgressOverlayState()
     val nameAll = rememberTextAreaOverlayState()
-    val comics by ComicStorage.storage.collectAsState()
+    val comics by comicStorage.storage.collectAsState()
 
     var memoryText by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -142,18 +145,18 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
-    var selectedId by remember { mutableStateOf(ComicStorage.targetId) }
+    var selectedId by remember { mutableStateOf(comicStorage.targetId) }
     val selectedComic = comics.firstOrNull { it.id == selectedId }
 
     fun selectComic(id: String?) {
         selectedId = id
-        ComicStorage.targetId = id
+        comicStorage.targetId = id
     }
 
     // 追加されたコミックを選択し、選択中が消えたら先頭へ移す。
     LaunchedEffect(Unit) {
         var previousIds = emptySet<String>()
-        ComicStorage.storage.collect { current ->
+        comicStorage.storage.collect { current ->
             runCatching {
                 val added = current.filter { it.id !in previousIds }
                 when {
@@ -231,7 +234,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         progress.launchTask("OCRしています", "表紙画像から ISBN をまとめて読み取って著者名/作品名をサーチしてます") {
             // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護する。
             supervisorScope {
-                ComicStorage.all
+                comicStorage.all
                     .filter { it.coverFull.isNullOrEmpty().not() }
                     .map { comic ->
                         launch {
@@ -251,7 +254,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     fun zipAll() {
         progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
             supervisorScope {
-                ComicStorage.all
+                comicStorage.all
                     .filter { it.files.size > 3 }
                     .map { comic ->
                         launch {
@@ -272,7 +275,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                     "cmd.exe", "/c", "start", "zsh.exe", "-c",
                     "epub2comic.py || read -k 1 '?エラーが発生しました。何かキーを押すと閉じます...'",
                 )
-                    .directory(File(Setting.workDirectory))
+                    .directory(File(setting.workDirectory))
                     .start()
             }.onFailure { println("extractEpub failed: ${it.javaClass.simpleName}: ${it.message}") }
         }
@@ -295,15 +298,15 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val dragState = remember { ComicDragState() }
 
     fun onMerge(srcId: String, dstId: String) {
-        val src = ComicStorage[srcId] ?: return
-        val dst = ComicStorage[dstId] ?: return
+        val src = comicStorage[srcId] ?: return
+        val dst = comicStorage[dstId] ?: return
         // 選択切り替えだけ先に同期で行なう。
         selectComic(dst.id)
         // merge は同期ディスク I/O（ImageIO.read + スケーリング）を伴うため EDT で直接呼ばない。
         appTaskScope.launch {
             runCatching {
                 dst.merge(src)
-                ComicStorage.remove(src)
+                comicStorage.remove(src)
                 repos.reScanFiles(dst)
             }.onFailure { println("merge failed: ${it.javaClass.simpleName}: ${it.message}") }
         }

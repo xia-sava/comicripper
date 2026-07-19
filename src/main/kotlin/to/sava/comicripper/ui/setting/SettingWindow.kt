@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.koin.compose.koinInject
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
@@ -35,25 +36,27 @@ import to.sava.comicripper.ui.rememberWindowIconPainter
  */
 @Composable
 fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
+    val setting: Setting = koinInject()
+
     val state = rememberWindowState(
-        size = DpSize(Setting.settingWindowWidth.dp, Setting.settingWindowHeight.dp),
-        position = if (Setting.settingWindowPosX >= 0.0) {
-            WindowPosition.Absolute(Setting.settingWindowPosX.dp, Setting.settingWindowPosY.dp)
+        size = DpSize(setting.settingWindowWidth.dp, setting.settingWindowHeight.dp),
+        position = if (setting.settingWindowPosX >= 0.0) {
+            WindowPosition.Absolute(setting.settingWindowPosX.dp, setting.settingWindowPosY.dp)
         } else {
             WindowPosition.PlatformDefault
         },
     )
     LaunchedEffect(state) {
         snapshotFlow { state.size }.collect { size ->
-            Setting.settingWindowWidth = size.width.value.toDouble()
-            Setting.settingWindowHeight = size.height.value.toDouble()
+            setting.settingWindowWidth = size.width.value.toDouble()
+            setting.settingWindowHeight = size.height.value.toDouble()
         }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.position }.collect { position ->
             if (position is WindowPosition.Absolute) {
-                Setting.settingWindowPosX = position.x.value.toDouble()
-                Setting.settingWindowPosY = position.y.value.toDouble()
+                setting.settingWindowPosX = position.x.value.toDouble()
+                setting.settingWindowPosY = position.y.value.toDouble()
             }
         }
     }
@@ -71,9 +74,9 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
                     modifier = Modifier.fillMaxSize().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    SettingTextField("作業ディレクトリ", Setting.workDirectoryFlow)
-                    SettingTextField("格納ディレクトリ", Setting.storeDirectoryFlow)
-                    SettingTextField("Tesseract 実行ファイル", Setting.TesseractExeFlow)
+                    SettingTextField("作業ディレクトリ", setting.workDirectoryFlow)
+                    SettingTextField("格納ディレクトリ", setting.storeDirectoryFlow)
+                    SettingTextField("Tesseract 実行ファイル", setting.TesseractExeFlow)
                     Spacer(modifier = Modifier.weight(1.0f))
                     CompactButton(
                         onClick = onCloseRequest,

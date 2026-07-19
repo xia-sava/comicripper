@@ -51,7 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.java.KoinJavaComponent.get
+import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.repository.ComicRepository
@@ -98,42 +98,44 @@ fun showCutterWindow(comic: Comic, owner: java.awt.Window? = null) {
  */
 @Composable
 fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
+    val setting: Setting = koinInject()
+
     val state = rememberWindowState(
-        size = DpSize(Setting.cutterWindowWidth.dp, Setting.cutterWindowHeight.dp),
-        position = if (Setting.cutterWindowPosX >= 0.0) {
-            WindowPosition.Absolute(Setting.cutterWindowPosX.dp, Setting.cutterWindowPosY.dp)
+        size = DpSize(setting.cutterWindowWidth.dp, setting.cutterWindowHeight.dp),
+        position = if (setting.cutterWindowPosX >= 0.0) {
+            WindowPosition.Absolute(setting.cutterWindowPosX.dp, setting.cutterWindowPosY.dp)
         } else {
             WindowPosition.PlatformDefault
         },
     )
     LaunchedEffect(state) {
         snapshotFlow { state.size }.collect { size ->
-            Setting.cutterWindowWidth = size.width.value.toDouble()
-            Setting.cutterWindowHeight = size.height.value.toDouble()
+            setting.cutterWindowWidth = size.width.value.toDouble()
+            setting.cutterWindowHeight = size.height.value.toDouble()
         }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.position }.collect { position ->
             if (position is WindowPosition.Absolute) {
-                Setting.cutterWindowPosX = position.x.value.toDouble()
-                Setting.cutterWindowPosY = position.y.value.toDouble()
+                setting.cutterWindowPosX = position.x.value.toDouble()
+                setting.cutterWindowPosY = position.y.value.toDouble()
             }
         }
     }
 
-    var leftPercent by remember { mutableStateOf(Setting.cutterLeftPercent) }
-    var rightPercent by remember { mutableStateOf(Setting.cutterRightPercent) }
+    var leftPercent by remember { mutableStateOf(setting.cutterLeftPercent) }
+    var rightPercent by remember { mutableStateOf(setting.cutterRightPercent) }
 
     fun updateLeft(value: Double) {
         val clamped = value.coerceIn(0.0, 100.0)
         leftPercent = clamped
-        Setting.cutterLeftPercent = clamped
+        setting.cutterLeftPercent = clamped
     }
 
     fun updateRight(value: Double) {
         val clamped = value.coerceIn(0.0, 100.0)
         rightPercent = clamped
-        Setting.cutterRightPercent = clamped
+        setting.cutterRightPercent = clamped
     }
 
     var coverImage by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -160,7 +162,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
     }
 
-    val repos: ComicRepository = remember { get(ComicRepository::class.java) }
+    val repos: ComicRepository = koinInject()
 
     // Cutter は直後に閉じるため、開く Detail の owner にはしない
     // （owner の dispose に owned ウィンドウが連鎖して Detail まで破棄されるため）。

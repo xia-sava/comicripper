@@ -33,38 +33,38 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 
-class ComicRepository {
+class ComicRepository(private val setting: Setting, private val comicStorage: ComicStorage) {
 
     fun reScanFiles(targetComic: Comic? = null) {
-        val dir = File(Setting.workDirectory)
-        val structuredFiles = ComicStorage.files
+        val dir = File(setting.workDirectory)
+        val structuredFiles = comicStorage.files
         dir.listFiles { file -> file.name.matches(Comic.TARGET_REGEX) }?.map {
             if (it.name !in structuredFiles) {
                 val comic = Comic(it.name)
                 if (targetComic != null) {
                     if (targetComic.mergeConflict(comic)) {
-                        ComicStorage.add(comic)
+                        comicStorage.add(comic)
                     } else {
                         targetComic.merge(comic)
                     }
                 } else {
-                    ComicStorage.add(comic)
+                    comicStorage.add(comic)
                 }
             }
         }
-        ComicStorage.all.forEach { comic ->
+        comicStorage.all.forEach { comic ->
             comic.removeFiles(comic.files.filter {
-                File("${Setting.workDirectory}/$it").exists().not()
+                File("${setting.workDirectory}/$it").exists().not()
             })
             if (comic.files.isEmpty()) {
-                ComicStorage.remove(comic)
+                comicStorage.remove(comic)
             }
         }
     }
 
     @Suppress("unused")
     fun listFiles(pattern: String): List<Path> {
-        val dirPath = Paths.get(Setting.workDirectory)
+        val dirPath = Paths.get(setting.workDirectory)
         val matcher = FileSystems.getDefault().getPathMatcher("glob:$pattern")
         return Files.list(dirPath)
             .filter { path -> Files.isRegularFile(path) && matcher.matches(path.fileName) }
@@ -78,17 +78,17 @@ class ComicRepository {
     private fun addFile(filename: String) {
         if (filename.startsWith(Comic.COVER_FULL_PREFIX)) {
             Comic(filename).let {
-                ComicStorage.add(it)
-                ComicStorage.targetId = it.id
+                comicStorage.add(it)
+                comicStorage.targetId = it.id
             }
         } else {
-            val target = ComicStorage.target
+            val target = comicStorage.target
             if (target != null) {
                 target.addFile(filename)?.let {
-                    ComicStorage.add(Comic(it))
+                    comicStorage.add(Comic(it))
                 }
             } else {
-                ComicStorage.add(Comic(filename))
+                comicStorage.add(Comic(filename))
             }
         }
     }
@@ -98,8 +98,8 @@ class ComicRepository {
     }
 
     private fun removeFile(filename: String) {
-        ComicStorage.all.forEach { it.removeFile(filename) }
-        ComicStorage.removeEmpty()
+        comicStorage.all.forEach { it.removeFile(filename) }
+        comicStorage.removeEmpty()
     }
 
     suspend fun cutCover(
@@ -109,12 +109,12 @@ class ComicRepository {
         rightMargin: Double
     ) {
         if (comic.coverAlbum.isNullOrEmpty().not()) {
-            File("${Setting.workDirectory}/${comic.coverAlbum}").delete()
+            File("${setting.workDirectory}/${comic.coverAlbum}").delete()
         }
 
         withContext(Dispatchers.IO) {
             val coverFull = checkNotNull(comic.coverFull)
-            val coverFullImage = checkNotNull(ImageIO.read(File(workFilename(coverFull)))) {
+            val coverFullImage = checkNotNull(ImageIO.read(File(workFilename(coverFull, setting.workDirectory)))) {
                 "no image for $coverFull"
             }
             val imageWidth = coverFullImage.width.toDouble()
@@ -130,13 +130,13 @@ class ComicRepository {
                 drawImage(coverFullImage, -leftX.toInt(), 0, null)
                 dispose()
             }
-            val outputFile = File("${Setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
+            val outputFile = File("${setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
             ImageIO.write(outputImage, "jpeg", outputFile)
         }
     }
 
     fun zipComic(comic: Comic) {
-        val zipFilename = File("${Setting.storeDirectory}/${comic.author}/${comic.title}.zip")
+        val zipFilename = File("${setting.storeDirectory}/${comic.author}/${comic.title}.zip")
         if (zipFilename.exists()) {
             zipFilename.delete()
         }
@@ -151,21 +151,21 @@ class ComicRepository {
                     else -> "page_%03d".format(pageNum++)
                 } + ".jpg"
                 zipStream.putNextEntry(ZipEntry(name))
-                zipStream.write(Files.readAllBytes(Paths.get("${Setting.workDirectory}/$src")))
+                zipStream.write(Files.readAllBytes(Paths.get("${setting.workDirectory}/$src")))
             }
         }
-        ComicStorage.remove(comic)
+        comicStorage.remove(comic)
         comic.files
-            .map { Paths.get("${Setting.workDirectory}/$it") }
+            .map { Paths.get("${setting.workDirectory}/$it") }
             .forEach { Files.deleteIfExists(it) }
     }
 
     fun pagesToComic(comic: Comic) {
-        ComicStorage.all
+        comicStorage.all
             .filter { it.files.size == 1 && it.files.first().startsWith(Comic.PAGE_PREFIX) }
             .forEach {
                 comic.merge(it)
-                ComicStorage.remove(it)
+                comicStorage.remove(it)
             }
     }
 
@@ -176,20 +176,20 @@ class ComicRepository {
     fun releaseFile(comic: Comic, filename: String) {
         if (filename in comic.files) {
             comic.removeFile(filename)
-            ComicStorage.add(Comic(filename))
+            comicStorage.add(Comic(filename))
         }
     }
 
     suspend fun ocrISBN(comic: Comic): Pair<String, String>? {
         val coverFull = comic.coverFull ?: return null
         val tmp = withContext(Dispatchers.IO) {
-            Files.createTempFile(Paths.get(Setting.workDirectory), "_tmp", "")
+            Files.createTempFile(Paths.get(setting.workDirectory), "_tmp", "")
         }
         return try {
             withContext(Dispatchers.IO) {
                 ProcessBuilder(
-                    Setting.TesseractExe,
-                    workFilename(coverFull),
+                    setting.TesseractExe,
+                    workFilename(coverFull, setting.workDirectory),
                     tmp.toString(),
                     "-l", "jpn",
                     "--psm", "11"
@@ -298,7 +298,7 @@ class ComicRepository {
         // Yodobashi.com スクレイピング
         try {
             println("Yodobashi $isbn start")
-            Jsoup.connect("${Setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
+            Jsoup.connect("${setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
                 .takeIf { it.select(".noResult").isEmpty() }
                 ?.select(".pListBlock a[href]")?.firstOrNull()
                 ?.absUrl("href")
@@ -323,7 +323,7 @@ class ComicRepository {
             println("Google $isbn start")
             val responseText = withContext(Dispatchers.IO) {
                 InputStreamReader(
-                    URI("${Setting.googleBookApi}$isbn")
+                    URI("${setting.googleBookApi}$isbn")
                         .toURL()
                         .openConnection()
                         .getInputStream(), "utf-8"
@@ -357,7 +357,7 @@ class ComicRepository {
      */
     @Suppress("SameParameterValue")
     private fun generateFilename(prefix: String): String {
-        val num = File(Setting.workDirectory)
+        val num = File(setting.workDirectory)
             .list { _, name -> name.startsWith(prefix) }
             ?.maxOrNull()
             ?.let { filename ->
@@ -368,7 +368,7 @@ class ComicRepository {
 
     fun saveStructure() {
         val props = Properties()
-        ComicStorage.all.forEachIndexed { index, comic ->
+        comicStorage.all.forEachIndexed { index, comic ->
             props.setProperty(
                 "_${comic.id}",
                 listOf("$index", comic.author, comic.title).joinToString("\t")
@@ -377,18 +377,18 @@ class ComicRepository {
                 props.setProperty(it, comic.id)
             }
         }
-        Setting.structureFile.outputStream().use {
+        setting.structureFile.outputStream().use {
             props.store(it, "comicripperStructure")
         }
     }
 
     fun loadStructure(): Boolean {
-        if (!Setting.structureFile.exists()) {
+        if (!setting.structureFile.exists()) {
             return false
         }
         return try {
             val props = Properties()
-            Setting.structureFile.inputStream().use {
+            setting.structureFile.inputStream().use {
                 props.load(it)
             }
             props.propertyNames().toList().map { it as String }
@@ -405,25 +405,25 @@ class ComicRepository {
                 }
                 .toSortedMap()
                 .forEach {
-                    ComicStorage.add(it.value)
+                    comicStorage.add(it.value)
                 }
             props.propertyNames().toList()
                 .map { it as String }
                 .filterNot { it.startsWith("_") }
                 .sorted()
                 .forEach { filename ->
-                    if (File("${Setting.workDirectory}/$filename").exists()) {
+                    if (File("${setting.workDirectory}/$filename").exists()) {
                         val comicId = props.getProperty(filename)
-                        val baseComic = ComicStorage[comicId]
+                        val baseComic = comicStorage[comicId]
                         if (baseComic != null) {
                             baseComic.addFile(filename)
                         } else {
-                            ComicStorage.add(Comic(filename))
+                            comicStorage.add(Comic(filename))
                         }
                     }
                 }
-            ComicStorage.all.filter { it.files.isEmpty() }.forEach {
-                ComicStorage.remove(it)
+            comicStorage.all.filter { it.files.isEmpty() }.forEach {
+                comicStorage.remove(it)
             }
             true
         } catch (_: Exception) {
@@ -432,14 +432,14 @@ class ComicRepository {
     }
 
     fun getNameList(): List<Triple<String, String, String>> {
-        return ComicStorage.all.map {
+        return comicStorage.all.map {
             Triple(it.id, it.author, it.title)
         }
     }
 
     fun setNameList(nameList: List<Triple<String, String, String>>) {
         nameList.forEach { (id, author, title) ->
-            ComicStorage[id]?.let {
+            comicStorage[id]?.let {
                 it.author = author
                 it.title = title
             }
@@ -447,7 +447,7 @@ class ComicRepository {
     }
 }
 
-object ComicStorage {
+class ComicStorage {
     private val _storage = MutableStateFlow<List<Comic>>(emptyList())
     val storage: StateFlow<List<Comic>> get() = _storage
     var targetId: String? = null

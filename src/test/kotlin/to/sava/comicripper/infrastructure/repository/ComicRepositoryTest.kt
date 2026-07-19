@@ -21,6 +21,8 @@ import javax.imageio.ImageIO
 class ComicRepositoryTest : KoinComponent {
 
     private val repository: ComicRepository by inject()
+    private val setting: Setting by inject()
+    private val comicStorage: ComicStorage by inject()
 
     @TempDir
     lateinit var tempDir: Path
@@ -35,16 +37,16 @@ class ComicRepositoryTest : KoinComponent {
         }
         workDir = tempDir.resolve("work").toFile()
         storeDir = tempDir.resolve("store").toFile()
-        ComicTestHelper.setupDirectories(workDir, storeDir)
+        ComicTestHelper.setupDirectories(workDir, storeDir, setting)
         ComicTestHelper.disableImageLoaders()
-        ComicStorage.clear()
+        comicStorage.clear()
     }
 
     @AfterEach
     fun tearDown() {
         stopKoin()
         ComicTestHelper.resetImageLoaders()
-        ComicStorage.clear()
+        comicStorage.clear()
     }
 
     @Nested
@@ -53,27 +55,27 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `coverF追加で新Comicが作成されtargetに設定される`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
 
             repository.addFiles(listOf(coverF))
 
-            assertEquals(1, ComicStorage.all.size)
-            val comic = ComicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
+            val comic = comicStorage.all.first()
             assertEquals(coverF, comic.coverFull)
-            assertEquals(comic.id, ComicStorage.targetId)
+            assertEquals(comic.id, comicStorage.targetId)
         }
 
         @Test
         fun `coverF後のpage追加はtargetのComicに入る`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(coverF, page))
 
-            assertEquals(1, ComicStorage.all.size)
-            val comic = ComicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
+            val comic = comicStorage.all.first()
             assertTrue(comic.files.contains(coverF))
             assertTrue(comic.files.contains(page))
         }
@@ -82,28 +84,28 @@ class ComicRepositoryTest : KoinComponent {
         fun `2つ目のcoverFでtargetが切り替わる`() {
             val coverF1 = "coverF_000.jpg"
             val coverF2 = "coverF_001.jpg"
-            ComicTestHelper.createDummyJpeg(coverF1)
-            ComicTestHelper.createDummyJpeg(coverF2)
+            ComicTestHelper.createDummyJpeg(coverF1, workDir)
+            ComicTestHelper.createDummyJpeg(coverF2, workDir)
 
             repository.addFiles(listOf(coverF1))
-            val firstId = ComicStorage.targetId
+            val firstId = comicStorage.targetId
 
             repository.addFiles(listOf(coverF2))
-            val secondId = ComicStorage.targetId
+            val secondId = comicStorage.targetId
 
-            assertEquals(2, ComicStorage.all.size)
+            assertEquals(2, comicStorage.all.size)
             assertTrue(firstId != secondId)
         }
 
         @Test
         fun `targetなしでpage追加は単独Comicになる`() {
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(page))
 
-            assertEquals(1, ComicStorage.all.size)
-            val comic = ComicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
+            val comic = comicStorage.all.first()
             assertEquals(1, comic.files.size)
             assertTrue(comic.files.contains(page))
         }
@@ -112,13 +114,13 @@ class ComicRepositoryTest : KoinComponent {
         fun `coverSもtargetのComicに入る`() {
             val coverF = "coverF_000.jpg"
             val coverS = "coverS_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(coverS)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(coverS, workDir)
 
             repository.addFiles(listOf(coverF, coverS))
 
-            assertEquals(1, ComicStorage.all.size)
-            val comic = ComicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
+            val comic = comicStorage.all.first()
             assertTrue(comic.files.contains(coverF))
             assertTrue(comic.files.contains(coverS))
         }
@@ -127,13 +129,13 @@ class ComicRepositoryTest : KoinComponent {
         fun `coverAもtargetのComicに入る`() {
             val coverF = "coverF_000.jpg"
             val coverA = "coverA_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(coverA)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(coverA, workDir)
 
             repository.addFiles(listOf(coverF, coverA))
 
-            assertEquals(1, ComicStorage.all.size)
-            val comic = ComicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
+            val comic = comicStorage.all.first()
             assertTrue(comic.files.contains(coverF))
             assertTrue(comic.files.contains(coverA))
         }
@@ -192,23 +194,23 @@ class ComicRepositoryTest : KoinComponent {
         fun `saveしてloadのラウンドトリップ`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(coverF, page))
-            val originalComic = ComicStorage.all.first()
+            val originalComic = comicStorage.all.first()
             originalComic.author = "テスト著者"
             originalComic.title = "テストタイトル"
 
             repository.saveStructure()
-            ComicStorage.clear()
-            assertEquals(0, ComicStorage.all.size)
+            comicStorage.clear()
+            assertEquals(0, comicStorage.all.size)
 
             val loaded = repository.loadStructure()
             assertTrue(loaded)
-            assertEquals(1, ComicStorage.all.size)
+            assertEquals(1, comicStorage.all.size)
 
-            val restoredComic = ComicStorage.all.first()
+            val restoredComic = comicStorage.all.first()
             assertEquals("テスト著者", restoredComic.author)
             assertEquals("テストタイトル", restoredComic.title)
             assertTrue(restoredComic.files.contains(coverF))
@@ -219,17 +221,17 @@ class ComicRepositoryTest : KoinComponent {
         fun `存在しないファイルは除外される`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(coverF, page))
             repository.saveStructure()
 
-            File("${Setting.workDirectory}/$page").delete()
-            ComicStorage.clear()
+            File("${setting.workDirectory}/$page").delete()
+            comicStorage.clear()
 
             repository.loadStructure()
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             assertTrue(comic.files.contains(coverF))
             assertFalse(comic.files.contains(page))
         }
@@ -237,16 +239,16 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `空Comicは除去される`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
 
             repository.addFiles(listOf(coverF))
             repository.saveStructure()
 
-            File("${Setting.workDirectory}/$coverF").delete()
-            ComicStorage.clear()
+            File("${setting.workDirectory}/$coverF").delete()
+            comicStorage.clear()
 
             repository.loadStructure()
-            assertEquals(0, ComicStorage.all.size)
+            assertEquals(0, comicStorage.all.size)
         }
     }
 
@@ -258,20 +260,20 @@ class ComicRepositoryTest : KoinComponent {
             val coverF = "coverF_000.jpg"
             val page1 = "page_000.jpg"
             val page2 = "page_001.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page1)
-            ComicTestHelper.createDummyJpeg(page2)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page1, workDir)
+            ComicTestHelper.createDummyJpeg(page2, workDir)
 
             repository.addFiles(listOf(coverF))
-            val target = ComicStorage.all.first()
+            val target = comicStorage.all.first()
 
-            ComicStorage.add(Comic(page1))
-            ComicStorage.add(Comic(page2))
-            assertEquals(3, ComicStorage.all.size)
+            comicStorage.add(Comic(page1))
+            comicStorage.add(Comic(page2))
+            assertEquals(3, comicStorage.all.size)
 
             repository.pagesToComic(target)
 
-            assertEquals(1, ComicStorage.all.size)
+            assertEquals(1, comicStorage.all.size)
             assertTrue(target.files.contains(coverF))
             assertTrue(target.files.contains(page1))
             assertTrue(target.files.contains(page2))
@@ -281,18 +283,18 @@ class ComicRepositoryTest : KoinComponent {
         fun `releaseFileでファイルが切り離され新Comicになる`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(coverF, page))
-            val comic = ComicStorage.all.first()
-            assertEquals(1, ComicStorage.all.size)
+            val comic = comicStorage.all.first()
+            assertEquals(1, comicStorage.all.size)
 
             repository.releaseFile(comic, page)
 
-            assertEquals(2, ComicStorage.all.size)
+            assertEquals(2, comicStorage.all.size)
             assertFalse(comic.files.contains(page))
-            val released = ComicStorage.all.first { it.id != comic.id }
+            val released = comicStorage.all.first { it.id != comic.id }
             assertTrue(released.files.contains(page))
         }
     }
@@ -304,10 +306,10 @@ class ComicRepositoryTest : KoinComponent {
         fun `removeFilesで対象ファイルが全Comicから取り除かれる`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
             repository.addFiles(listOf(coverF, page))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
 
             repository.removeFiles(listOf(page))
 
@@ -318,28 +320,28 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `removeFilesで空になったComicはComicStorageから除去される`() {
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(page, workDir)
             repository.addFiles(listOf(page))
-            assertEquals(1, ComicStorage.all.size)
+            assertEquals(1, comicStorage.all.size)
 
             repository.removeFiles(listOf(page))
 
-            assertEquals(0, ComicStorage.all.size)
+            assertEquals(0, comicStorage.all.size)
         }
 
         @Test
         fun `removeFilesは対象外のComicに影響しない`() {
             val coverF1 = "coverF_000.jpg"
             val coverF2 = "coverF_001.jpg"
-            ComicTestHelper.createDummyJpeg(coverF1)
-            ComicTestHelper.createDummyJpeg(coverF2)
+            ComicTestHelper.createDummyJpeg(coverF1, workDir)
+            ComicTestHelper.createDummyJpeg(coverF2, workDir)
             repository.addFiles(listOf(coverF1))
             repository.addFiles(listOf(coverF2))
 
             repository.removeFiles(listOf(coverF1))
 
-            assertEquals(1, ComicStorage.all.size)
-            assertTrue(ComicStorage.all.first().files.contains(coverF2))
+            assertEquals(1, comicStorage.all.size)
+            assertTrue(comicStorage.all.first().files.contains(coverF2))
         }
     }
 
@@ -349,9 +351,9 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `getNameListが全Comicのid_著者_題名を返す`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
             repository.addFiles(listOf(coverF))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             comic.author = "著者A"
             comic.title = "タイトルA"
 
@@ -363,9 +365,9 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `setNameListで対象Comicの著者title名が更新される`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
             repository.addFiles(listOf(coverF))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
 
             repository.setNameList(listOf(Triple(comic.id, "新著者", "新タイトル")))
 
@@ -399,38 +401,38 @@ class ComicRepositoryTest : KoinComponent {
 
         @Test
         fun `ディレクトリのファイルがComicStorageに反映される`() {
-            ComicTestHelper.createDummyJpeg("page_000.jpg")
-            ComicTestHelper.createDummyJpeg("page_001.jpg")
+            ComicTestHelper.createDummyJpeg("page_000.jpg", workDir)
+            ComicTestHelper.createDummyJpeg("page_001.jpg", workDir)
 
             repository.reScanFiles()
 
-            assertEquals(2, ComicStorage.all.size)
+            assertEquals(2, comicStorage.all.size)
         }
 
         @Test
         fun `消えたファイルと空ComicがreScanで除去される`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
             repository.addFiles(listOf(coverF))
-            assertEquals(1, ComicStorage.all.size)
+            assertEquals(1, comicStorage.all.size)
 
-            File("${Setting.workDirectory}/$coverF").delete()
+            File("${setting.workDirectory}/$coverF").delete()
             repository.reScanFiles()
 
-            assertEquals(0, ComicStorage.all.size)
+            assertEquals(0, comicStorage.all.size)
         }
 
         @Test
         fun `targetComic指定時にマージされる`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
             repository.addFiles(listOf(coverF))
-            val target = ComicStorage.all.first()
+            val target = comicStorage.all.first()
 
-            ComicTestHelper.createDummyJpeg("page_000.jpg")
+            ComicTestHelper.createDummyJpeg("page_000.jpg", workDir)
             repository.reScanFiles(target)
 
-            assertEquals(1, ComicStorage.all.size)
+            assertEquals(1, comicStorage.all.size)
             assertTrue(target.files.contains("page_000.jpg"))
         }
     }
@@ -441,13 +443,13 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `crop座標通りの幅高さでcoverAが生成される`() = runTest {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF, 200, 100)
+            ComicTestHelper.createDummyJpeg(coverF, 200, 100, workDir)
             repository.addFiles(listOf(coverF))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
 
             repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
 
-            val outputFile = File("${Setting.workDirectory}/coverA_000.jpg")
+            val outputFile = File("${setting.workDirectory}/coverA_000.jpg")
             assertTrue(outputFile.exists())
             val outputImage = ImageIO.read(outputFile)
             assertEquals(110, outputImage.width)
@@ -458,18 +460,18 @@ class ComicRepositoryTest : KoinComponent {
         fun `既存coverAがある場合旧ファイルを削除し新しい連番で出力する`() = runTest {
             val coverF = "coverF_000.jpg"
             val coverA = "coverA_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF, 200, 100)
-            ComicTestHelper.createDummyJpeg(coverA, 50, 50)
+            ComicTestHelper.createDummyJpeg(coverF, 200, 100, workDir)
+            ComicTestHelper.createDummyJpeg(coverA, 50, 50, workDir)
             repository.addFiles(listOf(coverF, coverA))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             assertEquals(coverA, comic.coverAlbum)
             // 他Comic由来の連番先取りファイル
-            ComicTestHelper.createDummyJpeg("coverA_001.jpg", 10, 10)
+            ComicTestHelper.createDummyJpeg("coverA_001.jpg", 10, 10, workDir)
 
             repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
 
-            assertFalse(File("${Setting.workDirectory}/coverA_000.jpg").exists())
-            assertTrue(File("${Setting.workDirectory}/coverA_002.jpg").exists())
+            assertFalse(File("${setting.workDirectory}/coverA_000.jpg").exists())
+            assertTrue(File("${setting.workDirectory}/coverA_002.jpg").exists())
         }
     }
 
@@ -481,18 +483,18 @@ class ComicRepositoryTest : KoinComponent {
             val coverF = "coverF_000.jpg"
             val page1 = "page_000.jpg"
             val page2 = "page_001.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page1)
-            ComicTestHelper.createDummyJpeg(page2)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page1, workDir)
+            ComicTestHelper.createDummyJpeg(page2, workDir)
 
             repository.addFiles(listOf(coverF, page1, page2))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             comic.author = "テスト著者"
             comic.title = "テストタイトル"
 
             repository.zipComic(comic)
 
-            val zipFile = File("${Setting.storeDirectory}/テスト著者/テストタイトル.zip")
+            val zipFile = File("${setting.storeDirectory}/テスト著者/テストタイトル.zip")
             assertTrue(zipFile.exists())
 
             val zipEntries = java.util.zip.ZipFile(zipFile).use { zip ->
@@ -507,33 +509,33 @@ class ComicRepositoryTest : KoinComponent {
         fun `ZIP作成後に元ファイルが削除される`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
-            ComicTestHelper.createDummyJpeg(page)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
 
             repository.addFiles(listOf(coverF, page))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             comic.author = "著者"
             comic.title = "タイトル"
 
             repository.zipComic(comic)
 
-            assertFalse(File("${Setting.workDirectory}/$coverF").exists())
-            assertFalse(File("${Setting.workDirectory}/$page").exists())
+            assertFalse(File("${setting.workDirectory}/$coverF").exists())
+            assertFalse(File("${setting.workDirectory}/$page").exists())
         }
 
         @Test
         fun `ZIP作成後にComicStorageから除去される`() {
             val coverF = "coverF_000.jpg"
-            ComicTestHelper.createDummyJpeg(coverF)
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
 
             repository.addFiles(listOf(coverF))
-            val comic = ComicStorage.all.first()
+            val comic = comicStorage.all.first()
             comic.author = "著者"
             comic.title = "タイトル"
 
             repository.zipComic(comic)
 
-            assertEquals(0, ComicStorage.all.size)
+            assertEquals(0, comicStorage.all.size)
         }
     }
 }

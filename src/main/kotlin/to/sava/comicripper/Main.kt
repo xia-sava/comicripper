@@ -11,6 +11,7 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.application.di.applicationModule
+import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
@@ -30,7 +31,9 @@ fun main() {
     startKoin { modules(applicationModule) }
     val repos: ComicRepository = get(ComicRepository::class.java)
     val fileWatcher: FileWatcher = get(FileWatcher::class.java)
-    Setting.load()
+    val setting: Setting = get(Setting::class.java)
+    setting.load()
+    Comic.workDirectoryProvider = { setting.workDirectory }
 
     // application {} の終了（正常・異常問わず）を生存管理へ直結させ，
     // Compose 側の未捕捉例外時にプロセスがゾンビ化しないようにする。
@@ -49,14 +52,14 @@ fun main() {
         while (true) {
             delay(30_000)
             runCatching {
-                Setting.save()
+                setting.save()
                 repos.saveStructure()
             }.onFailure { println("autosave failed: ${it.javaClass.simpleName}: ${it.message}") }
         }
     }
 
     fileWatcher.start(
-        Setting.workDirectory,
+        setting.workDirectory,
         onFilesAdded = { filenames -> repos.addFiles(filenames) },
         onFilesDeleted = { filenames -> repos.removeFiles(filenames) },
     )
@@ -66,7 +69,7 @@ fun main() {
     fileWatcher.stop()
     // 保存中のキャンセルによる二重書き込みを避けるため join してから最終保存する。
     runBlocking { autosaveJob.cancelAndJoin() }
-    Setting.save()
+    setting.save()
     repos.saveStructure()
     stopKoin()
     exitProcess(0)

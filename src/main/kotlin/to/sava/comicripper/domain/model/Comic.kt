@@ -4,7 +4,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.yield
-import to.sava.comicripper.model.Setting
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
@@ -35,6 +34,9 @@ class Comic(filename: String = "") {
         var thumbnailLoader = defaultThumbnailLoader
         var fullSizeImageLoader = defaultFullSizeImageLoader
 
+        /** 実行時の作業ディレクトリを解決する。composition rootから起動時に一度配線される。 */
+        var workDirectoryProvider: () -> String = { "" }
+
         fun resetImageLoaders() {
             thumbnailLoader = defaultThumbnailLoader
             fullSizeImageLoader = defaultFullSizeImageLoader
@@ -42,7 +44,7 @@ class Comic(filename: String = "") {
 
         private fun readImageOrNull(filename: String): BufferedImage? {
             return try {
-                ImageIO.read(File("${Setting.workDirectory}/$filename"))
+                ImageIO.read(File("${workDirectoryProvider()}/$filename"))
             } catch (e: IOException) {
                 println("image load failed: $filename: ${e.message}")
                 null

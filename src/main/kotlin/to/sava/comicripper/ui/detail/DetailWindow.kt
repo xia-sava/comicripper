@@ -49,7 +49,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.koin.java.KoinJavaComponent.get
+import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.repository.ComicRepository
@@ -90,30 +90,32 @@ fun showDetailWindow(comic: Comic, owner: java.awt.Window? = null) {
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
+    val setting: Setting = koinInject()
+
     val state = rememberWindowState(
-        size = DpSize(Setting.detailWindowWidth.dp, Setting.detailWindowHeight.dp),
-        position = if (Setting.detailWindowPosX >= 0.0) {
-            WindowPosition.Absolute(Setting.detailWindowPosX.dp, Setting.detailWindowPosY.dp)
+        size = DpSize(setting.detailWindowWidth.dp, setting.detailWindowHeight.dp),
+        position = if (setting.detailWindowPosX >= 0.0) {
+            WindowPosition.Absolute(setting.detailWindowPosX.dp, setting.detailWindowPosY.dp)
         } else {
             WindowPosition.PlatformDefault
         },
     )
     LaunchedEffect(state) {
         snapshotFlow { state.size }.collect { size ->
-            Setting.detailWindowWidth = size.width.value.toDouble()
-            Setting.detailWindowHeight = size.height.value.toDouble()
+            setting.detailWindowWidth = size.width.value.toDouble()
+            setting.detailWindowHeight = size.height.value.toDouble()
         }
     }
     LaunchedEffect(state) {
         snapshotFlow { state.position }.collect { position ->
             if (position is WindowPosition.Absolute) {
-                Setting.detailWindowPosX = position.x.value.toDouble()
-                Setting.detailWindowPosY = position.y.value.toDouble()
+                setting.detailWindowPosX = position.x.value.toDouble()
+                setting.detailWindowPosY = position.y.value.toDouble()
             }
         }
     }
 
-    val repos: ComicRepository = remember { get(ComicRepository::class.java) }
+    val repos: ComicRepository = koinInject()
     val progress = rememberProgressOverlayState()
     val uiScope = rememberCoroutineScope()
 
@@ -200,7 +202,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
 
     fun deleteCurrentImage() {
         currentFilename?.let { filename ->
-            File("${Setting.workDirectory}/$filename").delete()
+            File("${setting.workDirectory}/$filename").delete()
         }
     }
 

@@ -9,6 +9,8 @@ import java.nio.file.Path
 
 class SettingTest {
 
+    private val setting = Setting()
+
     @TempDir
     lateinit var tempDir: Path
 
@@ -23,79 +25,79 @@ class SettingTest {
     @AfterEach
     fun tearDown() {
         System.setProperty("user.home", originalHome)
-        Setting.settingFile.delete()
+        setting.settingFile.delete()
     }
 
     @Test
     fun `saveしてloadでString値が復元される`() {
-        Setting.workDirectory = "/test/work/dir"
-        Setting.save()
+        setting.workDirectory = "/test/work/dir"
+        setting.save()
 
-        Setting.workDirectory = "default"
-        assertTrue(Setting.load())
+        setting.workDirectory = "default"
+        assertTrue(setting.load())
 
-        assertEquals("/test/work/dir", Setting.workDirectory)
+        assertEquals("/test/work/dir", setting.workDirectory)
     }
 
     @Test
     fun `saveしてloadでDouble値が復元される`() {
-        Setting.mainWindowWidth = 1234.5
-        Setting.save()
+        setting.mainWindowWidth = 1234.5
+        setting.save()
 
-        Setting.mainWindowWidth = 0.0
-        Setting.load()
+        setting.mainWindowWidth = 0.0
+        setting.load()
 
-        assertEquals(1234.5, Setting.mainWindowWidth)
+        assertEquals(1234.5, setting.mainWindowWidth)
     }
 
     @Test
     fun `設定ファイルが存在しない場合loadはfalse`() {
-        assertFalse(Setting.load())
+        assertFalse(setting.load())
     }
 
     @Test
     fun `var経由の設定変更がFlowに反映される`() {
-        Setting.workDirectory = "/new/path"
+        setting.workDirectory = "/new/path"
 
-        assertEquals("/new/path", Setting.workDirectoryFlow.value)
+        assertEquals("/new/path", setting.workDirectoryFlow.value)
     }
 
     @Test
     fun `Flow経由の設定変更がvarに反映される`() {
-        Setting.workDirectoryFlow.value = "/prop/path"
+        setting.workDirectoryFlow.value = "/prop/path"
 
-        assertEquals("/prop/path", Setting.workDirectory)
+        assertEquals("/prop/path", setting.workDirectory)
     }
 
     @Test
     fun `全設定項目がsaveとloadでラウンドトリップする`() {
-        Setting.mainWindowWidth = 111.0
-        Setting.mainWindowHeight = 222.0
-        Setting.workDirectory = "/round/trip"
-        Setting.storeDirectory = "/store/trip"
-        Setting.cutterLeftPercent = 20.0
-        Setting.cutterRightPercent = 60.0
-        Setting.save()
+        setting.mainWindowWidth = 111.0
+        setting.mainWindowHeight = 222.0
+        setting.workDirectory = "/round/trip"
+        setting.storeDirectory = "/store/trip"
+        setting.cutterLeftPercent = 20.0
+        setting.cutterRightPercent = 60.0
+        setting.save()
 
-        Setting.mainWindowWidth = 0.0
-        Setting.mainWindowHeight = 0.0
-        Setting.workDirectory = ""
-        Setting.storeDirectory = ""
-        Setting.cutterLeftPercent = 0.0
-        Setting.cutterRightPercent = 0.0
-        Setting.load()
+        setting.mainWindowWidth = 0.0
+        setting.mainWindowHeight = 0.0
+        setting.workDirectory = ""
+        setting.storeDirectory = ""
+        setting.cutterLeftPercent = 0.0
+        setting.cutterRightPercent = 0.0
+        setting.load()
 
-        assertEquals(111.0, Setting.mainWindowWidth)
-        assertEquals(222.0, Setting.mainWindowHeight)
-        assertEquals("/round/trip", Setting.workDirectory)
-        assertEquals("/store/trip", Setting.storeDirectory)
-        assertEquals(20.0, Setting.cutterLeftPercent)
-        assertEquals(60.0, Setting.cutterRightPercent)
+        assertEquals(111.0, setting.mainWindowWidth)
+        assertEquals(222.0, setting.mainWindowHeight)
+        assertEquals("/round/trip", setting.workDirectory)
+        assertEquals("/store/trip", setting.storeDirectory)
+        assertEquals(20.0, setting.cutterLeftPercent)
+        assertEquals(60.0, setting.cutterRightPercent)
     }
 
     @Test
     fun `structureFileがworkDirectory配下にある`() {
-        Setting.workDirectory = "/some/dir"
-        assertTrue(Setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))
+        setting.workDirectory = "/some/dir"
+        assertTrue(setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))
     }
 }

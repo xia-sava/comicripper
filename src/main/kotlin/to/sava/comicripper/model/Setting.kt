@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 import java.util.*
 
-object Setting {
+class Setting {
     val mainWindowWidthFlow = MutableStateFlow(960.0)
     var mainWindowWidth: Double
         get() = mainWindowWidthFlow.value

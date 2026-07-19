@@ -22,6 +22,7 @@ dependencies {
     implementation("net.contentobjects.jnotify:jnotify:0.94")
     implementation("org.jsoup:jsoup:1.20.1")
     implementation("io.insert-koin:koin-core:4.0.0")
+    implementation("io.insert-koin:koin-compose:4.0.0")
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
 

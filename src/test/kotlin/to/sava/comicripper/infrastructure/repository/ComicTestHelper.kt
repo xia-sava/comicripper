@@ -17,24 +17,24 @@ object ComicTestHelper {
         Comic.resetImageLoaders()
     }
 
-    fun createDummyJpeg(filename: String): File {
-        val file = File("${Setting.workDirectory}/$filename")
+    fun createDummyJpeg(filename: String, workDir: File): File {
+        val file = File(workDir, filename)
         val image = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
         ImageIO.write(image, "jpg", file)
         return file
     }
 
-    fun createDummyJpeg(filename: String, width: Int, height: Int): File {
-        val file = File("${Setting.workDirectory}/$filename")
+    fun createDummyJpeg(filename: String, width: Int, height: Int, workDir: File): File {
+        val file = File(workDir, filename)
         val image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
         ImageIO.write(image, "jpg", file)
         return file
     }
 
-    fun setupDirectories(workDir: File, storeDir: File) {
+    fun setupDirectories(workDir: File, storeDir: File, setting: Setting) {
         workDir.mkdirs()
         storeDir.mkdirs()
-        Setting.workDirectory = workDir.absolutePath
-        Setting.storeDirectory = storeDir.absolutePath
+        setting.workDirectory = workDir.absolutePath
+        setting.storeDirectory = storeDir.absolutePath
     }
 }
