@@ -55,6 +55,7 @@ import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -77,6 +78,7 @@ import to.sava.comicripper.ui.rememberTextAreaOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.setting.SettingWindow
 import java.awt.Cursor
+import java.io.File
 import kotlin.math.roundToInt
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
@@ -128,6 +130,16 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val progress = rememberProgressOverlayState()
     val nameAll = rememberTextAreaOverlayState()
     val comics by ComicStorage.storage.collectAsState()
+
+    var memoryText by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(5_000)
+            val runtime = Runtime.getRuntime()
+            val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+            memoryText = "Free Memory: %dMB".format(free / 1024 / 1024)
+        }
+    }
 
     var selectedId by remember { mutableStateOf(ComicStorage.targetId) }
     val selectedComic = comics.firstOrNull { it.id == selectedId }
@@ -251,6 +263,20 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    fun extractEpub() {
+        appTaskScope.launch {
+            // ProcessBuilder.start() は起動失敗時に IOException を投げうる。
+            runCatching {
+                ProcessBuilder(
+                    "cmd.exe", "/c", "start", "zsh.exe", "-c",
+                    "epub2comic.py || read -k 1 '?エラーが発生しました。何かキーを押すと閉じます...'",
+                )
+                    .directory(File(Setting.workDirectory))
+                    .start()
+            }.onFailure { println("extractEpub failed: ${it.javaClass.simpleName}: ${it.message}") }
+        }
+    }
+
     fun showNameAll() {
         val text = repos.getNameList().joinToString("\n") { (id, author, title) -> "$id\t$author\t$title" }
         nameAll.show("一括命名", "1行を \"id\\t著者名\\t題名\" として編集してください", text) { result ->
@@ -364,6 +390,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                             onOcrAll = { ocrAll() },
                             onZipAll = { zipAll() },
                             onNameAll = { showNameAll() },
+                            onEpubExtract = { extractEpub() },
                         )
                         Box(
                             modifier = Modifier
@@ -421,6 +448,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                             )
                         }
                         BottomBar(
+                            memoryText = memoryText,
                             onOpenSetting = {
                                 ComposeWindowHost.show(key = "setting") { onClose ->
                                     SettingWindow(onCloseRequest = onClose, owner = window)
@@ -438,7 +466,6 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
 /**
  * 上部ツールバー。左に選択中の著者名・題名、右に操作ボタンを並べる。
- * epub展開は配置のみ（後続の作業単位で配線する）。
  */
 @Composable
 private fun TopToolbar(
@@ -449,6 +476,7 @@ private fun TopToolbar(
     onOcrAll: () -> Unit,
     onZipAll: () -> Unit,
     onNameAll: () -> Unit,
+    onEpubExtract: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -464,22 +492,22 @@ private fun TopToolbar(
         CompactButton(onClick = onPagesToComic) { Text("全pageを集約") }
         CompactButton(onClick = onReScan) { Text("フォルダ再スキャン") }
         CompactButton(onClick = onNameAll) { Text("一括命名") }
-        CompactButton(onClick = {}, enabled = false) { Text("epub展開") }
+        CompactButton(onClick = onEpubExtract) { Text("epub展開") }
     }
 }
 
 /**
- * 下部バー。メモリ表示（値の更新は後続の作業単位）と設定ボタンを置く。
+ * 下部バー。メモリ表示と設定ボタンを置く。
  */
 @Composable
-private fun BottomBar(onOpenSetting: () -> Unit) {
+private fun BottomBar(memoryText: String, onOpenSetting: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(modifier = Modifier.weight(1.0f))
-        Text("")
+        Text(memoryText)
         CompactButton(onClick = onOpenSetting) { Text("設定") }
     }
 }
