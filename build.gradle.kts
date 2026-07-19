@@ -1,9 +1,9 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     java
     kotlin("jvm") version "2.1.21"
-    application
     id("com.gradleup.shadow") version "8.3.6"
     id("org.jetbrains.compose") version "1.8.2"
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
@@ -39,14 +39,39 @@ kotlin {
     }
 }
 
-application {
-    mainClass.set("to.sava.comicripper.MainKt")
+compose.desktop {
+    application {
+        mainClass = "to.sava.comicripper.MainKt"
+        // 起動オプション（旧来の手動起動コマンドで指定していたもの）をパッケージ済みランチャーへ埋め込む。
+        jvmArgs("-Xmx16g", "-Dhttps.protocols=TLSv1,TLSv1.1,TLSv1.2")
+
+        nativeDistributions {
+            targetFormats(TargetFormat.Exe, TargetFormat.Msi)
+            packageName = "ComicRipper"
+            packageVersion = version.toString()
+            description = "スキャンしたコミック画像の整理・管理ツール"
+            vendor = "to.sava"
+
+            // モジュール不足によるパッケージ後の実行時エラーを避けるため、JDK全体を同梱する。
+            includeAllModules = true
+
+            windows {
+                iconFile.set(project.file("src/main/resources/to/sava/comicripper/icon.ico"))
+                shortcut = true
+                menu = true
+            }
+        }
+    }
 }
 
 tasks {
     named<ShadowJar>("shadowJar") {
         archiveFileName.set("comicripper.jar")
         mergeServiceFiles()
+        // application プラグインを外したため、Main-Class を明示する。
+        manifest {
+            attributes["Main-Class"] = "to.sava.comicripper.MainKt"
+        }
     }
     test {
         useJUnitPlatform()
