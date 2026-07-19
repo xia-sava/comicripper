@@ -12,8 +12,8 @@ import org.koin.core.context.stopKoin
 import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.application.di.applicationModule
 import to.sava.comicripper.domain.service.FileWatcher
+import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.repository.ComicRepository
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.main.MainWindow
 import java.util.concurrent.CountDownLatch

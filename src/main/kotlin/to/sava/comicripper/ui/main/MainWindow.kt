@@ -61,10 +61,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.VERSION
-import to.sava.comicripper.model.Comic
+import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.repository.ComicRepository
-import to.sava.comicripper.repository.ComicStorage
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow

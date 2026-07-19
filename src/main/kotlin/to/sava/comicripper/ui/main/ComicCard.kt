@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import to.sava.comicripper.model.Comic
+import to.sava.comicripper.domain.model.Comic
 import kotlin.math.roundToInt
 
 /** 選択時の背景（antiquewhite）と枠（黒）。common.css の .comic.selected に対応。 */

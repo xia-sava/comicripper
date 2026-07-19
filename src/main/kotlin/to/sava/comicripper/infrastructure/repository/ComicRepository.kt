@@ -13,8 +13,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
+import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.ext.workFilename
-import to.sava.comicripper.model.Comic
 import to.sava.comicripper.model.Setting
 import java.awt.Color
 import java.awt.image.BufferedImage
