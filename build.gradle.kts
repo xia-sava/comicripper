@@ -1,10 +1,8 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     java
     kotlin("jvm") version "2.1.21"
-    id("com.gradleup.shadow") version "8.3.6"
     id("org.jetbrains.compose") version "1.8.2"
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
     jacoco
@@ -65,14 +63,6 @@ compose.desktop {
 }
 
 tasks {
-    named<ShadowJar>("shadowJar") {
-        archiveFileName.set("comicripper.jar")
-        mergeServiceFiles()
-        // application プラグインを外したため、Main-Class を明示する。
-        manifest {
-            attributes["Main-Class"] = "to.sava.comicripper.MainKt"
-        }
-    }
     test {
         useJUnitPlatform()
         finalizedBy(jacocoTestReport)
