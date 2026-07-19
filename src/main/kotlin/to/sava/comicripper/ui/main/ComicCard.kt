@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.onClick
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,8 +30,11 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -44,6 +49,10 @@ private val SelectedBorder = Color.Black
 /** 未選択時の背景（白）と枠（silver）。common.css の .comic に対応。 */
 private val UnselectedBackground = Color.White
 private val UnselectedBorder = Color(0xFFC0C0C0)
+
+/** ドラッグ元の枠（青）とドロップ先候補の枠（赤）。common.css の .comic.dragged/.dragover に対応。 */
+private val DraggedBorder = Color.Blue
+private val DropTargetBorder = Color.Red
 
 private const val MAX_AUTHOR_LENGTH = 20
 private const val MAX_TITLE_LENGTH = 40
@@ -60,18 +69,26 @@ private const val PAGE_OVERLAP_STEP = 3f
  * コミック1件を表すカード。
  * 著者名・題名と、表紙サムネイル＋2枚目以降の重ね描きを表示する。
  * クリックで選択、ダブルクリックで詳細/カット画面を開く。
+ * ドラッグで別カードへ重ねると、そのカードへの Comic マージを起こす。
  *
+ * @param isDragged 自身がドラッグ元のとき true（枠を青にする）。
+ * @param isDropTarget 自身がドロップ先候補のとき true（枠を赤にする）。
  * @param onBoundsInParent FlowRow 座標系での自身の矩形を親へ通知する
  *   （選択カードのスクロール補正に使う。スクロール位置に依存しない座標）。
+ * @param onMerge ドロップ確定時に (ドラッグ元 id, ドロップ先 id) を通知する。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ComicCard(
     comic: Comic,
     selected: Boolean,
+    isDragged: Boolean,
+    isDropTarget: Boolean,
+    dragState: ComicDragState,
     onSelect: () -> Unit,
     onOpen: () -> Unit,
     onBoundsInParent: (Rect) -> Unit,
+    onMerge: (srcId: String, dstId: String) -> Unit,
 ) {
     // changeFlow の発火ごとにインクリメントし、著者名/題名/サムネイルの再計算キーにする。
     var version by remember { mutableStateOf(0) }
@@ -91,12 +108,46 @@ fun ComicCard(
             .getOrDefault(emptyList())
     }
 
+    // カード破棄時にドラッグ状態から確実に除去する（stale bounds による誤ヒット防止）。
+    DisposableEffect(comic.id) {
+        onDispose { dragState.unregister(comic.id) }
+    }
+
+    val borderColor = when {
+        isDragged -> DraggedBorder
+        isDropTarget -> DropTargetBorder
+        selected -> SelectedBorder
+        else -> UnselectedBorder
+    }
+
     Column(
         modifier = Modifier
-            .onGloballyPositioned { onBoundsInParent(it.boundsInParent()) }
+            .onGloballyPositioned {
+                onBoundsInParent(it.boundsInParent())
+                dragState.register(comic.id, it.positionInWindow(), it.boundsInWindow())
+            }
             .background(if (selected) SelectedBackground else UnselectedBackground)
-            .border(1.dp, if (selected) SelectedBorder else UnselectedBorder)
+            .border(1.dp, borderColor)
             .onClick(onDoubleClick = onOpen, onClick = onSelect)
+            .pointerInput(comic.id) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        dragState.start(comic.id)
+                        dragState.drag(offset)
+                    },
+                    onDrag = { change, _ ->
+                        // ドラッグ認識後は消費して、下位のスクロール等と競合させない。
+                        change.consume()
+                        dragState.drag(change.position)
+                    },
+                    onDragEnd = {
+                        runCatching {
+                            dragState.end()?.let { (src, dst) -> onMerge(src, dst) }
+                        }.onFailure { println("drag end failed: ${it.javaClass.simpleName}: ${it.message}") }
+                    },
+                    onDragCancel = { dragState.cancel() },
+                )
+            }
             .padding(2.dp),
     ) {
         Row(

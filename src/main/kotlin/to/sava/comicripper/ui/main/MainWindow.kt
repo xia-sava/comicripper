@@ -43,7 +43,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
@@ -68,12 +70,16 @@ import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.setting.SettingWindow
+import java.awt.Cursor
 import kotlin.math.roundToInt
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
 
 /** コミック一覧の背景（common.css の gray に対応）。 */
 private val ListBackground = Color(0xFF808080)
+
+/** ドラッグ中に表示する移動カーソル。 */
+private val MoveCursorIcon = PointerIcon(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR))
 
 /**
  * ウィンドウを閉じた後も完走させたい処理の実行スコープ
@@ -200,6 +206,23 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    val dragState = remember { ComicDragState() }
+
+    fun onMerge(srcId: String, dstId: String) {
+        val src = ComicStorage[srcId] ?: return
+        val dst = ComicStorage[dstId] ?: return
+        // 選択切り替えだけ先に同期で行なう。
+        selectComic(dst.id)
+        // merge は同期ディスク I/O（ImageIO.read + スケーリング）を伴うため EDT で直接呼ばない。
+        appTaskScope.launch {
+            runCatching {
+                dst.merge(src)
+                ComicStorage.remove(src)
+                repos.reScanFiles(dst)
+            }.onFailure { println("merge failed: ${it.javaClass.simpleName}: ${it.message}") }
+        }
+    }
+
     // キー入力から openComic を起動する際の owner（自ウィンドウ）。content 側で確定させる。
     var ownerWindow by remember { mutableStateOf<java.awt.Window?>(null) }
 
@@ -280,8 +303,16 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                             .weight(1.0f)
                             .fillMaxWidth()
                             .background(ListBackground)
+                            .pointerHoverIcon(
+                                icon = if (dragState.draggingId != null) MoveCursorIcon else PointerIcon.Default,
+                                overrideDescendants = dragState.draggingId != null,
+                            )
                             .onSizeChanged { viewportHeightPx = it.height }
                             .onPointerEvent(PointerEventType.Scroll, pass = PointerEventPass.Initial) { event ->
+                                // ドラッグ中はホイールを選択移動に使わず、スクロールへ委ねる。
+                                if (dragState.draggingId != null) {
+                                    return@onPointerEvent
+                                }
                                 // verticalScroll より先に消費して、スクロールではなく選択移動に変換する。
                                 event.changes.forEach { it.consume() }
                                 runCatching {
@@ -306,9 +337,13 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                     ComicCard(
                                         comic = comic,
                                         selected = comic.id == selectedId,
+                                        isDragged = comic.id == dragState.draggingId,
+                                        isDropTarget = comic.id == dragState.dropTargetId,
+                                        dragState = dragState,
                                         onSelect = { selectComic(comic.id) },
                                         onOpen = { openComic(comic, window) },
                                         onBoundsInParent = { cardBounds[comic.id] = it },
+                                        onMerge = { src, dst -> onMerge(src, dst) },
                                     )
                                 }
                             }
