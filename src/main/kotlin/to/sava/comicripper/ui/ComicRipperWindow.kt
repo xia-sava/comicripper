@@ -58,12 +58,16 @@ fun ComicRipperWindow(
     content: @Composable WindowScope.() -> Unit,
 ) {
     if (owner == null) {
+        // 高レベル Window も内部の SwingWindow が onPreviewKeyEvent を生成時の1回しか
+        // 束縛しないため、rememberUpdatedState を挟んで再コンポジション後も
+        // ハンドラが最新のクロージャを参照するようにする（OwnedDialogWindow と同じ対策）。
+        val currentOnPreviewKeyEvent by rememberUpdatedState(onPreviewKeyEvent)
         Window(
             onCloseRequest = onCloseRequest,
             state = state,
             title = title,
             icon = icon,
-            onPreviewKeyEvent = onPreviewKeyEvent,
+            onPreviewKeyEvent = { event -> currentOnPreviewKeyEvent(event) },
         ) {
             content()
         }
