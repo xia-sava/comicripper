@@ -2,9 +2,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     java
-    kotlin("jvm") version "2.1.21"
-    id("org.jetbrains.compose") version "1.8.2"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.21"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.compose.compiler)
     jacoco
 }
 
@@ -17,19 +17,19 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    implementation("net.contentobjects.jnotify:jnotify:0.94")
-    implementation("org.jsoup:jsoup:1.20.1")
-    implementation("io.insert-koin:koin-core:4.0.0")
-    implementation("io.insert-koin:koin-compose:4.0.0")
+    implementation(libs.kotlinx.coroutines.swing)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.jnotify)
+    implementation(libs.jsoup)
+    implementation(libs.koin.core)
+    implementation(libs.koin.compose)
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
 
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
-    testImplementation("io.insert-koin:koin-test:4.0.0")
-    testImplementation("io.insert-koin:koin-test-junit5:4.0.0")
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.koin.test)
+    testImplementation(libs.koin.test.junit5)
 }
 
 kotlin {
