@@ -246,6 +246,10 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun ocrIsbn() {
+        if (comic.coverFull.isNullOrEmpty()) {
+            errorToast.show("OCR対象の表紙画像がありません")
+            return
+        }
         progress.launchTask("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます") {
             repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
                 comic.author = ocrAuthor
