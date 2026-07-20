@@ -2,7 +2,6 @@ package to.sava.comicripper.ui.cutter
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -219,20 +216,9 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         },
     ) {
         BringToFrontOnFirstShow()
-        // ウィンドウを開いた直後からキー操作（ガイド移動・Enter・Escape）を受け付けるため、
-        // コンテンツ自体にフォーカスを与えておく。フォーカスノードが無いとキーイベントが流れない。
-        val windowFocus = remember { FocusRequester() }
-        LaunchedEffect(Unit) {
-            windowFocus.requestFocus()
-        }
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .focusRequester(windowFocus)
-                        .focusable(),
-                ) {
+                Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier
