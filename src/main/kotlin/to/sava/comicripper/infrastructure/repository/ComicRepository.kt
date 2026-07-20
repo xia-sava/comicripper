@@ -37,6 +37,39 @@ import javax.imageio.ImageIO
 
 private val logger = KotlinLogging.logger {}
 
+/** ファイル名・アーカイブ名に使えない半角記号を対応する全角文字へ置き換えるための変換表。 */
+private val FULLWIDTH_CHAR_MAP: Map<Char, Char> = mapOf(
+    Character.codePointOf("FULLWIDTH TILDE").toChar() to '～',
+    Character.codePointOf("WAVE DASH").toChar() to '～',
+    '!' to '！',
+    '\'' to '’',
+    '"' to '”',
+    '%' to '％',
+    '&' to '＆',
+    ':' to '：',
+    '*' to '＊',
+    '?' to '？',
+    '<' to '＜',
+    '>' to '＞',
+    '|' to '｜',
+    '~' to '～',
+    '/' to '／',
+    '\\' to '￥',
+)
+
+/** タイトル中の各種括弧を `<` `>` へ統一するための変換表。 */
+private val BRACKET_CHAR_MAP: Map<Char, Char> = mapOf(
+    '(' to '<', ')' to '>',
+    '[' to '<', ']' to '>',
+    '{' to '<', '}' to '>',
+    '＜' to '<', '＞' to '>',
+    '「' to '<', '」' to '>',
+    '〔' to '<', '〕' to '>',
+    '【' to '<', '】' to '>',
+    '『' to '<', '』' to '>',
+    '《' to '<', '》' to '>',
+)
+
 class ComicRepository(private val setting: Setting, private val comicStorage: ComicStorage) {
 
     fun reScanFiles(targetComic: Comic? = null) {
@@ -229,34 +262,16 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
 
     // 共通の正規化処理
     internal fun normalizeText(text: String): String {
-        return Normalizer.normalize(text, Normalizer.Form.NFKC)
-            .replace(Character.codePointOf("FULLWIDTH TILDE").toChar(), '～')
-            .replace(Character.codePointOf("WAVE DASH").toChar(), '～')
-            .replace('!', '！').replace('\'', '’')
-            .replace('"', '”').replace('%', '％')
-            .replace('&', '＆').replace(':', '：')
-            .replace('*', '＊').replace('?', '？')
-            .replace('?', '／').replace('<', '＜')
-            .replace('>', '＞').replace('|', '｜')
-            .replace('~', '～').replace('/', '／')
-            .replace('\\', '￥')
-
+        val normalized = Normalizer.normalize(text, Normalizer.Form.NFKC)
+        return FULLWIDTH_CHAR_MAP.entries.fold(normalized) { acc, (from, to) -> acc.replace(from, to) }
     }
 
     internal fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
         val a = authors.joinToString("／") {
             normalizeText(it).replace(" ", "")
         }
-        val t = normalizeText(title)
-            .replace('(', '<').replace(')', '>')
-            .replace('[', '<').replace(']', '>')
-            .replace('{', '<').replace('}', '>')
-            .replace('＜', '<').replace('＞', '>')
-            .replace('「', '<').replace('」', '>')
-            .replace('〔', '<').replace('〕', '>')
-            .replace('【', '<').replace('】', '>')
-            .replace('『', '<').replace('』', '>')
-            .replace('《', '<').replace('》', '>')
+        val bracketsUnified = BRACKET_CHAR_MAP.entries.fold(normalizeText(title)) { acc, (from, to) -> acc.replace(from, to) }
+        val t = bracketsUnified
             .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
             .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
             .replace("""：\s*(\d+)""".toRegex(), " <$1>")
