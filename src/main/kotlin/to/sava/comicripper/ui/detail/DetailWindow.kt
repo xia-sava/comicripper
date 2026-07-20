@@ -62,8 +62,10 @@ import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
+import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import java.io.File
@@ -119,7 +121,8 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     val repos: ComicRepository = koinInject()
-    val progress = rememberProgressOverlayState()
+    val errorToast = rememberErrorToastState()
+    val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val uiScope = rememberCoroutineScope()
 
     var authorText by remember { mutableStateOf(comic.author) }
@@ -225,6 +228,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                 throw e
             } catch (e: Exception) {
                 logger.warn(e) { "reloadImages failed" }
+                errorToast.show("画像リロードに失敗しました")
             }
         }
     }
@@ -404,6 +408,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                         }
                     }
                     ProgressOverlay(progress)
+                    ErrorToast(errorToast)
                 }
             }
         }

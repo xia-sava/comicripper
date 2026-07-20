@@ -69,10 +69,12 @@ import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.TextAreaOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.detail.showDetailWindow
+import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberTextAreaOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
@@ -127,7 +129,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     }
 
     val repos: ComicRepository = koinInject()
-    val progress = rememberProgressOverlayState()
+    val errorToast = rememberErrorToastState()
+    val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
     val comics by comicStorage.storage.collectAsState()
 
@@ -205,7 +208,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 } else {
                     showDetailWindow(target, owner)
                 }
-            }.onFailure { logger.warn(it) { "openComic failed" } }
+            }.onFailure {
+                logger.warn(it) { "openComic failed" }
+                errorToast.show("画面を開けませんでした")
+            }
         }
     }
 
@@ -214,7 +220,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
             runCatching {
                 repos.reScanFiles()
                 repos.saveStructure()
-            }.onFailure { logger.warn(it) { "reScan failed" } }
+            }.onFailure {
+                logger.warn(it) { "reScan failed" }
+                errorToast.show("フォルダ再スキャンに失敗しました")
+            }
         }
     }
 
@@ -222,7 +231,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         val target = selectedComic ?: return
         appTaskScope.launch {
             runCatching { repos.pagesToComic(target) }
-                .onFailure { logger.warn(it) { "pagesToComic failed" } }
+                .onFailure {
+                    logger.warn(it) { "pagesToComic failed" }
+                    errorToast.show("pageの集約に失敗しました")
+                }
         }
     }
 
@@ -273,7 +285,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 )
                     .directory(File(setting.workDirectory))
                     .start()
-            }.onFailure { logger.warn(it) { "extractEpub failed" } }
+            }.onFailure {
+                logger.warn(it) { "extractEpub failed" }
+                errorToast.show("epub展開の起動に失敗しました")
+            }
         }
     }
 
@@ -304,7 +319,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 dst.merge(src)
                 comicStorage.remove(src)
                 repos.reScanFiles(dst)
-            }.onFailure { logger.warn(it) { "merge failed" } }
+            }.onFailure {
+                logger.warn(it) { "merge failed" }
+                errorToast.show("マージに失敗しました")
+            }
         }
     }
 
@@ -458,6 +476,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                     }
                     ProgressOverlay(progress)
                     TextAreaOverlay(nameAll)
+                    ErrorToast(errorToast)
                 }
             }
         }

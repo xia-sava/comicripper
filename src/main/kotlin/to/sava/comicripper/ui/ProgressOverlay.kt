@@ -36,9 +36,13 @@ private val logger = KotlinLogging.logger {}
  *
  * @param scope block を実行するスコープ。呼び出し元ウィンドウが閉じても完走させるため、
  *   composition のライフサイクルから独立した [ApplicationScope] を渡すこと。
+ * @param onError block が例外を投げた際に呼ばれる。ユーザーへの失敗通知（[ErrorToastState]等）に使う。
  */
 @Stable
-class ProgressOverlayState(private val scope: CoroutineScope) {
+class ProgressOverlayState(
+    private val scope: CoroutineScope,
+    private val onError: (title: String) -> Unit = {},
+) {
     class Task(val title: String, val text: String)
 
     var task by mutableStateOf<Task?>(null)
@@ -59,6 +63,7 @@ class ProgressOverlayState(private val scope: CoroutineScope) {
                 block()
             } catch (e: Exception) {
                 logger.warn(e) { "$title failed" }
+                onError(title)
             } finally {
                 task = null
             }
@@ -67,9 +72,9 @@ class ProgressOverlayState(private val scope: CoroutineScope) {
 }
 
 @Composable
-fun rememberProgressOverlayState(): ProgressOverlayState {
+fun rememberProgressOverlayState(onError: (title: String) -> Unit = {}): ProgressOverlayState {
     val scope: ApplicationScope = koinInject()
-    return remember { ProgressOverlayState(scope) }
+    return remember { ProgressOverlayState(scope, onError) }
 }
 
 /**
