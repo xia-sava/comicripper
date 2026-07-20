@@ -2,6 +2,8 @@ package to.sava.comicripper.model
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.*
 
 class Setting {
@@ -195,13 +197,26 @@ class Setting {
         "TesseractExe" to TesseractExeFlow,
     )
 
+    // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
+    // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun save() {
         val props = Properties()
         flowEntries.forEach { (name, flow) ->
             props.setProperty(name, flow.value.toString())
         }
-        settingFile.outputStream().use {
-            props.store(it, "comicripper")
+        val tempFile = File.createTempFile("comicripper", ".tmp", settingFile.absoluteFile.parentFile)
+        try {
+            tempFile.outputStream().use {
+                props.store(it, "comicripper")
+            }
+            Files.move(
+                tempFile.toPath(),
+                settingFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            tempFile.delete()
         }
     }
 

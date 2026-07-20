@@ -26,6 +26,7 @@ import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
 import java.text.Normalizer
 import java.util.*
 import java.util.stream.Collectors
@@ -366,6 +367,8 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         return "${prefix}_%03d.jpg".format(num)
     }
 
+    // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
+    // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun saveStructure() {
         val props = Properties()
         comicStorage.all.forEachIndexed { index, comic ->
@@ -377,8 +380,20 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                 props.setProperty(it, comic.id)
             }
         }
-        setting.structureFile.outputStream().use {
-            props.store(it, "comicripperStructure")
+        val structureFile = setting.structureFile
+        val tempFile = File.createTempFile("comicripperStructure", ".tmp", structureFile.absoluteFile.parentFile)
+        try {
+            tempFile.outputStream().use {
+                props.store(it, "comicripperStructure")
+            }
+            Files.move(
+                tempFile.toPath(),
+                structureFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            tempFile.delete()
         }
     }
 
