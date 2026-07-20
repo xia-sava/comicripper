@@ -1,10 +1,45 @@
 package to.sava.comicripper.model
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.*
+
+private val logger = KotlinLogging.logger {}
+
+private val json = Json { prettyPrint = true }
+
+/** JSON永続化用のスナップショット。Settingの各プロパティと1:1対応する。 */
+@Serializable
+private data class SettingData(
+    val mainWindowWidth: Double = 960.0,
+    val mainWindowHeight: Double = 720.0,
+    val mainWindowPosX: Double = -1.0,
+    val mainWindowPosY: Double = -1.0,
+    val detailWindowWidth: Double = 1280.0,
+    val detailWindowHeight: Double = 720.0,
+    val detailWindowPosX: Double = -1.0,
+    val detailWindowPosY: Double = -1.0,
+    val cutterWindowWidth: Double = 1280.0,
+    val cutterWindowHeight: Double = 720.0,
+    val cutterWindowPosX: Double = -1.0,
+    val cutterWindowPosY: Double = -1.0,
+    val settingWindowWidth: Double = 720.0,
+    val settingWindowHeight: Double = 720.0,
+    val settingWindowPosX: Double = -1.0,
+    val settingWindowPosY: Double = -1.0,
+    val cutterLeftPercent: Double = 15.0,
+    val cutterRightPercent: Double = 48.5,
+    val workDirectory: String = "C:/tmp/C",
+    val storeDirectory: String = "C:/tmp/B",
+    val googleBookApiUrl: String = "https://www.googleapis.com/books/v1/volumes?q=isbn:",
+    val yodobashiSearchUrl: String = "https://www.yodobashi.com/?word=",
+    val tesseractExe: String = "C:/Program Files/Tesseract-OCR/tesseract.exe",
+)
 
 class Setting {
     val mainWindowWidthFlow = MutableStateFlow(960.0)
@@ -168,47 +203,73 @@ class Setting {
             TesseractExeFlow.value = value
         }
 
-    internal val settingFile get() = File(System.getProperty("user.home") + "/.comicripper")
+    /** JSON形式の設定ファイル。 */
+    internal val settingFile get() = File(System.getProperty("user.home") + "/.comicripper.json")
+
+    /** 旧Properties形式の設定ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
+    private val legacySettingFile get() = File(System.getProperty("user.home") + "/.comicripper")
+
     val structureFile get() = File("${workDirectory}/.comicripperStructure")
 
-    private val flowEntries: List<Pair<String, MutableStateFlow<*>>> = listOf(
-        "mainWindowWidth" to mainWindowWidthFlow,
-        "mainWindowHeight" to mainWindowHeightFlow,
-        "mainWindowPosX" to mainWindowPosXFlow,
-        "mainWindowPosY" to mainWindowPosYFlow,
-        "detailWindowWidth" to detailWindowWidthFlow,
-        "detailWindowHeight" to detailWindowHeightFlow,
-        "detailWindowPosX" to detailWindowPosXFlow,
-        "detailWindowPosY" to detailWindowPosYFlow,
-        "cutterWindowWidth" to cutterWindowWidthFlow,
-        "cutterWindowHeight" to cutterWindowHeightFlow,
-        "cutterWindowPosX" to cutterWindowPosXFlow,
-        "cutterWindowPosY" to cutterWindowPosYFlow,
-        "settingWindowWidth" to settingWindowWidthFlow,
-        "settingWindowHeight" to settingWindowHeightFlow,
-        "settingWindowPosX" to settingWindowPosXFlow,
-        "settingWindowPosY" to settingWindowPosYFlow,
-        "cutterLeftPercent" to cutterLeftPercentFlow,
-        "cutterRightPercent" to cutterRightPercentFlow,
-        "workDirectory" to workDirectoryFlow,
-        "storeDirectory" to storeDirectoryFlow,
-        "googleBookApiUrl" to googleBookApiUrlFlow,
-        "YodobashiSearchUrl" to YodobashiSearchUrlFlow,
-        "TesseractExe" to TesseractExeFlow,
+    private fun toData() = SettingData(
+        mainWindowWidth = mainWindowWidth,
+        mainWindowHeight = mainWindowHeight,
+        mainWindowPosX = mainWindowPosX,
+        mainWindowPosY = mainWindowPosY,
+        detailWindowWidth = detailWindowWidth,
+        detailWindowHeight = detailWindowHeight,
+        detailWindowPosX = detailWindowPosX,
+        detailWindowPosY = detailWindowPosY,
+        cutterWindowWidth = cutterWindowWidth,
+        cutterWindowHeight = cutterWindowHeight,
+        cutterWindowPosX = cutterWindowPosX,
+        cutterWindowPosY = cutterWindowPosY,
+        settingWindowWidth = settingWindowWidth,
+        settingWindowHeight = settingWindowHeight,
+        settingWindowPosX = settingWindowPosX,
+        settingWindowPosY = settingWindowPosY,
+        cutterLeftPercent = cutterLeftPercent,
+        cutterRightPercent = cutterRightPercent,
+        workDirectory = workDirectory,
+        storeDirectory = storeDirectory,
+        googleBookApiUrl = googleBookApi,
+        yodobashiSearchUrl = YodobashiSearchUrl,
+        tesseractExe = TesseractExe,
     )
+
+    private fun applyData(data: SettingData) {
+        mainWindowWidth = data.mainWindowWidth
+        mainWindowHeight = data.mainWindowHeight
+        mainWindowPosX = data.mainWindowPosX
+        mainWindowPosY = data.mainWindowPosY
+        detailWindowWidth = data.detailWindowWidth
+        detailWindowHeight = data.detailWindowHeight
+        detailWindowPosX = data.detailWindowPosX
+        detailWindowPosY = data.detailWindowPosY
+        cutterWindowWidth = data.cutterWindowWidth
+        cutterWindowHeight = data.cutterWindowHeight
+        cutterWindowPosX = data.cutterWindowPosX
+        cutterWindowPosY = data.cutterWindowPosY
+        settingWindowWidth = data.settingWindowWidth
+        settingWindowHeight = data.settingWindowHeight
+        settingWindowPosX = data.settingWindowPosX
+        settingWindowPosY = data.settingWindowPosY
+        cutterLeftPercent = data.cutterLeftPercent
+        cutterRightPercent = data.cutterRightPercent
+        workDirectory = data.workDirectory
+        storeDirectory = data.storeDirectory
+        googleBookApi = data.googleBookApiUrl
+        YodobashiSearchUrl = data.yodobashiSearchUrl
+        TesseractExe = data.tesseractExe
+    }
 
     // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
     // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun save() {
-        val props = Properties()
-        flowEntries.forEach { (name, flow) ->
-            props.setProperty(name, flow.value.toString())
-        }
+        val text = json.encodeToString(SettingData.serializer(), toData())
         val tempFile = File.createTempFile("comicripper", ".tmp", settingFile.absoluteFile.parentFile)
         try {
-            tempFile.outputStream().use {
-                props.store(it, "comicripper")
-            }
+            tempFile.writeText(text)
             Files.move(
                 tempFile.toPath(),
                 settingFile.toPath(),
@@ -220,25 +281,74 @@ class Setting {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
+    /**
+     * 設定を読み込む。JSON形式ファイルがあればそれを使い、無く旧Properties形式ファイルが
+     * あれば読み込んでJSON形式で保存し直し、旧ファイルは `.bak` へリネームして残す。
+     */
     fun load(): Boolean {
-        return try {
+        if (settingFile.exists()) {
+            return runCatching {
+                applyData(json.decodeFromString(SettingData.serializer(), settingFile.readText()))
+            }.onFailure { logger.warn(it) { "setting load failed" } }.isSuccess
+        }
+        if (legacySettingFile.exists()) {
+            return loadLegacyAndMigrate()
+        }
+        return false
+    }
+
+    private fun loadLegacyAndMigrate(): Boolean {
+        val loaded = runCatching {
             val props = Properties()
-            settingFile.inputStream().use {
-                props.load(it)
-            }
-            flowEntries.forEach { (name, flow) ->
-                props.getProperty(name)?.let { value ->
-                    when (flow.value) {
-                        is String -> (flow as MutableStateFlow<String>).value = value
-                        is Double -> (flow as MutableStateFlow<Double>).value = value.toDouble()
-                        is Int -> (flow as MutableStateFlow<Int>).value = value.toInt()
-                    }
+            legacySettingFile.inputStream().use { props.load(it) }
+            applyLegacyProperties(props)
+        }.onFailure { logger.warn(it) { "legacy setting load failed" } }.isSuccess
+        if (!loaded) {
+            return false
+        }
+        runCatching {
+            save()
+            val backup = File("${legacySettingFile.path}.bak")
+            Files.move(legacySettingFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }.onFailure { logger.warn(it) { "legacy setting migration failed" } }
+        return true
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun applyLegacyProperties(props: Properties) {
+        val legacyFlowEntries: List<Pair<String, MutableStateFlow<*>>> = listOf(
+            "mainWindowWidth" to mainWindowWidthFlow,
+            "mainWindowHeight" to mainWindowHeightFlow,
+            "mainWindowPosX" to mainWindowPosXFlow,
+            "mainWindowPosY" to mainWindowPosYFlow,
+            "detailWindowWidth" to detailWindowWidthFlow,
+            "detailWindowHeight" to detailWindowHeightFlow,
+            "detailWindowPosX" to detailWindowPosXFlow,
+            "detailWindowPosY" to detailWindowPosYFlow,
+            "cutterWindowWidth" to cutterWindowWidthFlow,
+            "cutterWindowHeight" to cutterWindowHeightFlow,
+            "cutterWindowPosX" to cutterWindowPosXFlow,
+            "cutterWindowPosY" to cutterWindowPosYFlow,
+            "settingWindowWidth" to settingWindowWidthFlow,
+            "settingWindowHeight" to settingWindowHeightFlow,
+            "settingWindowPosX" to settingWindowPosXFlow,
+            "settingWindowPosY" to settingWindowPosYFlow,
+            "cutterLeftPercent" to cutterLeftPercentFlow,
+            "cutterRightPercent" to cutterRightPercentFlow,
+            "workDirectory" to workDirectoryFlow,
+            "storeDirectory" to storeDirectoryFlow,
+            "googleBookApiUrl" to googleBookApiUrlFlow,
+            "YodobashiSearchUrl" to YodobashiSearchUrlFlow,
+            "TesseractExe" to TesseractExeFlow,
+        )
+        legacyFlowEntries.forEach { (name, flow) ->
+            props.getProperty(name)?.let { value ->
+                when (flow.value) {
+                    is String -> (flow as MutableStateFlow<String>).value = value
+                    is Double -> (flow as MutableStateFlow<Double>).value = value.toDouble()
+                    is Int -> (flow as MutableStateFlow<Int>).value = value.toInt()
                 }
             }
-            true
-        } catch (_: Exception) {
-            false
         }
     }
 }

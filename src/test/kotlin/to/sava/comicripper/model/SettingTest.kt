@@ -3,9 +3,12 @@ package to.sava.comicripper.model
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import java.nio.file.Path
+import java.util.Properties
 
 class SettingTest {
 
@@ -99,5 +102,51 @@ class SettingTest {
     fun `structureFileがworkDirectory配下にある`() {
         setting.workDirectory = "/some/dir"
         assertTrue(setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))
+    }
+
+    @Nested
+    inner class `旧Properties形式からの自動移行` {
+
+        private fun legacyFile() = File("$tempDir/.comicripper")
+
+        private fun writeLegacyProperties(entries: Map<String, String>) {
+            val props = Properties()
+            entries.forEach { (k, v) -> props.setProperty(k, v) }
+            legacyFile().outputStream().use { props.store(it, null) }
+        }
+
+        @Test
+        fun `旧形式のみ存在する場合は読み込んでJSON形式に移行する`() {
+            writeLegacyProperties(mapOf("workDirectory" to "/legacy/dir", "mainWindowWidth" to "999.0"))
+
+            assertTrue(setting.load())
+
+            assertEquals("/legacy/dir", setting.workDirectory)
+            assertEquals(999.0, setting.mainWindowWidth)
+            assertTrue(setting.settingFile.exists(), "JSON形式ファイルが作られているはず")
+        }
+
+        @Test
+        fun `移行後は旧ファイルが bak にリネームされる`() {
+            writeLegacyProperties(mapOf("workDirectory" to "/legacy/dir"))
+
+            setting.load()
+
+            assertFalse(legacyFile().exists(), "旧ファイルは残っていないはず")
+            assertTrue(File("${legacyFile().path}.bak").exists(), ".bak にリネームされているはず")
+        }
+
+        @Test
+        fun `新旧両方存在する場合はJSON形式が優先される`() {
+            writeLegacyProperties(mapOf("workDirectory" to "/legacy/dir"))
+            setting.workDirectory = "/json/dir"
+            setting.save()
+
+            setting.workDirectory = "default"
+            assertTrue(setting.load())
+
+            assertEquals("/json/dir", setting.workDirectory)
+            assertTrue(legacyFile().exists(), "JSON形式がある場合は旧ファイルへ触れないはず")
+        }
     }
 }

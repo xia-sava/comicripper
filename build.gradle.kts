@@ -3,6 +3,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     java
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     jacoco
