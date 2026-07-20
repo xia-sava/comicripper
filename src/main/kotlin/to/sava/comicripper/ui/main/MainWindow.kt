@@ -244,6 +244,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
             // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護し、失敗数を集計して通知する。
             val failedCount = AtomicInteger(0)
             val targets = comicStorage.all.filter { it.coverFull.isNullOrEmpty().not() }
+            if (targets.isEmpty()) {
+                errorToast.show("OCR一括: 対象のコミックがありません")
+                return@launchTask
+            }
             supervisorScope {
                 targets
                     .map { comic ->
@@ -271,6 +275,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
             val failedCount = AtomicInteger(0)
             val targets = comicStorage.all.filter { it.files.size > 3 }
+            if (targets.isEmpty()) {
+                errorToast.show("ZIP一括: 対象のコミックがありません")
+                return@launchTask
+            }
             supervisorScope {
                 targets
                     .map { comic ->
