@@ -209,7 +209,11 @@ class Setting {
     /** 旧Properties形式の設定ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
     private val legacySettingFile get() = File(System.getProperty("user.home") + "/.comicripper")
 
-    val structureFile get() = File("${workDirectory}/.comicripperStructure")
+    /** JSON形式の構造ファイル。 */
+    val structureFile get() = File("${workDirectory}/.comicripperStructure.json")
+
+    /** 旧Properties形式の構造ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
+    val legacyStructureFile get() = File("${workDirectory}/.comicripperStructure")
 
     private fun toData() = SettingData(
         mainWindowWidth = mainWindowWidth,

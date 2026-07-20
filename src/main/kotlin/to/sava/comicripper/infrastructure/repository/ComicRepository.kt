@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -37,6 +38,22 @@ import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
 
 private val logger = KotlinLogging.logger {}
+
+private val structureJson = Json { prettyPrint = true }
+
+/** JSON永続化用の構造ファイルのComic1件分のスナップショット。 */
+@Serializable
+private data class ComicStructureEntry(
+    val id: String,
+    val author: String,
+    val title: String,
+    val files: List<String>,
+)
+
+@Serializable
+private data class ComicStructureData(
+    val comics: List<ComicStructureEntry> = emptyList(),
+)
 
 /** ファイル名・アーカイブ名に使えない半角記号を対応する全角文字へ置き換えるための変換表。 */
 private val FULLWIDTH_CHAR_MAP: Map<Char, Char> = mapOf(
@@ -396,22 +413,16 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
     // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
     // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun saveStructure() {
-        val props = Properties()
-        comicStorage.all.forEachIndexed { index, comic ->
-            props.setProperty(
-                "_${comic.id}",
-                listOf("$index", comic.author, comic.title).joinToString("\t")
-            )
-            comic.files.forEach {
-                props.setProperty(it, comic.id)
+        val data = ComicStructureData(
+            comics = comicStorage.all.map { comic ->
+                ComicStructureEntry(comic.id, comic.author, comic.title, comic.files)
             }
-        }
+        )
+        val text = structureJson.encodeToString(ComicStructureData.serializer(), data)
         val structureFile = setting.structureFile
         val tempFile = File.createTempFile("comicripperStructure", ".tmp", structureFile.absoluteFile.parentFile)
         try {
-            tempFile.outputStream().use {
-                props.store(it, "comicripperStructure")
-            }
+            tempFile.writeText(text)
             Files.move(
                 tempFile.toPath(),
                 structureFile.toPath(),
@@ -423,52 +434,90 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         }
     }
 
+    /**
+     * 構造を読み込む。JSON形式ファイルがあればそれを使い、無く旧Properties形式ファイルが
+     * あれば読み込んでJSON形式で保存し直し、旧ファイルは `.bak` へリネームして残す。
+     */
     fun loadStructure(): Boolean {
-        if (!setting.structureFile.exists()) {
+        if (setting.structureFile.exists()) {
+            return runCatching {
+                applyStructureData(structureJson.decodeFromString(ComicStructureData.serializer(), setting.structureFile.readText()))
+            }.onFailure { logger.warn(it) { "structure load failed" } }.isSuccess
+        }
+        if (setting.legacyStructureFile.exists()) {
+            return loadLegacyStructureAndMigrate()
+        }
+        return false
+    }
+
+    private fun applyStructureData(data: ComicStructureData) {
+        data.comics.forEach { entry ->
+            val comic = Comic().apply {
+                id = entry.id
+                author = entry.author
+                title = entry.title
+            }
+            comicStorage.add(comic)
+            entry.files.sorted().forEach { filename ->
+                if (File("${setting.workDirectory}/$filename").exists()) {
+                    comic.addFile(filename)
+                }
+            }
+        }
+        comicStorage.all.filter { it.files.isEmpty() }.forEach { comicStorage.remove(it) }
+    }
+
+    private fun loadLegacyStructureAndMigrate(): Boolean {
+        val loaded = runCatching {
+            val props = Properties()
+            setting.legacyStructureFile.inputStream().use { props.load(it) }
+            applyLegacyStructureProperties(props)
+        }.onFailure { logger.warn(it) { "legacy structure load failed" } }.isSuccess
+        if (!loaded) {
             return false
         }
-        return try {
-            val props = Properties()
-            setting.structureFile.inputStream().use {
-                props.load(it)
+        runCatching {
+            saveStructure()
+            val backup = File("${setting.legacyStructureFile.path}.bak")
+            Files.move(setting.legacyStructureFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }.onFailure { logger.warn(it) { "legacy structure migration failed" } }
+        return true
+    }
+
+    private fun applyLegacyStructureProperties(props: Properties) {
+        props.propertyNames().toList().map { it as String }
+            .filter { it.startsWith("_") }
+            .associate {
+                val id = it.trimStart('_')
+                val (index, author, title) = props.getProperty(it).split("\t")
+                val comic = Comic().apply {
+                    this.id = id
+                    this.author = author
+                    this.title = title
+                }
+                index.toInt() to comic
             }
-            props.propertyNames().toList().map { it as String }
-                .filter { it.startsWith("_") }
-                .associate {
-                    val id = it.trimStart('_')
-                    val (index, author, title) = props.getProperty(it).split("\t")
-                    val comic = Comic().apply {
-                        this.id = id
-                        this.author = author
-                        this.title = title
-                    }
-                    index.toInt() to comic
-                }
-                .toSortedMap()
-                .forEach {
-                    comicStorage.add(it.value)
-                }
-            props.propertyNames().toList()
-                .map { it as String }
-                .filterNot { it.startsWith("_") }
-                .sorted()
-                .forEach { filename ->
-                    if (File("${setting.workDirectory}/$filename").exists()) {
-                        val comicId = props.getProperty(filename)
-                        val baseComic = comicStorage[comicId]
-                        if (baseComic != null) {
-                            baseComic.addFile(filename)
-                        } else {
-                            comicStorage.add(Comic(filename))
-                        }
-                    }
-                }
-            comicStorage.all.filter { it.files.isEmpty() }.forEach {
-                comicStorage.remove(it)
+            .toSortedMap()
+            .forEach {
+                comicStorage.add(it.value)
             }
-            true
-        } catch (_: Exception) {
-            false
+        props.propertyNames().toList()
+            .map { it as String }
+            .filterNot { it.startsWith("_") }
+            .sorted()
+            .forEach { filename ->
+                if (File("${setting.workDirectory}/$filename").exists()) {
+                    val comicId = props.getProperty(filename)
+                    val baseComic = comicStorage[comicId]
+                    if (baseComic != null) {
+                        baseComic.addFile(filename)
+                    } else {
+                        comicStorage.add(Comic(filename))
+                    }
+                }
+            }
+        comicStorage.all.filter { it.files.isEmpty() }.forEach {
+            comicStorage.remove(it)
         }
     }
 

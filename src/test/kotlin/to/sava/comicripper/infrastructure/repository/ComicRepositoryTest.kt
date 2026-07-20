@@ -250,6 +250,33 @@ class ComicRepositoryTest : KoinComponent {
             repository.loadStructure()
             assertEquals(0, comicStorage.all.size)
         }
+
+        @Test
+        fun `旧Properties形式の構造ファイルを読み込んでJSON形式に移行する`() {
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
+
+            val props = java.util.Properties()
+            val id = "legacy-id-1"
+            props.setProperty("_$id", listOf("0", "旧著者", "旧タイトル").joinToString("\t"))
+            props.setProperty(coverF, id)
+            props.setProperty(page, id)
+            setting.legacyStructureFile.outputStream().use { props.store(it, null) }
+
+            val loaded = repository.loadStructure()
+
+            assertTrue(loaded)
+            val comic = comicStorage.all.first()
+            assertEquals("旧著者", comic.author)
+            assertEquals("旧タイトル", comic.title)
+            assertTrue(comic.files.contains(coverF))
+            assertTrue(comic.files.contains(page))
+            assertTrue(setting.structureFile.exists(), "JSON形式ファイルが作られているはず")
+            assertFalse(setting.legacyStructureFile.exists(), "旧ファイルは残っていないはず")
+            assertTrue(File("${setting.legacyStructureFile.path}.bak").exists(), ".bak にリネームされているはず")
+        }
     }
 
     @Nested
