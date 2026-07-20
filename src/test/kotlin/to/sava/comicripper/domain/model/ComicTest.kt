@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.awt.image.BufferedImage
 
 class ComicTest {
 
@@ -226,6 +227,57 @@ class ComicTest {
             comic.addFile("page_001.jpg")
 
             assertEquals(listOf("page_000.jpg", "page_001.jpg", "page_002.jpg"), comic.files)
+        }
+    }
+
+    @Nested
+    inner class `フルサイズ画像キャッシュ` {
+
+        private fun dummyImage() = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
+
+        @Test
+        fun `同じファイル名の2回目はキャッシュを使いローダーを再呼び出ししない`() {
+            var loadCount = 0
+            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
+            val comic = Comic("page_000.jpg")
+
+            comic.getFullSizeImage("page_000.jpg")
+            comic.getFullSizeImage("page_000.jpg")
+
+            assertEquals(1, loadCount)
+        }
+
+        @Test
+        fun `容量を超えると最も長くアクセスされていないものが追い出される`() {
+            var loadCount = 0
+            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
+            val comic = Comic()
+            val filenames = (0 until 11).map { "page_%03d.jpg".format(it) }
+            filenames.forEach { comic.addFile(it) }
+
+            // page_000〜page_009 の10件をロードしてキャッシュを満杯にする。
+            filenames.take(10).forEach { comic.getFullSizeImage(it) }
+            // 11件目のロードで、最初にロードした page_000 が追い出されるはず。
+            comic.getFullSizeImage(filenames[10])
+            val countBeforeReload = loadCount
+
+            comic.getFullSizeImage(filenames[0])
+
+            assertEquals(countBeforeReload + 1, loadCount, "追い出された page_000 は再ロードされるはず")
+        }
+
+        @Test
+        fun `removeFileでキャッシュからも削除され再ロードされる`() {
+            var loadCount = 0
+            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
+            val comic = Comic("page_000.jpg")
+            comic.getFullSizeImage("page_000.jpg")
+            comic.removeFile("page_000.jpg")
+            comic.addFile("page_000.jpg")
+
+            comic.getFullSizeImage("page_000.jpg")
+
+            assertEquals(2, loadCount)
         }
     }
 }

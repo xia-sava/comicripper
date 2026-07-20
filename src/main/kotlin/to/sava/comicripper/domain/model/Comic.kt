@@ -26,6 +26,7 @@ class Comic(filename: String = "") {
             "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
 
         private const val THUMBNAIL_MAX_PX = 512
+        private const val FULL_SIZE_IMAGE_CACHE_CAPACITY = 10
 
         private val defaultThumbnailLoader: (String) -> BufferedImage? = { filename ->
             readImageOrNull(filename)?.let { scaleToFit(it, THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX) }
@@ -146,7 +147,13 @@ class Comic(filename: String = "") {
     )
     val changeFlow: SharedFlow<Unit> = _changeFlow
 
-    private val imageCache = CopyOnWriteArrayList<Triple<Int, String, BufferedImage>>()
+    /** 最終アクセス順で管理するフルサイズ画像キャッシュ。上限を超えると最も長く使われていないものを追い出す。 */
+    private val imageCache = Collections.synchronizedMap(
+        object : LinkedHashMap<String, BufferedImage>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, BufferedImage>) =
+                size > FULL_SIZE_IMAGE_CACHE_CAPACITY
+        }
+    )
 
     init {
         addFile(filename)
@@ -199,7 +206,7 @@ class Comic(filename: String = "") {
         if (filename in files) {
             _files.remove(filename)
             _thumbnails.remove(filename)
-            imageCache.firstOrNull { it.second == filename }?.let { imageCache.remove(it) }
+            imageCache.remove(filename)
         }
         if (prependListener.not()) {
             invokeListener()
@@ -228,17 +235,9 @@ class Comic(filename: String = "") {
     private fun loadImage(filename: String): BufferedImage? = thumbnailLoader(filename)
 
     private fun loadFullSizeImage(filename: String): BufferedImage {
-        imageCache.firstOrNull { it.second == filename }?.let {
-            return it.third
-        }
-        val num = (imageCache.maxByOrNull { it.first }?.first ?: 0) + 1
+        imageCache[filename]?.let { return it }
         val image = checkNotNull(fullSizeImageLoader(filename)) { "no image for $filename" }
-        imageCache.add(Triple(num, filename, image))
-        if (imageCache.size > 10) {
-            imageCache.minByOrNull { it.first }?.let {
-                imageCache.remove(it)
-            }
-        }
+        imageCache[filename] = image
         return image
     }
 
