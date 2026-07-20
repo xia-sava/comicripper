@@ -31,6 +31,7 @@ import java.nio.file.StandardCopyOption
 import java.text.Normalizer
 import java.util.*
 import java.util.stream.Collectors
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
@@ -187,8 +188,15 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                     src.startsWith(Comic.COVER_STRIP_PREFIX) -> Comic.COVER_STRIP_PREFIX
                     else -> "page_%03d".format(pageNum++)
                 } + ".jpg"
-                zipStream.putNextEntry(ZipEntry(name))
-                zipStream.write(Files.readAllBytes(Paths.get("${setting.workDirectory}/$src")))
+                // JPEGは既に圧縮済みのため、DEFLATEでの再圧縮を避けてSTOREDで格納する。
+                val bytes = Files.readAllBytes(Paths.get("${setting.workDirectory}/$src"))
+                val entry = ZipEntry(name).apply {
+                    method = ZipEntry.STORED
+                    size = bytes.size.toLong()
+                    crc = CRC32().apply { update(bytes) }.value
+                }
+                zipStream.putNextEntry(entry)
+                zipStream.write(bytes)
             }
         }
         comicStorage.remove(comic)
