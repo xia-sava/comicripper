@@ -30,6 +30,8 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.koin.test)
     testImplementation(libs.koin.test.junit5)
+    // Gradle 9.0以降、JUnit Platform launcherはビルトインではなく明示的な依存が必要。
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 kotlin {
