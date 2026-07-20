@@ -39,8 +39,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import io.github.oshai.kotlinlogging.KotlinLogging
 import to.sava.comicripper.domain.model.Comic
 import kotlin.math.roundToInt
+
+private val logger = KotlinLogging.logger {}
 
 /** 選択時の背景（antiquewhite）と枠（黒）。common.css の .comic.selected に対応。 */
 private val SelectedBackground = Color(0xFFFAEBD7)
@@ -104,7 +107,7 @@ fun ComicCard(
     // 画像変換系の例外はホスト全体を道連れにするため runCatching で保護する。
     val thumbnails = remember(comic, version) {
         runCatching { comic.thumbnails.map { it.toComposeImageBitmap() } }
-            .onFailure { println("thumbnail convert failed: ${it.message}") }
+            .onFailure { logger.warn(it) { "thumbnail convert failed" } }
             .getOrDefault(emptyList())
     }
 
@@ -143,7 +146,7 @@ fun ComicCard(
                     onDragEnd = {
                         runCatching {
                             dragState.end()?.let { (src, dst) -> onMerge(src, dst) }
-                        }.onFailure { println("drag end failed: ${it.javaClass.simpleName}: ${it.message}") }
+                        }.onFailure { logger.warn(it) { "drag end failed" } }
                     },
                     onDragCancel = { dragState.cancel() },
                 )

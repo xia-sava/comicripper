@@ -10,6 +10,7 @@ import androidx.compose.ui.window.LocalWindowExceptionHandlerFactory
 import androidx.compose.ui.window.WindowExceptionHandler
 import androidx.compose.ui.window.WindowExceptionHandlerFactory
 import androidx.compose.ui.window.application
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.awaitCancellation
 import java.awt.event.WindowEvent
 import java.util.concurrent.atomic.AtomicBoolean
@@ -24,6 +25,8 @@ import kotlin.concurrent.thread
  * 個々のウィンドウの表示状態のみを windows リストで管理する。
  * プロセス終了は Main.kt の exitProcess() が担う。
  */
+private val logger = KotlinLogging.logger {}
+
 object ComposeWindowHost {
     private class WindowEntry(
         val key: String,
@@ -69,8 +72,7 @@ object ComposeWindowHost {
                     }
                 }
             } catch (e: Throwable) {
-                System.err.println("ComposeWindowHost failed: ${e.javaClass.name}: ${e.message}")
-                e.printStackTrace()
+                logger.error(e) { "ComposeWindowHost failed" }
             } finally {
                 onTerminated?.invoke()
             }
@@ -80,8 +82,7 @@ object ComposeWindowHost {
     @OptIn(ExperimentalComposeUiApi::class)
     private val windowExceptionHandlerFactory = WindowExceptionHandlerFactory { window ->
         WindowExceptionHandler { throwable ->
-            System.err.println("window exception: ${throwable.javaClass.name}: ${throwable.message}")
-            throwable.printStackTrace()
+            logger.error(throwable) { "window exception" }
             window.dispatchEvent(WindowEvent(window, WindowEvent.WINDOW_CLOSING))
             // 再スローしない: ホスト全体を巻き込まず，例外の発生したウィンドウのみ閉じる。
         }

@@ -1,5 +1,6 @@
 package to.sava.comicripper.infrastructure.service
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -13,6 +14,8 @@ import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds
 import java.nio.file.WatchKey
 import java.nio.file.WatchService
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * java.nio.file.WatchService（JDK標準）によるファイル監視実装。
@@ -85,7 +88,7 @@ class NioFileWatcher : FileWatcher, CoroutineScope {
         for (event in key.pollEvents()) {
             val kind = event.kind()
             if (kind == StandardWatchEventKinds.OVERFLOW) {
-                println("NioFileWatcher: watch event overflow, some file changes may have been missed")
+                logger.warn { "watch event overflow, some file changes may have been missed" }
                 continue
             }
             @Suppress("UNCHECKED_CAST")

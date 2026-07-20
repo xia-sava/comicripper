@@ -1,5 +1,6 @@
 package to.sava.comicripper
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +20,8 @@ import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.main.MainWindow
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
+
+private val logger = KotlinLogging.logger {}
 
 const val VERSION = "0.8.1"
 
@@ -54,7 +57,7 @@ fun main() {
             runCatching {
                 setting.save()
                 repos.saveStructure()
-            }.onFailure { println("autosave failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "autosave failed" } }
         }
     }
 

@@ -24,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * テキストエリアオーバーレイの表示状態。
@@ -79,7 +82,7 @@ fun TextAreaOverlay(state: TextAreaOverlayState) {
         state.dismiss()
         // コールバック内の例外も ComposeWindowHost 全体を道連れにするため保護する。
         runCatching { request.onResult(result) }
-            .onFailure { println("TextAreaOverlay onResult failed: ${it.javaClass.simpleName}: ${it.message}") }
+            .onFailure { logger.warn(it) { "TextAreaOverlay onResult failed" } }
     }
 
     Box(

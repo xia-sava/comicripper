@@ -1,5 +1,6 @@
 package to.sava.comicripper.infrastructure.repository
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,8 @@ import java.util.stream.Collectors
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.imageio.ImageIO
+
+private val logger = KotlinLogging.logger {}
 
 class ComicRepository(private val setting: Setting, private val comicStorage: ComicStorage) {
 
@@ -269,7 +272,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
 
         // Amazon.com スクレイピング
         try {
-            println("Amazon $isbn start")
+            logger.info { "Amazon $isbn start" }
             Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
                 .select("#search .s-main-slot a[href]").firstOrNull()
                 ?.absUrl("href")
@@ -287,18 +290,18 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                                     .ifEmpty { listOf("作者不明") }
                             }
                     if (title != null) {
-                        println("Amazon $isbn done")
+                        logger.info { "Amazon $isbn done" }
                         return normalize(authors, title)
                     }
                 }
         } catch (e: HttpStatusException) {
             // ステータスエラーは握り潰しちゃうよ
-            println("Amazon $isbn error: ${e.message}")
+            logger.warn(e) { "Amazon $isbn error" }
         }
 
         // Yodobashi.com スクレイピング
         try {
-            println("Yodobashi $isbn start")
+            logger.info { "Yodobashi $isbn start" }
             Jsoup.connect("${setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
                 .takeIf { it.select(".noResult").isEmpty() }
                 ?.select(".pListBlock a[href]")?.firstOrNull()
@@ -310,18 +313,18 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                         .map { it.text() }
                         .ifEmpty { listOf("作者不明") }
                     if (title != null) {
-                        println("Yodobashi $isbn done")
+                        logger.info { "Yodobashi $isbn done" }
                         return normalize(authors, title)
                     }
                 }
         } catch (e: HttpStatusException) {
             // ステータスエラーは握り潰しちゃうよ
-            println("Yodobashi $isbn error: ${e.message}")
+            logger.warn(e) { "Yodobashi $isbn error" }
         }
 
         // Google Book API
         try {
-            println("Google $isbn start")
+            logger.info { "Google $isbn start" }
             val responseText = withContext(Dispatchers.IO) {
                 InputStreamReader(
                     URI("${setting.googleBookApi}$isbn")
@@ -338,13 +341,13 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                 val authors = info?.get("authors")?.jsonArray?.map { it.jsonPrimitive.content }
                 val title = info?.get("title")?.jsonPrimitive?.contentOrNull
                 if (authors != null && title != null) {
-                    println("Google $isbn done")
+                    logger.info { "Google $isbn done" }
                     return normalize(authors, title)
                 }
             }
         } catch (e: HttpStatusException) {
             // ステータスエラーは握り潰しちゃうよ
-            println("Google $isbn error: ${e.message}")
+            logger.warn(e) { "Google $isbn error" }
         }
 
         return Pair("ISBN", isbn)

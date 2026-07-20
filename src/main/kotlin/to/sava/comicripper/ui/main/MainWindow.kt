@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,6 +82,8 @@ import to.sava.comicripper.ui.setting.SettingWindow
 import java.awt.Cursor
 import java.io.File
 import kotlin.math.roundToInt
+
+private val logger = KotlinLogging.logger {}
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
 
@@ -165,7 +168,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                         selectComic(current.firstOrNull()?.id)
                 }
                 previousIds = current.map { it.id }.toSet()
-            }.onFailure { println("storage collect failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "storage collect failed" } }
         }
     }
 
@@ -209,7 +212,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 } else {
                     showDetailWindow(target, owner)
                 }
-            }.onFailure { println("openComic failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "openComic failed" } }
         }
     }
 
@@ -218,7 +221,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
             runCatching {
                 repos.reScanFiles()
                 repos.saveStructure()
-            }.onFailure { println("reScan failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "reScan failed" } }
         }
     }
 
@@ -226,7 +229,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         val target = selectedComic ?: return
         appTaskScope.launch {
             runCatching { repos.pagesToComic(target) }
-                .onFailure { println("pagesToComic failed: ${it.javaClass.simpleName}: ${it.message}") }
+                .onFailure { logger.warn(it) { "pagesToComic failed" } }
         }
     }
 
@@ -243,7 +246,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                     comic.author = ocrAuthor
                                     comic.title = ocrTitle
                                 }
-                            }.onFailure { println("ocrAll failed: ${comic.id}: ${it.javaClass.simpleName}: ${it.message}") }
+                            }.onFailure { logger.warn(it) { "ocrAll failed: ${comic.id}" } }
                         }
                     }
                     .joinAll()
@@ -259,7 +262,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                     .map { comic ->
                         launch {
                             runCatching { repos.zipComic(comic) }
-                                .onFailure { println("zipAll failed: ${comic.id}: ${it.javaClass.simpleName}: ${it.message}") }
+                                .onFailure { logger.warn(it) { "zipAll failed: ${comic.id}" } }
                         }
                     }
                     .joinAll()
@@ -277,7 +280,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 )
                     .directory(File(setting.workDirectory))
                     .start()
-            }.onFailure { println("extractEpub failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "extractEpub failed" } }
         }
     }
 
@@ -308,7 +311,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 dst.merge(src)
                 comicStorage.remove(src)
                 repos.reScanFiles(dst)
-            }.onFailure { println("merge failed: ${it.javaClass.simpleName}: ${it.message}") }
+            }.onFailure { logger.warn(it) { "merge failed" } }
         }
     }
 
@@ -339,7 +342,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                     if (target != current) {
                         scrollState.animateScrollTo(target)
                     }
-                }.onFailure { println("scroll adjust failed: ${it.javaClass.simpleName}: ${it.message}") }
+                }.onFailure { logger.warn(it) { "scroll adjust failed" } }
             }
     }
 
@@ -419,7 +422,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                             deltaY > 0f -> moveSelection(1)
                                             deltaY < 0f -> moveSelection(-1)
                                         }
-                                    }.onFailure { println("wheel select failed: ${it.message}") }
+                                    }.onFailure { logger.warn(it) { "wheel select failed" } }
                                 },
                         ) {
                             FlowRow(

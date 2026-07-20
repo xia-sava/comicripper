@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,6 +68,8 @@ import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import java.io.File
 import kotlin.math.roundToInt
+
+private val logger = KotlinLogging.logger {}
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
 
@@ -163,7 +166,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
         withContext(Dispatchers.IO) {
             runCatching { comic.getFullSizeImage(filename).toComposeImageBitmap() }
-                .onFailure { println("detail image load failed: $filename: ${it.message}") }
+                .onFailure { logger.warn(it) { "detail image load failed: $filename" } }
                 .getOrNull()
         }?.let { loadedImage = filename to it }
     }
@@ -221,7 +224,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                println("reloadImages failed: ${e.message}")
+                logger.warn(e) { "reloadImages failed" }
             }
         }
     }

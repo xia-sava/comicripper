@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -65,6 +66,8 @@ import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import kotlin.math.min
+
+private val logger = KotlinLogging.logger {}
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
 
@@ -142,7 +145,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     LaunchedEffect(comic) {
         coverImage = withContext(Dispatchers.IO) {
             runCatching { comic.coverFullImage?.toComposeImageBitmap() }
-                .onFailure { println("cutter image load failed: ${it.message}") }
+                .onFailure { logger.warn(it) { "cutter image load failed" } }
                 .getOrNull()
         }
     }
@@ -176,7 +179,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         val right = rightPercent
         cutterScope.launch {
             runCatching { repos.cutCover(comic, left, right, 0.0) }
-                .onFailure { println("cutCover failed: ${it.message}") }
+                .onFailure { logger.warn(it) { "cutCover failed" } }
         }
         openDetail()
     }

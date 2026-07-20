@@ -1,5 +1,6 @@
 package to.sava.comicripper.domain.model
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -12,6 +13,8 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.imageio.ImageIO
+
+private val logger = KotlinLogging.logger {}
 
 class Comic(filename: String = "") {
     companion object {
@@ -46,7 +49,7 @@ class Comic(filename: String = "") {
             return try {
                 ImageIO.read(File("${workDirectoryProvider()}/$filename"))
             } catch (e: IOException) {
-                println("image load failed: $filename: ${e.message}")
+                logger.warn(e) { "image load failed: $filename" }
                 null
             }
         }

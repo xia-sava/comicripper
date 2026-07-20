@@ -20,6 +20,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.jsoup)
+    implementation(libs.kotlin.logging)
+    implementation(libs.logback.classic)
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
     implementation(compose.desktop.currentOs)

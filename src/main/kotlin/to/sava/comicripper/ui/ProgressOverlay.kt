@@ -22,10 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * 進捗オーバーレイのタスク実行スコープ。
@@ -61,7 +64,7 @@ class ProgressOverlayState {
             try {
                 block()
             } catch (e: Exception) {
-                println("$title failed: ${e.javaClass.simpleName}: ${e.message}")
+                logger.warn(e) { "$title failed" }
             } finally {
                 task = null
             }
