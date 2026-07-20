@@ -24,7 +24,7 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
+    implementation(libs.compose.material3)
 
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.junit.jupiter)

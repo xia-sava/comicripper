@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.awt.ComposeDialog
+import androidx.compose.ui.awt.SwingDialog
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toAwtImage
@@ -135,7 +136,7 @@ private fun OwnedDialogWindow(
         }
     }
 
-    DialogWindow(
+    SwingDialog(
         onPreviewKeyEvent = { event -> currentOnPreviewKeyEvent(event) },
         create = {
             ComposeDialog(
