@@ -6,9 +6,11 @@
     </appender>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${user.home}/.comicripper/comicripper.log</file>
+        <!-- 出力先は Setting.kt の dataDirectory と同じ規則（%LOCALAPPDATA%/ComicRipper、
+             無ければ ~/.local/state/ComicRipper）で解決する。 -->
+        <file>${LOCALAPPDATA:-${user.home}/.local/state}/ComicRipper/logs/comicripper.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${user.home}/.comicripper/comicripper.%i.log</fileNamePattern>
+            <fileNamePattern>${LOCALAPPDATA:-${user.home}/.local/state}/ComicRipper/logs/comicripper.%i.log</fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>3</maxIndex>
         </rollingPolicy>

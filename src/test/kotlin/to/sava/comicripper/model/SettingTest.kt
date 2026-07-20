@@ -23,6 +23,7 @@ class SettingTest {
     fun setup() {
         originalHome = System.getProperty("user.home")
         System.setProperty("user.home", tempDir.toString())
+        setting.dataDirectory = tempDir.resolve("appdata").toFile()
     }
 
     @AfterEach
@@ -102,6 +103,46 @@ class SettingTest {
     fun `structureFileがworkDirectory配下にある`() {
         setting.workDirectory = "/some/dir"
         assertTrue(setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))
+    }
+
+    @Nested
+    inner class `ホームディレクトリ直下JSONからの自動移行` {
+
+        private fun homeJsonFile() = File("$tempDir/.comicripper.json")
+
+        @Test
+        fun `ホーム直下JSONのみ存在する場合は読み込んで現行の置き場所に移行する`() {
+            setting.workDirectory = "/home/json/dir"
+            val text = setting.settingFile.let {
+                // save() で一旦シリアライズしてホーム直下へ移し、現行の置き場所からは消しておく。
+                setting.save()
+                val t = it.readText()
+                it.delete()
+                t
+            }
+            homeJsonFile().writeText(text)
+            setting.workDirectory = "default"
+
+            assertTrue(setting.load())
+
+            assertEquals("/home/json/dir", setting.workDirectory)
+            assertTrue(setting.settingFile.isFile, "現行の置き場所にファイルが作られているはず")
+            assertFalse(homeJsonFile().exists(), "ホーム直下のファイルは残っていないはず")
+            assertTrue(File("${homeJsonFile().path}.bak").exists(), ".bak にリネームされているはず")
+        }
+
+        @Test
+        fun `現行の置き場所とホーム直下の両方に存在する場合は現行が優先される`() {
+            homeJsonFile().writeText("""{"workDirectory": "/home/json/dir"}""")
+            setting.workDirectory = "/current/dir"
+            setting.save()
+
+            setting.workDirectory = "default"
+            assertTrue(setting.load())
+
+            assertEquals("/current/dir", setting.workDirectory)
+            assertTrue(homeJsonFile().exists(), "現行の置き場所にある場合はホーム直下へ触れないはず")
+        }
     }
 
     @Nested

@@ -13,6 +13,15 @@ private val logger = KotlinLogging.logger {}
 
 private val json = Json { prettyPrint = true }
 
+/**
+ * アプリデータ（設定・ログ）の既定の置き場所。
+ * Windows では %LOCALAPPDATA%/ComicRipper、それ以外では ~/.local/state/ComicRipper。
+ * logback.xml のログ出力先と同じ規則で解決する。
+ */
+private fun defaultDataDirectory(): File =
+    System.getenv("LOCALAPPDATA")?.let { File(it, "ComicRipper") }
+        ?: File(System.getProperty("user.home"), ".local/state/ComicRipper")
+
 /** JSON永続化用のスナップショット。Settingの各プロパティと1:1対応する。 */
 @Serializable
 private data class SettingData(
@@ -203,8 +212,14 @@ class Setting {
             TesseractExeFlow.value = value
         }
 
+    /** アプリデータの置き場所。テストからは一時ディレクトリに差し替える。 */
+    internal var dataDirectory: File = defaultDataDirectory()
+
     /** JSON形式の設定ファイル。 */
-    internal val settingFile get() = File(System.getProperty("user.home") + "/.comicripper.json")
+    internal val settingFile get() = File(dataDirectory, "setting.json")
+
+    /** ホームディレクトリ直下に置いていた頃のJSON設定ファイル。存在すれば現行の置き場所へ自動移行する。 */
+    private val homeJsonSettingFile get() = File(System.getProperty("user.home") + "/.comicripper.json")
 
     /** 旧Properties形式の設定ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
     private val legacySettingFile get() = File(System.getProperty("user.home") + "/.comicripper")
@@ -271,7 +286,9 @@ class Setting {
     // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun save() {
         val text = json.encodeToString(SettingData.serializer(), toData())
-        val tempFile = File.createTempFile("comicripper", ".tmp", settingFile.absoluteFile.parentFile)
+        val parentDir = settingFile.absoluteFile.parentFile
+        parentDir.mkdirs()
+        val tempFile = File.createTempFile("comicripper", ".tmp", parentDir)
         try {
             tempFile.writeText(text)
             Files.move(
@@ -286,19 +303,38 @@ class Setting {
     }
 
     /**
-     * 設定を読み込む。JSON形式ファイルがあればそれを使い、無く旧Properties形式ファイルが
-     * あれば読み込んでJSON形式で保存し直し、旧ファイルは `.bak` へリネームして残す。
+     * 設定を読み込む。現行の置き場所にJSON形式ファイルがあればそれを使う。
+     * 無ければ旧来の置き場所（ホームディレクトリ直下のJSON、さらに旧いProperties形式）を順に探し、
+     * 見つかれば読み込んで現行の置き場所へ保存し直し、旧ファイルは `.bak` へリネームして残す。
      */
     fun load(): Boolean {
-        if (settingFile.exists()) {
+        if (settingFile.isFile) {
             return runCatching {
                 applyData(json.decodeFromString(SettingData.serializer(), settingFile.readText()))
             }.onFailure { logger.warn(it) { "setting load failed" } }.isSuccess
         }
-        if (legacySettingFile.exists()) {
+        if (homeJsonSettingFile.isFile) {
+            return loadHomeJsonAndMigrate()
+        }
+        if (legacySettingFile.isFile) {
             return loadLegacyAndMigrate()
         }
         return false
+    }
+
+    private fun loadHomeJsonAndMigrate(): Boolean {
+        val loaded = runCatching {
+            applyData(json.decodeFromString(SettingData.serializer(), homeJsonSettingFile.readText()))
+        }.onFailure { logger.warn(it) { "home json setting load failed" } }.isSuccess
+        if (!loaded) {
+            return false
+        }
+        runCatching {
+            save()
+            val backup = File("${homeJsonSettingFile.path}.bak")
+            Files.move(homeJsonSettingFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }.onFailure { logger.warn(it) { "home json setting migration failed" } }
+        return true
     }
 
     private fun loadLegacyAndMigrate(): Boolean {

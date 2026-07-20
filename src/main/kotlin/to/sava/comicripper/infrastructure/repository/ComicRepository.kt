@@ -439,12 +439,12 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
      * あれば読み込んでJSON形式で保存し直し、旧ファイルは `.bak` へリネームして残す。
      */
     fun loadStructure(): Boolean {
-        if (setting.structureFile.exists()) {
+        if (setting.structureFile.isFile) {
             return runCatching {
                 applyStructureData(structureJson.decodeFromString(ComicStructureData.serializer(), setting.structureFile.readText()))
             }.onFailure { logger.warn(it) { "structure load failed" } }.isSuccess
         }
-        if (setting.legacyStructureFile.exists()) {
+        if (setting.legacyStructureFile.isFile) {
             return loadLegacyStructureAndMigrate()
         }
         return false
