@@ -211,7 +211,7 @@ private fun ThumbnailStrip(thumbnails: List<ImageBitmap>) {
 /**
  * 長い文字列を先頭と末尾を残して中央を省略する（一覧の折り返しを抑える）。
  */
-private fun truncateForDisplay(text: String, maxLength: Int): String {
+internal fun truncateForDisplay(text: String, maxLength: Int): String {
     if (text.length <= maxLength) {
         return text
     }
@@ -225,7 +225,7 @@ private fun truncateForDisplay(text: String, maxLength: Int): String {
 /**
  * fitX × fitY に収まる最大サイズ（アスペクト比維持）を返す。
  */
-private fun fitSize(width: Int, height: Int, fitX: Float, fitY: Float): Pair<Float, Float> {
+internal fun fitSize(width: Int, height: Int, fitX: Float, fitY: Float): Pair<Float, Float> {
     val ratio = minOf(fitX / width, fitY / height)
     return width * ratio to height * ratio
 }

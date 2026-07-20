@@ -157,7 +157,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         if (bitmap == null || imageBoxSize.width <= 0 || imageBoxSize.height <= 0) {
             with(density) { 0.dp to imageBoxSize.width.toFloat().toDp() }
         } else {
-            val rect = imageDisplayRect(imageBoxSize.width.toFloat(), imageBoxSize.height.toFloat(), bitmap)
+            val rect = imageDisplayRect(imageBoxSize.width.toFloat(), imageBoxSize.height.toFloat(), bitmap.width, bitmap.height)
             with(density) { rect.left.toDp() to rect.width.toDp() }
         }
     }
@@ -292,13 +292,13 @@ private const val GUIDE_TRIANGLE_HEIGHT = 30f
  * ContentScale.Fit と同じ計算で、コンテナ内に実際に表示される画像の矩形を求める。
  * ガイド線描画とスライダーの表示位置合わせの両方で使う。
  */
-private fun imageDisplayRect(containerWidth: Float, containerHeight: Float, bitmap: ImageBitmap): Rect {
-    val scale = min(containerWidth / bitmap.width, containerHeight / bitmap.height)
-    val imageWidth = bitmap.width * scale
-    val imageHeight = bitmap.height * scale
-    val left = (containerWidth - imageWidth) / 2f
-    val top = (containerHeight - imageHeight) / 2f
-    return Rect(left, top, left + imageWidth, top + imageHeight)
+internal fun imageDisplayRect(containerWidth: Float, containerHeight: Float, imageWidth: Int, imageHeight: Int): Rect {
+    val scale = min(containerWidth / imageWidth, containerHeight / imageHeight)
+    val displayWidth = imageWidth * scale
+    val displayHeight = imageHeight * scale
+    val left = (containerWidth - displayWidth) / 2f
+    val top = (containerHeight - displayHeight) / 2f
+    return Rect(left, top, left + displayWidth, top + displayHeight)
 }
 
 /**
@@ -310,7 +310,7 @@ private fun DrawScope.drawCutterGuides(
     leftPercent: Double,
     rightPercent: Double,
 ) {
-    val imageRect = imageDisplayRect(size.width, size.height, bitmap)
+    val imageRect = imageDisplayRect(size.width, size.height, bitmap.width, bitmap.height)
     val leftX = imageRect.left + (imageRect.width * leftPercent / 100.0).toFloat()
     val rightX = imageRect.left + (imageRect.width * rightPercent / 100.0).toFloat()
     drawGuideLine(leftX, imageRect.top, imageRect.bottom, triangleTowardRight = true)
