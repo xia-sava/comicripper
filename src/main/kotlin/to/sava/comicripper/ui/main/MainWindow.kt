@@ -81,6 +81,7 @@ import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.setting.SettingWindow
 import java.awt.Cursor
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
@@ -240,10 +241,11 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     fun ocrAll() {
         progress.launchTask("OCRしています", "表紙画像から ISBN をまとめて読み取って著者名/作品名をサーチしてます") {
-            // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護する。
+            // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護し、失敗数を集計して通知する。
+            val failedCount = AtomicInteger(0)
+            val targets = comicStorage.all.filter { it.coverFull.isNullOrEmpty().not() }
             supervisorScope {
-                comicStorage.all
-                    .filter { it.coverFull.isNullOrEmpty().not() }
+                targets
                     .map { comic ->
                         launch {
                             runCatching {
@@ -251,26 +253,39 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                     comic.author = ocrAuthor
                                     comic.title = ocrTitle
                                 }
-                            }.onFailure { logger.warn(it) { "ocrAll failed: ${comic.id}" } }
+                            }.onFailure {
+                                logger.warn(it) { "ocrAll failed: ${comic.id}" }
+                                failedCount.incrementAndGet()
+                            }
                         }
                     }
                     .joinAll()
+            }
+            if (failedCount.get() > 0) {
+                errorToast.show("OCR一括: ${failedCount.get()}/${targets.size}件失敗しました")
             }
         }
     }
 
     fun zipAll() {
         progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
+            val failedCount = AtomicInteger(0)
+            val targets = comicStorage.all.filter { it.files.size > 3 }
             supervisorScope {
-                comicStorage.all
-                    .filter { it.files.size > 3 }
+                targets
                     .map { comic ->
                         launch {
                             runCatching { repos.zipComic(comic) }
-                                .onFailure { logger.warn(it) { "zipAll failed: ${comic.id}" } }
+                                .onFailure {
+                                    logger.warn(it) { "zipAll failed: ${comic.id}" }
+                                    failedCount.incrementAndGet()
+                                }
                         }
                     }
                     .joinAll()
+            }
+            if (failedCount.get() > 0) {
+                errorToast.show("ZIP一括: ${failedCount.get()}/${targets.size}件失敗しました")
             }
         }
     }

@@ -29,8 +29,13 @@ class ErrorToastState {
     var message by mutableStateOf<String?>(null)
         private set
 
+    /** show() のたびに増える世代番号。同一メッセージの連続表示でも表示タイマーを仕切り直すために使う。 */
+    var generation by mutableStateOf(0)
+        private set
+
     fun show(message: String) {
         this.message = message
+        generation++
     }
 
     fun dismiss() {
@@ -48,7 +53,7 @@ fun rememberErrorToastState(): ErrorToastState = remember { ErrorToastState() }
 @Composable
 fun ErrorToast(state: ErrorToastState) {
     val message = state.message ?: return
-    LaunchedEffect(message) {
+    LaunchedEffect(message, state.generation) {
         delay(ERROR_TOAST_DURATION_MS)
         state.dismiss()
     }
