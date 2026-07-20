@@ -4,12 +4,12 @@ import org.koin.dsl.module
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
-import to.sava.comicripper.infrastructure.service.JNotifyFileWatcher
+import to.sava.comicripper.infrastructure.service.NioFileWatcher
 import to.sava.comicripper.model.Setting
 
 val applicationModule = module {
     // ファイル監視
-    single<FileWatcher> { JNotifyFileWatcher() }
+    single<FileWatcher> { NioFileWatcher() }
 
     // 設定・インメモリストレージ
     single { Setting() }

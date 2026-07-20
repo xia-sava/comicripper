@@ -19,7 +19,6 @@ repositories {
 dependencies {
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.jnotify)
     implementation(libs.jsoup)
     implementation(libs.koin.core)
     implementation(libs.koin.compose)
