@@ -53,15 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
+import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
@@ -94,12 +92,6 @@ private val ListBackground = Color(0xFF808080)
 private val MoveCursorIcon = PointerIcon(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR))
 
 /**
- * ウィンドウを閉じた後も完走させたい処理の実行スコープ
- * （画面起動時の画像判定、再スキャン、page 集約など）。
- */
-private val appTaskScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-/**
  * アプリのルートウィンドウ。
  * コミック一覧を表示し、選択・キーボード/ホイールでの移動、詳細/カット画面の起動を行なう。
  * 開く各画面には自ウィンドウを owner として渡し、常に前面へ表示させる。
@@ -109,6 +101,7 @@ private val appTaskScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 fun MainWindow(onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
     val comicStorage: ComicStorage = koinInject()
+    val appTaskScope: ApplicationScope = koinInject()
 
     val state = rememberWindowState(
         size = DpSize(setting.mainWindowWidth.dp, setting.mainWindowHeight.dp),

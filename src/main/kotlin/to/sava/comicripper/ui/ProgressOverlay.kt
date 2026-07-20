@@ -24,25 +24,21 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import to.sava.comicripper.application.ApplicationScope
 
 private val logger = KotlinLogging.logger {}
 
 /**
- * 進捗オーバーレイのタスク実行スコープ。
- * ウィンドウを閉じた後もファイル書き込み等の処理を完走させるため、
- * composition のライフサイクルから独立させる。
- */
-private val progressTaskScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-/**
  * ウィンドウ内に被せる進捗オーバーレイの状態。
  * launchTask() でタスクを開始すると表示され、完了（成功・失敗とも）で消える。
+ *
+ * @param scope block を実行するスコープ。呼び出し元ウィンドウが閉じても完走させるため、
+ *   composition のライフサイクルから独立した [ApplicationScope] を渡すこと。
  */
 @Stable
-class ProgressOverlayState {
+class ProgressOverlayState(private val scope: CoroutineScope) {
     class Task(val title: String, val text: String)
 
     var task by mutableStateOf<Task?>(null)
@@ -52,15 +48,13 @@ class ProgressOverlayState {
 
     /**
      * タスクを開始してオーバーレイを表示する。実行中は多重起動しない。
-     * block は Dispatchers.IO 上の独立スコープで実行され、
-     * 呼び出し元ウィンドウが閉じても完走する。
      */
     fun launchTask(title: String, text: String, block: suspend CoroutineScope.() -> Unit) {
         if (isActive) {
             return
         }
         task = Task(title, text)
-        progressTaskScope.launch {
+        scope.launch {
             try {
                 block()
             } catch (e: Exception) {
@@ -73,7 +67,10 @@ class ProgressOverlayState {
 }
 
 @Composable
-fun rememberProgressOverlayState(): ProgressOverlayState = remember { ProgressOverlayState() }
+fun rememberProgressOverlayState(): ProgressOverlayState {
+    val scope: ApplicationScope = koinInject()
+    return remember { ProgressOverlayState(scope) }
+}
 
 /**
  * 半透明の背景で下の UI へのマウス操作を遮断し、タイトル・本文・

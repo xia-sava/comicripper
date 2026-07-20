@@ -47,13 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
+import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
@@ -73,13 +72,6 @@ private const val WINDOW_TITLE = "comicripper $VERSION"
 
 /** キー操作1回あたりのガイド移動量（%） */
 private const val CUTTER_KEY_STEP = 0.1
-
-/**
- * 切り出し処理の実行スコープ。
- * ウィンドウを閉じた後も cutCover() のファイル書き込みを完走させるため、
- * composition のライフサイクルから独立させる。
- */
-private val cutterScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 /**
  * Cutter ウィンドウを開く。
@@ -102,6 +94,7 @@ fun showCutterWindow(comic: Comic, owner: java.awt.Window? = null) {
 @Composable
 fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
+    val cutterScope: ApplicationScope = koinInject()
 
     val state = rememberWindowState(
         size = DpSize(setting.cutterWindowWidth.dp, setting.cutterWindowHeight.dp),
