@@ -252,6 +252,17 @@ class ComicRepositoryTest : KoinComponent {
         }
 
         @Test
+        fun `壊れた構造ファイルはloadStructureがfalseになりbrokenへ退避される`() {
+            setting.structureFile.writeText("{ broken json ")
+
+            assertFalse(repository.loadStructure())
+
+            assertFalse(setting.structureFile.exists(), "壊れたファイルは元の場所に残らないはず")
+            assertTrue(File("${setting.structureFile.path}.broken").exists(), ".broken へ退避されているはず")
+            assertEquals(0, comicStorage.all.size)
+        }
+
+        @Test
         fun `旧Properties形式の構造ファイルを読み込んでJSON形式に移行する`() {
             val coverF = "coverF_000.jpg"
             val page = "page_000.jpg"

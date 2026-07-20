@@ -11,7 +11,22 @@ import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
-private val json = Json { prettyPrint = true }
+private val json = Json {
+    prettyPrint = true
+    // 新しいバージョンで追加されたキーを含むファイルを旧バージョンでも読めるようにする。
+    ignoreUnknownKeys = true
+}
+
+/**
+ * パースに失敗した永続化ファイルを `.broken` へ退避する。
+ * デフォルト値での上書き保存が、手修復の余地ごと元ファイルを消してしまうのを防ぐ。
+ */
+internal fun quarantineBrokenFile(file: File) {
+    runCatching {
+        Files.move(file.toPath(), File("${file.path}.broken").toPath(), StandardCopyOption.REPLACE_EXISTING)
+        logger.warn { "broken file quarantined: ${file.path}.broken" }
+    }.onFailure { logger.warn(it) { "failed to quarantine broken file: $file" } }
+}
 
 /**
  * アプリデータ（設定・ログ）の既定の置き場所。
@@ -311,7 +326,10 @@ class Setting {
         if (settingFile.isFile) {
             return runCatching {
                 applyData(json.decodeFromString(SettingData.serializer(), settingFile.readText()))
-            }.onFailure { logger.warn(it) { "setting load failed" } }.isSuccess
+            }.onFailure {
+                logger.error(it) { "setting load failed" }
+                quarantineBrokenFile(settingFile)
+            }.isSuccess
         }
         if (homeJsonSettingFile.isFile) {
             return loadHomeJsonAndMigrate()

@@ -100,6 +100,27 @@ class SettingTest {
     }
 
     @Test
+    fun `壊れたJSONはloadがfalseになりbrokenへ退避される`() {
+        setting.settingFile.parentFile.mkdirs()
+        setting.settingFile.writeText("{ broken json ")
+
+        assertFalse(setting.load())
+
+        assertFalse(setting.settingFile.exists(), "壊れたファイルは元の場所に残らないはず")
+        assertTrue(File("${setting.settingFile.path}.broken").exists(), ".broken へ退避されているはず")
+    }
+
+    @Test
+    fun `未知のキーを含むJSONも読み込める`() {
+        setting.settingFile.parentFile.mkdirs()
+        setting.settingFile.writeText("""{"workDirectory": "/known/dir", "unknownFutureKey": 123}""")
+
+        assertTrue(setting.load())
+
+        assertEquals("/known/dir", setting.workDirectory)
+    }
+
+    @Test
     fun `structureFileがworkDirectory配下にある`() {
         setting.workDirectory = "/some/dir"
         assertTrue(setting.structureFile.path.replace("\\", "/").startsWith("/some/dir/"))

@@ -18,6 +18,7 @@ import org.jsoup.Jsoup
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.model.Setting
+import to.sava.comicripper.model.quarantineBrokenFile
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
@@ -39,7 +40,11 @@ import javax.imageio.ImageIO
 
 private val logger = KotlinLogging.logger {}
 
-private val structureJson = Json { prettyPrint = true }
+private val structureJson = Json {
+    prettyPrint = true
+    // 新しいバージョンで追加されたキーを含むファイルを旧バージョンでも読めるようにする。
+    ignoreUnknownKeys = true
+}
 
 /** JSON永続化用の構造ファイルのComic1件分のスナップショット。 */
 @Serializable
@@ -442,7 +447,10 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         if (setting.structureFile.isFile) {
             return runCatching {
                 applyStructureData(structureJson.decodeFromString(ComicStructureData.serializer(), setting.structureFile.readText()))
-            }.onFailure { logger.warn(it) { "structure load failed" } }.isSuccess
+            }.onFailure {
+                logger.error(it) { "structure load failed" }
+                quarantineBrokenFile(setting.structureFile)
+            }.isSuccess
         }
         if (setting.legacyStructureFile.isFile) {
             return loadLegacyStructureAndMigrate()

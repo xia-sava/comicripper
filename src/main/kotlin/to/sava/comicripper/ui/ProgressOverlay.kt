@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -61,6 +62,8 @@ class ProgressOverlayState(
         scope.launch {
             try {
                 block()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.warn(e) { "$title failed" }
                 onError(title)

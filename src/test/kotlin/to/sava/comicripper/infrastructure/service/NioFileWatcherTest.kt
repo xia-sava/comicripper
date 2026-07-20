@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -87,6 +88,17 @@ class NioFileWatcherTest {
             }
         }
         assertEquals(listOf("page_001.jpg"), deleted)
+    }
+
+    @Test
+    fun `監視ディレクトリが存在しない場合 start は例外を投げず監視なしで続行する`(@TempDir tempDir: Path) {
+        assertDoesNotThrow {
+            watcher.start(
+                workDirectory = tempDir.resolve("missing").toString(),
+                onFilesAdded = {},
+                onFilesDeleted = {},
+            )
+        }
     }
 
     @Test
