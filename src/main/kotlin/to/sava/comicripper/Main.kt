@@ -20,7 +20,7 @@ import to.sava.comicripper.ui.main.MainWindow
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
-const val VERSION = "0.7.6"
+const val VERSION = "0.8.1"
 
 private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
