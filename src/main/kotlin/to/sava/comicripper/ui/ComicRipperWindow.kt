@@ -103,6 +103,11 @@ private fun OwnedDialogWindow(
     val currentTitle by rememberUpdatedState(title)
     val currentIcon by rememberUpdatedState(icon)
     val currentOnCloseRequest by rememberUpdatedState(onCloseRequest)
+    // 低レベル DialogWindow(create=...) は create ブロック内の setContent() で
+    // onPreviewKeyEvent を最初の1回しか束縛しないため、rememberUpdatedState を挟んで
+    // 生成後の再コンポジションでもハンドラが最新のクロージャを参照するようにする
+    // （でないと Ctrl+D 等のキー操作がウィンドウを開いた時点の state を掴んだまま固まる）。
+    val currentOnPreviewKeyEvent by rememberUpdatedState(onPreviewKeyEvent)
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
 
@@ -131,7 +136,7 @@ private fun OwnedDialogWindow(
     }
 
     DialogWindow(
-        onPreviewKeyEvent = onPreviewKeyEvent,
+        onPreviewKeyEvent = { event -> currentOnPreviewKeyEvent(event) },
         create = {
             ComposeDialog(
                 owner = owner,

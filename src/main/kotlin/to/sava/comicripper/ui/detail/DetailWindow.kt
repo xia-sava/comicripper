@@ -201,7 +201,9 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun deleteCurrentImage() {
-        currentFilename?.let { filename ->
+        // onPreviewKeyEvent 経由の呼び出しは生成時点のクロージャで実行されうるため、
+        // currentFilename を直接キャプチャせず、呼び出し時点の files/currentPage から都度求める。
+        files.getOrNull(currentPage)?.let { filename ->
             File("${setting.workDirectory}/$filename").delete()
         }
     }

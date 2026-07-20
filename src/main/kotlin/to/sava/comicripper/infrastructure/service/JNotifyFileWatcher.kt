@@ -75,9 +75,9 @@ class JNotifyFileWatcher : FileWatcher, CoroutineScope {
                     }
                 }
             }
-        } catch (_: UnsatisfiedLinkError) {
-            // JNotify が正常にインストールされてない気がするけど
-            // ファイル見張らないモードで一応起動する．
+        } catch (e: UnsatisfiedLinkError) {
+            // ネイティブライブラリがロードできない環境でも、ファイル見張らないモードで一応起動する。
+            println("JNotify native library load failed, file watching disabled: ${e.message}")
             isRunning = false
         }
     }
