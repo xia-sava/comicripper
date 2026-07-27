@@ -1,5 +1,7 @@
 package to.sava.comicripper.ui.main
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
@@ -24,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
@@ -95,6 +96,13 @@ private val ListBackground = Color(0xFF808080)
 private val MoveCursorIcon = PointerIcon(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR))
 
 /**
+ * 選択の移動にスクロールを追従させるときのアニメーション。
+ * 既定のスプリングは収束まで300ms超かかり、連続してキーやホイールを送ると追従が遅れて感じられるため、
+ * 移動先が分かる程度に短く抑える。
+ */
+private val FollowSelectionScrollSpec = tween<Float>(durationMillis = 120, easing = FastOutSlowInEasing)
+
+/**
  * アプリのルートウィンドウ。
  * コミック一覧を表示し、選択・キーボード/ホイールでの移動、詳細/カット画面の起動を行なう。
  * 開く各画面には自ウィンドウを owner として渡し、常に前面へ表示させる。
@@ -133,7 +141,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
-    val comics by comicStorage.storage.collectAsState()
+    val comics = comicStorage.all
 
     var memoryText by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
@@ -157,7 +165,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     // 追加されたコミックを選択し、選択中が消えたら先頭へ移す。
     LaunchedEffect(Unit) {
         var previousIds = emptySet<String>()
-        comicStorage.storage.collect { current ->
+        snapshotFlow { comicStorage.all }.collect { current ->
             runCatching {
                 val added = current.filter { it.id !in previousIds }
                 val target = comicStorage.targetId
@@ -366,7 +374,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                         else -> return@runCatching
                     }.coerceIn(0, maxScroll)
                     if (target != current) {
-                        scrollState.animateScrollTo(target)
+                        scrollState.animateScrollTo(target, FollowSelectionScrollSpec)
                     }
                 }.onFailure { logger.warn(it) { "scroll adjust failed" } }
             }
