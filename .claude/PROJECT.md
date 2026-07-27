@@ -26,7 +26,8 @@ ComicRipperは、裁断したコミックをScanSnapでスキャンした画像�
 ```
 src/main/kotlin/to/sava/comicripper/
 ├── domain/                          # ビジネスロジック層（UI非依存）
-│   ├── model/Comic.kt              # ドメインモデル（画像キャッシュ・changeFlow・スレッドセーフコレクション含む）
+│   ├── model/Comic.kt              # ドメインモデル（構成ファイルと著者名/題名を snapshot state で保持。
+│   │                                 サムネイル画像は保持せず読み方だけを持つ。フルサイズ画像はLRUキャッシュ）
 │   └── service/FileWatcher.kt      # ファイル監視インターフェース
 ├── infrastructure/                  # 外部システム接続層
 │   ├── repository/ComicRepository.kt  # ビジネスロジック + ComicStorage（Koin single）同居
@@ -37,8 +38,8 @@ src/main/kotlin/to/sava/comicripper/
 ├── ui/                               # Compose Desktop プレゼンテーション層（アプリの全画面）
 │   ├── ComposeWindowHost.kt         # JVM常駐の Compose application スコープを保持し、key指定でウィンドウの開閉を仲介するホスト。
 │   │                                  ウィンドウ単位の未捕捉例外を隔離する例外ハンドラと、ホスト終了通知(onTerminated)を持つ
-│   ├── ComposeExt.kt                # Compose 用拡張関数（アイコン Painter 生成、初回表示時の前面化と
-│   │                                  Compose コンテンツへのフォーカス付与など）
+│   ├── ComposeExt.kt                # Compose 用拡張関数（設定と連動するウィンドウ状態、アイコン Painter 生成、
+│   │                                  初回表示時の前面化と Compose コンテンツへのフォーカス付与など）
 │   ├── ComicRipperTheme.kt          # 共通テーマ（高密度化・グリーン系配色）
 │   ├── CompactControls.kt           # 高密度な共通コントロール（CompactButton/CompactOutlinedTextField/CompactSlider）
 │   ├── ComicRipperWindow.kt         # owner有無でトップレベルWindow/非モーダルオーナー付きDialogWindowを切り替える共通ウィンドウ
@@ -46,12 +47,13 @@ src/main/kotlin/to/sava/comicripper/
 │   ├── TextAreaOverlay.kt           # ウィンドウ内に被せる複数行テキスト入力オーバーレイの共通部品
 │   ├── ErrorToast.kt                # 操作失敗を知らせるトースト（画面下部・自動消滅）の共通部品
 │   ├── main/MainWindow.kt           # アプリのルートウィンドウ（一覧・D&Dマージ・一括操作・メモリ監視・epub展開）
-│   ├── main/ComicCard.kt            # コミックカード表示・ドラッグ&ドロップの起点
+│   ├── main/ComicCard.kt            # コミックカード表示・ドラッグ&ドロップの起点。表示画像（表紙とページの
+│   │                                  重ね描きを合成した帯）をコンポジションの外で作って保持する
 │   ├── main/ComicDragState.kt       # カード間ドラッグ&ドロップの状態（ウィンドウ座標系でのヒットテスト）
 │   ├── setting/SettingWindow.kt     # 設定画面
 │   ├── cutter/CutterWindow.kt       # カバー切り出しツール
 │   └── detail/DetailWindow.kt       # 画像ビューア・メタデータ編集
-├── model/Setting.kt                # アプリ設定（Kotlin Flow、Koin single、JSON永続化と旧形式からの自動移行）
+├── model/Setting.kt                # アプリ設定（snapshot state、Koin single、JSON永続化と旧形式からの自動移行）
 ├── ext/ExtFunc.kt                  # 拡張関数（Loader、workFilename のみ）
 └── Main.kt                         # エントリポイント（トップレベル fun main()。Koin初期化・
                                        CountDownLatchによるプロセス生存管理・ライフサイクル管理）
@@ -61,8 +63,10 @@ src/main/kotlin/to/sava/comicripper/
 ```
 src/test/kotlin/to/sava/comicripper/
 ├── application/di/TestModule.kt              # テスト用Koin DI設定
-├── domain/model/ComicTest.kt                 # Comic のテスト（changeFlow・merge・ファイル管理・画像LRUキャッシュ）
-├── model/SettingTest.kt                      # Setting のsave/load・Flow連動・旧形式からの移行・破損時退避のテスト
+├── domain/model/ComicTest.kt                 # Comic のテスト（snapshot stateとしての保持・merge・ファイル管理・
+│                                               サムネイル読み込み・画像LRUキャッシュ）
+├── model/SettingTest.kt                      # Setting のsave/load・snapshot stateとしての保持・旧形式からの移行・
+│                                               破損時退避のテスト
 ├── ui/
 │   ├── main/ComicCardTest.kt                 # 表示用文字列省略・サイズ計算のテスト
 │   ├── main/ComicDragStateTest.kt            # D&D状態のテスト
@@ -79,7 +83,7 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計108件。
+テストは計109件。
 
 ### リソース
 - アイコン: icon.png, icon.ico
@@ -95,16 +99,32 @@ src/test/kotlin/to/sava/comicripper/
 // この順序が乱れるとページが間違った Comic に入る。
 ```
 
+### 状態の持ち方
+アプリの可変状態は Compose の snapshot state で保持し、画面はそれを直接読む。Flowやリスナーで
+変更を通知して画面側が写しを持つ形は取らない（写しは二重管理と通知の取りこぼしを生むため）。
+
+- `Comic` の著者名・題名・構成ファイル、`ComicStorage` の一覧と `targetId`、`Setting` の各項目が対象
+- 並べ替え済みの一覧（`Comic.files` / `ComicStorage.all`）は `derivedStateOf` で導出し、中身が変わった
+  ときだけ新しいリストになるので `remember` のキーに使える
+- まとめて1回の変更として見せたい範囲は `Snapshot.withMutableSnapshot` で囲う（`Comic.addFiles` 等）
+
+**効果やフローの中で状態を読むときは、コンポジション時に読んだ値ではなく状態を直接読むこと。**
+長生きするラムダが値を掴むと初回コンポジション時の値に固定される（`LaunchedEffect` が再起動しないため）。
+
 ### ComicStorage の設計
 - `infrastructure/repository/ComicRepository.kt` 内に `ComicStorage` クラスが同居し、Koinの`single`として
   アプリ全体で単一インスタンスを共有する
-- MutableStateFlow<List<Comic>>（公開プロパティ名 `storage`）による観測可能なインメモリストレージ
-- targetId で現在のファイル振り分け先を管理
+- 一覧は `all`、ファイルの振り分け先かつ一覧の選択位置は `targetId`。どちらも snapshot state
 - Koinスコープ内で単一インスタンスのため、テスト時の状態リセットに注意が必要
 
+### 描画コストの考え方
+Compose Desktop にはダーティ領域の概念が無く、状態がひとつ変われば**ウィンドウ全体を描き直す**
+（保持シーングラフ＋差分描画だったJavaFXとの最大の違い）。1フレームの描画量がページ数などに比例すると、
+選択を動かしただけで体感できるほど遅くなる。一覧のページ重ね描きを1枚のビットマップへ合成しているのは
+このため（`ComicCard`）。描画は「毎フレーム走るもの」として量を一定に保つ。
+
 ### スレッド安全性
-- Comic.files: CopyOnWriteArrayList
-- Comic.thumbnails: ConcurrentHashMap
+- snapshot state の更新はロックの下で行なわれるため、ファイル監視・画面操作から同時に触れても壊れない
 - Comic.imageCache: 最終アクセス順LRU（LinkedHashMap + Collections.synchronizedMap、容量10）
 - NioFileWatcher: WatchService の take() ブロッキング待機 + 200msバッチウィンドウ。
   監視開始失敗時は監視なしでアプリ起動を続行する
@@ -157,8 +177,7 @@ src/test/kotlin/to/sava/comicripper/
    警告が出る）等の設計が別途必要
 
 ### 長期
-1. 画像処理の並列化・メモリ最適化
-2. GraalVM Native Image化の実現性検証（Compose DesktopのSkia binding・JNotifyのJNI依存がネックになりうる
+1. GraalVM Native Image化の実現性検証（Compose DesktopのSkia binding・JNotifyのJNI依存がネックになりうる
    ため、小さなスパイクでの検証が前提。exe/msi化とは無関係の別軸の話）
 
 ## 完了した移行
@@ -190,6 +209,16 @@ src/test/kotlin/to/sava/comicripper/
   kotlin-logging + logback へ置き換え、`Comic.imageCache` を最終アクセス順LRUに変更、
   ZIP格納を STORED 化（JPEG再圧縮の回避）、分散していた CoroutineScope を `ApplicationScope`
   へ統一、操作失敗のトースト通知（ErrorToast）を追加した。
+- **一覧の描画・起動時間・メモリの改善**: 完了。8コミック1200ページの実データで、選択の移動に約1秒
+  かかり起動に12.6秒かかっていた状態を解消した。ページの重ね描きを1枚のビットマップへ合成して
+  1フレームの描画枚数をページ数から切り離し（1231回→16回）、サムネイルの保持を `Comic` から表示側へ
+  移してコンポジションの外で並列に用意するようにした（読み込み時のデコードが無くなり一覧が即出る、
+  常駐メモリ約900MB→合成済みの帯のみ）。ページが末尾に増えただけのときは既存の帯へ継ぎ足す。
+- **状態の持ち方の Compose 化**: 完了。JavaFXの`Property`をそのまま移した`StateFlow`＋変更通知
+  （`changeFlow`）の層を撤去し、`Comic`/`ComicStorage`/`Setting` を snapshot state へ揃えた。
+  画面側が持っていた写しと`collectAsState`の橋渡しが不要になり、`Comic`と`ComicDragState`の安定宣言により
+  選択の移動で再コンポーズされるのは対象カードだけになった（8枚→2枚、実行時のログで確認）。
+  4画面で重複していたウィンドウのサイズ・位置の保存も1箇所へ集約した。
 - **永続化のJSON化とアプリデータディレクトリ移行**: 完了。設定・構造ファイルを
   Properties形式から `@Serializable` データクラス経由のJSON形式へ移行し、保存先を
   ホームディレクトリ直下の dotfile から `%LOCALAPPDATA%\ComicRipper\` へ移した。
