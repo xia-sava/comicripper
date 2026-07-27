@@ -34,6 +34,9 @@ class Comic(filename: String = "") {
         val TARGET_REGEX =
             "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
 
+        /** `prefix_123.jpg` から並び替え用のキーを組み立てるための正規表現。 */
+        private val NUMBERED_FILENAME_REGEX = """^(\w+)_(\d+)\.""".toRegex()
+
         /** 一覧のサムネイルは高さ128dpまでで表示するため、DPIスケール2倍までを見込んだ上限とする。 */
         private const val THUMBNAIL_MAX_PX = 256
         private const val FULL_SIZE_IMAGE_CACHE_CAPACITY = 10
@@ -128,7 +131,7 @@ class Comic(filename: String = "") {
             .map { it.value }
 
     private fun numberFormat(filename: String): String {
-        return """^(\w+)_(\d+)\.""".toRegex().find(filename)?.let {
+        return NUMBERED_FILENAME_REGEX.find(filename)?.let {
             val (prefix, number) = it.destructured
             "${prefix}_%06d".format(number.toInt())
         } ?: filename
