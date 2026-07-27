@@ -13,9 +13,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +40,12 @@ private val logger = KotlinLogging.logger {}
  * @param scope block を実行するスコープ。呼び出し元ウィンドウが閉じても完走させるため、
  *   composition のライフサイクルから独立した [ApplicationScope] を渡すこと。
  * @param onError block が例外を投げた際に呼ばれる。ユーザーへの失敗通知（[ErrorToastState]等）に使う。
+ *   再コンポーズで差し替わっても最新のものを呼べるよう、値ではなく [State] で受け取る。
  */
 @Stable
 class ProgressOverlayState(
     private val scope: CoroutineScope,
-    private val onError: (title: String) -> Unit = {},
+    private val onError: State<(title: String) -> Unit>,
 ) {
     class Task(val title: String, val text: String)
 
@@ -66,7 +69,7 @@ class ProgressOverlayState(
                 throw e
             } catch (e: Exception) {
                 logger.warn(e) { "$title failed" }
-                onError(title)
+                onError.value(title)
             } finally {
                 task = null
             }
@@ -77,7 +80,8 @@ class ProgressOverlayState(
 @Composable
 fun rememberProgressOverlayState(onError: (title: String) -> Unit = {}): ProgressOverlayState {
     val scope: ApplicationScope = koinInject()
-    return remember { ProgressOverlayState(scope, onError) }
+    val currentOnError = rememberUpdatedState(onError)
+    return remember { ProgressOverlayState(scope, currentOnError) }
 }
 
 /**
