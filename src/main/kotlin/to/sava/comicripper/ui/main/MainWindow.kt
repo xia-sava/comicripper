@@ -145,11 +145,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
-    var selectedId by remember { mutableStateOf(comicStorage.targetId) }
+    val selectedId = comicStorage.targetId
     val selectedComic = comics.firstOrNull { it.id == selectedId }
 
     fun selectComic(id: String?) {
-        selectedId = id
         comicStorage.targetId = id
     }
 

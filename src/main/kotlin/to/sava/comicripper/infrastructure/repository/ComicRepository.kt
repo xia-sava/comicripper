@@ -1,5 +1,8 @@
 package to.sava.comicripper.infrastructure.repository
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -558,7 +561,12 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
 class ComicStorage {
     private val _storage = MutableStateFlow<List<Comic>>(emptyList())
     val storage: StateFlow<List<Comic>> get() = _storage
-    var targetId: String? = null
+
+    /**
+     * 操作対象のコミック。取り込んだファイルの振り分け先であり、一覧の選択位置でもある。
+     * 画面側が別に選択位置を持つと二重管理になるため、snapshot state で保持してここを唯一の持ち主とする。
+     */
+    var targetId: String? by mutableStateOf(null)
 
     val all get() = _storage.value.toList()
     val files get() = _storage.value.flatMap { it.files }
