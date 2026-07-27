@@ -1,5 +1,6 @@
 package to.sava.comicripper.infrastructure.repository
 
+import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -96,37 +97,23 @@ class ComicStorageTest {
         assertNull(comicStorage["nonexistent-id"])
     }
 
+    /**
+     * 取得済みスナップショットから変更が見えないことで、一覧が snapshot state で保持されている
+     * （= 画面が変更を検知して再コンポーズできる）ことを確かめる。
+     */
     @Test
-    fun `flowのvalueがallと一致する`() {
+    fun `一覧の変更は取得済みスナップショットには見えない`() {
         val comic = Comic("coverF_000.jpg")
-        comicStorage.add(comic)
 
-        assertEquals(comicStorage.all, comicStorage.storage.value)
-    }
+        val snapshot = Snapshot.takeSnapshot()
+        try {
+            comicStorage.add(comic)
 
-    @Test
-    fun `addでflowのvalueが更新される`() {
-        val comic = Comic("coverF_000.jpg")
-        comicStorage.add(comic)
-
-        assertTrue(comicStorage.storage.value.contains(comic))
-    }
-
-    @Test
-    fun `removeでflowのvalueが更新される`() {
-        val comic = Comic("coverF_000.jpg")
-        comicStorage.add(comic)
-        comicStorage.remove(comic)
-
-        assertFalse(comicStorage.storage.value.contains(comic))
-    }
-
-    @Test
-    fun `clearでflowのvalueが空になる`() {
-        comicStorage.add(Comic("coverF_000.jpg"), Comic("page_000.jpg"))
-        comicStorage.clear()
-
-        assertTrue(comicStorage.storage.value.isEmpty())
+            assertTrue(snapshot.enter { comicStorage.all }.isEmpty(), "取得済みスナップショットには見えないはず")
+            assertTrue(comicStorage.all.contains(comic), "現在の一覧としては見えるはず")
+        } finally {
+            snapshot.dispose()
+        }
     }
 
     @Test
