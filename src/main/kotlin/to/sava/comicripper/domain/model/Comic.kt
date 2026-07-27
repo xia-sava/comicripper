@@ -32,7 +32,7 @@ private val logger = KotlinLogging.logger {}
  * メモリを大きく食うため、表示に必要な形に加工したものを表示側が持つ。
  */
 @Stable
-class Comic(filename: String = "") {
+class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()) {
     companion object {
         const val COVER_ALBUM_PREFIX = "coverA"
         const val COVER_FULL_PREFIX = "coverF"
@@ -101,8 +101,6 @@ class Comic(filename: String = "") {
             }
         }
     }
-
-    var id = UUID.randomUUID().toString()
 
     var author by mutableStateOf(
         filename.replace(".jpg", "").let {

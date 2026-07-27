@@ -464,8 +464,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
 
     private fun applyStructureData(data: ComicStructureData) {
         val comics = data.comics.map { entry ->
-            Comic().apply {
-                id = entry.id
+            Comic(id = entry.id).apply {
                 author = entry.author
                 title = entry.title
                 addFiles(entry.files.filter { File("${setting.workDirectory}/$it").exists() })
@@ -497,8 +496,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
             .associate {
                 val id = it.trimStart('_')
                 val (index, author, title) = props.getProperty(it).split("\t")
-                val comic = Comic().apply {
-                    this.id = id
+                val comic = Comic(id = id).apply {
                     this.author = author
                     this.title = title
                 }
