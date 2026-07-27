@@ -145,6 +145,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    // 効果やフローの中で選択を見るときは、ここで読んだ値ではなく comicStorage.targetId を直接読むこと。
+    // 長生きするラムダがこの値を掴むと、初回コンポジション時の選択に固定されてしまう。
     val selectedId = comicStorage.targetId
     val selectedComic = comics.firstOrNull { it.id == selectedId }
 
@@ -158,9 +160,10 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         comicStorage.storage.collect { current ->
             runCatching {
                 val added = current.filter { it.id !in previousIds }
+                val target = comicStorage.targetId
                 when {
                     added.isNotEmpty() -> selectComic(added.last().id)
-                    selectedId != null && current.none { it.id == selectedId } ->
+                    target != null && current.none { it.id == target } ->
                         selectComic(current.firstOrNull()?.id)
                 }
                 previousIds = current.map { it.id }.toSet()
@@ -343,7 +346,11 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     // 選択カードが画面外なら見える位置までスクロールする（親=FlowRow 座標系はスクロール非依存）。
     LaunchedEffect(scrollState) {
-        snapshotFlow { Triple(selectedId, selectedId?.let { cardBounds[it] }, viewportHeightPx) }
+        snapshotFlow {
+            // targetId をこのフローの中で読むことで、選択の変更をスナップショットの購読として拾う。
+            val target = comicStorage.targetId
+            Triple(target, target?.let { cardBounds[it] }, viewportHeightPx)
+        }
             .collect { (_, bounds, viewport) ->
                 runCatching {
                     if (bounds == null || viewport <= 0) {
