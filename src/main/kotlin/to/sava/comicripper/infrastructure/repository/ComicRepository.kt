@@ -8,9 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -464,26 +461,14 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         return false
     }
 
-    // ページ数ぶんの画像デコードが直列に積み上がると起動が待たされるため、コミック単位で並列に読み込む。
-    // storageへの登録は読み込み完了後に構造ファイルの記載順でまとめて行ない、一覧の並び順を確定させる。
     private fun applyStructureData(data: ComicStructureData) {
         val comics = data.comics.map { entry ->
             Comic().apply {
                 id = entry.id
                 author = entry.author
                 title = entry.title
+                addFiles(entry.files.filter { File("${setting.workDirectory}/$it").exists() })
             }
-        }
-        runBlocking(Dispatchers.IO) {
-            data.comics.zip(comics)
-                .map { (entry, comic) ->
-                    launch {
-                        comic.addFiles(
-                            entry.files.sorted().filter { File("${setting.workDirectory}/$it").exists() },
-                        )
-                    }
-                }
-                .joinAll()
         }
         comicStorage.add(*comics.filter { it.files.isNotEmpty() }.toTypedArray())
     }

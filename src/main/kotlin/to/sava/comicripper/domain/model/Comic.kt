@@ -4,13 +4,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.yield
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
@@ -26,9 +24,12 @@ private val logger = KotlinLogging.logger {}
  * 可変プロパティはすべて Compose の snapshot state で保持するため、変更は購読側へ自動的に伝わる
  * （[Stable] として扱えるので、Comic を引数に取る composable も引数比較でスキップできる）。
  *
- * 書き込みは読み込みの並列化・ファイル監視・画面操作と複数スレッドから起こる。snapshot state の
- * 更新自体はロックの下で行なわれるため同時変更でも壊れないが、まとめて1回の変更として
- * 見せたい範囲は [addFiles]・[removeFiles] のようにスナップショットで囲う。
+ * 書き込みはファイル監視・画面操作と複数スレッドから起こる。snapshot state の更新自体は
+ * ロックの下で行なわれるため同時変更でも壊れないが、まとめて1回の変更として見せたい範囲は
+ * [addFiles]・[removeFiles] のようにスナップショットで囲う。
+ *
+ * 画像そのものは保持しない（[loadThumbnail]）。ページ数ぶんのサムネイルを抱えると
+ * メモリを大きく食うため、表示に必要な形に加工したものを表示側が持つ。
  */
 @Stable
 class Comic(filename: String = "") {
@@ -133,14 +134,12 @@ class Comic(filename: String = "") {
         _files.sortedBy { numberFormat(it) }
     }
 
-    private val _thumbnails = mutableStateMapOf<String, BufferedImage>()
-
-    /** [files] と同じ並びのサムネイル。 */
-    val thumbnails: List<BufferedImage> by derivedStateOf(structuralEqualityPolicy()) {
-        _thumbnails.entries
-            .sortedBy { numberFormat(it.key) }
-            .map { it.value }
-    }
+    /**
+     * 画像を読み直す必要が生じた回数。ディスク上のファイルが差し替わっても構成ファイル名は
+     * 変わらないため、表示側がキャッシュを捨てる契機としてこれを見る。
+     */
+    var imageRevision by mutableStateOf(0)
+        private set
 
     private fun numberFormat(filename: String): String {
         return NUMBERED_FILENAME_REGEX.find(filename)?.let {
@@ -211,7 +210,6 @@ class Comic(filename: String = "") {
             }
             replaced?.let { removeFile(it) }
             _files.add(filename)
-            loadImage(filename)?.let { _thumbnails[filename] = it }
         }
         return replaced
     }
@@ -224,25 +222,17 @@ class Comic(filename: String = "") {
     fun removeFile(filename: String) {
         if (filename in _files) {
             _files.remove(filename)
-            _thumbnails.remove(filename)
             imageCache.remove(filename)
         }
     }
 
     /**
-     * サムネイルをすべて読み直す。
-     * 読み込み中の中間状態を購読側へ見せないよう、別のマップへ揃えてから一度に差し替える。
+     * 保持している画像を捨てて読み直させる。
+     * ディスク上のファイルが外部から差し替えられたときに呼ぶ。
      */
-    suspend fun reloadImages() {
-        val reloaded = mutableMapOf<String, BufferedImage>()
-        files.forEach { filename ->
-            loadImage(filename)?.let { reloaded[filename] = it }
-            yield()
-        }
-        Snapshot.withMutableSnapshot {
-            _thumbnails.clear()
-            _thumbnails.putAll(reloaded)
-        }
+    fun invalidateImages() {
+        imageCache.clear()
+        imageRevision += 1
     }
 
     fun merge(src: Comic) {
@@ -256,7 +246,11 @@ class Comic(filename: String = "") {
                 (src.coverStrip.isNullOrEmpty().not() && coverStrip.isNullOrEmpty().not()))
     }
 
-    private fun loadImage(filename: String): BufferedImage? = thumbnailLoader(filename)
+    /**
+     * 一覧表示用に縮小した画像を読む。読んだ結果は保持しないので、必要な側がキャッシュすること
+     * （全ページ分を抱えるとページ数に比例してメモリを食うため）。
+     */
+    fun loadThumbnail(filename: String): BufferedImage? = thumbnailLoader(filename)
 
     private fun loadFullSizeImage(filename: String): BufferedImage {
         imageCache[filename]?.let { return it }

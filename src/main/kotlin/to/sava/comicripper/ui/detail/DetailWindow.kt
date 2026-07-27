@@ -21,7 +21,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -46,9 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
@@ -74,6 +71,16 @@ import kotlin.math.roundToInt
 private val logger = KotlinLogging.logger {}
 
 private const val WINDOW_TITLE = "comicripper $VERSION"
+
+/**
+ * 表示中の1枚。[key] は「読み直しの世代 + ファイル名」で、画像リロード後に同じファイル名でも
+ * 読み直すために世代を含める。
+ */
+private class DisplayedImage(val key: String, val bitmap: ImageBitmap) {
+    companion object {
+        fun keyOf(revision: Int, filename: String) = "$revision/$filename"
+    }
+}
 
 /**
  * Detail ウィンドウを開く。
@@ -123,7 +130,6 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val repos: ComicRepository = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
-    val uiScope = rememberCoroutineScope()
 
     var isbnText by remember { mutableStateOf("") }
 
@@ -146,19 +152,20 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val pageCount = files.size
     val currentFilename = files.getOrNull(currentPage)
 
-    // 直前に表示した1枚の (ファイル名, ImageBitmap) を保持する。
+    // 直前に表示した1枚を保持する。
     // フルサイズ BufferedImage 自体は Comic.imageCache が保持するので、ここは変換結果のみ。
-    var loadedImage by remember { mutableStateOf<Pair<String, ImageBitmap>?>(null) }
-    LaunchedEffect(currentFilename) {
+    var loadedImage by remember { mutableStateOf<DisplayedImage?>(null) }
+    LaunchedEffect(currentFilename, comic.imageRevision) {
         val filename = currentFilename ?: return@LaunchedEffect
-        if (loadedImage?.first == filename) {
+        val key = DisplayedImage.keyOf(comic.imageRevision, filename)
+        if (loadedImage?.key == key) {
             return@LaunchedEffect
         }
         withContext(Dispatchers.IO) {
             runCatching { comic.getFullSizeImage(filename).toComposeImageBitmap() }
                 .onFailure { logger.warn(it) { "detail image load failed: $filename" } }
                 .getOrNull()
-        }?.let { loadedImage = filename to it }
+        }?.let { loadedImage = DisplayedImage(key, it) }
     }
 
     fun updateAuthor(value: String) {
@@ -206,16 +213,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun reloadImages() {
-        uiScope.launch(Dispatchers.IO) {
-            try {
-                comic.reloadImages()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.warn(e) { "reloadImages failed" }
-                errorToast.show("画像リロードに失敗しました")
-            }
-        }
+        comic.invalidateImages()
     }
 
     fun searchIsbn() {
@@ -344,9 +342,9 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            loadedImage?.let { (_, bitmap) ->
+                            loadedImage?.let { displayed ->
                                 Image(
-                                    bitmap = bitmap,
+                                    bitmap = displayed.bitmap,
                                     contentDescription = null,
                                     contentScale = ContentScale.Fit,
                                     modifier = Modifier.fillMaxSize(),

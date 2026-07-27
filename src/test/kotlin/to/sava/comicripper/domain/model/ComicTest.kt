@@ -64,20 +64,45 @@ class ComicTest {
         }
 
         @Test
-        fun `サムネイルの変更も取得済みスナップショットには見えない`() {
-            Comic.thumbnailLoader = { BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
+        fun `imageRevisionの変更も取得済みスナップショットには見えない`() {
             val comic = Comic("page_000.jpg")
-            val before = comic.thumbnails
+            val before = comic.imageRevision
 
             val snapshot = Snapshot.takeSnapshot()
             try {
-                comic.addFile("page_001.jpg")
+                comic.invalidateImages()
 
-                assertEquals(before, snapshot.enter { comic.thumbnails })
-                assertEquals(2, comic.thumbnails.size)
+                assertEquals(before, snapshot.enter { comic.imageRevision })
+                assertEquals(before + 1, comic.imageRevision)
             } finally {
                 snapshot.dispose()
             }
+        }
+    }
+
+    @Nested
+    inner class `サムネイルの読み込み` {
+
+        @Test
+        fun `loadThumbnailは結果を保持しないので呼ぶたびにローダーへ問い合わせる`() {
+            var loadCount = 0
+            Comic.thumbnailLoader = { loadCount++; BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
+            val comic = Comic("page_000.jpg")
+
+            comic.loadThumbnail("page_000.jpg")
+            comic.loadThumbnail("page_000.jpg")
+
+            assertEquals(2, loadCount)
+        }
+
+        @Test
+        fun `ファイル追加でサムネイルは読まれない`() {
+            var loadCount = 0
+            Comic.thumbnailLoader = { loadCount++; BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
+
+            Comic("page_000.jpg").addFile("page_001.jpg")
+
+            assertEquals(0, loadCount, "画像の読み込みは表示側の要求時まで起こらないはず")
         }
     }
 
@@ -197,6 +222,19 @@ class ComicTest {
             comic.getFullSizeImage(filenames[0])
 
             assertEquals(countBeforeReload + 1, loadCount, "追い出された page_000 は再ロードされるはず")
+        }
+
+        @Test
+        fun `invalidateImagesでキャッシュが捨てられ再ロードされる`() {
+            var loadCount = 0
+            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
+            val comic = Comic("page_000.jpg")
+            comic.getFullSizeImage("page_000.jpg")
+
+            comic.invalidateImages()
+            comic.getFullSizeImage("page_000.jpg")
+
+            assertEquals(2, loadCount)
         }
 
         @Test

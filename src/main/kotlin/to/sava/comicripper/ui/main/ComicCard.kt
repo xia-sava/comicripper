@@ -17,6 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +43,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import to.sava.comicripper.domain.model.Comic
 import java.awt.image.BufferedImage
 import kotlin.math.roundToInt
@@ -73,8 +81,17 @@ private const val PAGE_OVERLAP_STEP = 3f
 /**
  * カードに表示するサムネイル。表紙と、2枚目以降を1枚へ合成した帯を持つ。
  * [pageStrip] は2枚目以降が無い場合 null。
+ *
+ * [files] と [revision] はこの画像を作った元の状態で、作り直しが必要かの判定と
+ * 継ぎ足しの可否判定に使う。
  */
-private class CardThumbnails(val cover: ImageBitmap, val pageStrip: ImageBitmap?)
+@Immutable
+private class CardThumbnails(
+    val files: List<String>,
+    val revision: Int,
+    val cover: ImageBitmap,
+    val pageStrip: ImageBitmap?,
+)
 
 /**
  * コミック1件を表すカード。
@@ -104,17 +121,7 @@ fun ComicCard(
     val author = remember(comic.author) { truncateForDisplay(comic.author, MAX_AUTHOR_LENGTH) }
     val title = remember(comic.title) { truncateForDisplay(comic.title, MAX_TITLE_LENGTH) }
 
-    // BufferedImage → ImageBitmap 変換と帯の合成は重いので remember でキャッシュする
-    // （非 Lazy リストで全カードが同時に compose されるため、毎回変換すると全カード分走る）。
-    // Comic.thumbnails は中身が変わったときだけ新しいリストになるのでキーとして使える。
-    // 画像変換系の例外はホスト全体を道連れにするため runCatching で保護する。
-    val density = LocalDensity.current
-    val sourceThumbnails = comic.thumbnails
-    val thumbnails = remember(sourceThumbnails, density) {
-        runCatching { buildCardThumbnails(sourceThumbnails, density) }
-            .onFailure { logger.warn(it) { "thumbnail convert failed" } }
-            .getOrNull()
-    }
+    val thumbnails = rememberCardThumbnails(comic)
 
     // カード破棄時にドラッグ状態から確実に除去する（stale bounds による誤ヒット防止）。
     DisposableEffect(comic.id) {
@@ -200,29 +207,88 @@ private fun ThumbnailStrip(thumbnails: CardThumbnails) {
 }
 
 /**
- * サムネイル画像を表示用の [CardThumbnails] へ変換する。画像が1枚も無ければ null。
+ * カードの表示画像を用意する。
+ *
+ * デコードと合成はページ数に比例した時間がかかるためコンポジションの外で行ない、
+ * 出来上がったものへ差し替える。作り直しの間は前の画像を出したままにして、ちらつかせない。
  */
-private fun buildCardThumbnails(thumbnails: List<BufferedImage>, density: Density): CardThumbnails? {
-    val cover = thumbnails.firstOrNull() ?: return null
-    return CardThumbnails(
-        cover = cover.toComposeImageBitmap(),
-        pageStrip = buildPageStrip(thumbnails.drop(1), density),
-    )
+@Composable
+private fun rememberCardThumbnails(comic: Comic): CardThumbnails? {
+    val density = LocalDensity.current
+    val files = comic.files
+    val revision = comic.imageRevision
+    return produceState<CardThumbnails?>(null, comic, files, density, revision) {
+        value = try {
+            withContext(Dispatchers.Default) { buildCardThumbnails(comic, value, files, density, revision) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 画像変換系の例外はホスト全体を道連れにするため、ここで止めて前の画像を残す。
+            logger.warn(e) { "thumbnail build failed: ${comic.id}" }
+            value
+        }
+    }.value
 }
 
 /**
- * ページのサムネイルを右へ [PAGE_OVERLAP_STEP] ずつずらして重ね描きした帯を1枚へ合成する。
- * ページ数ぶんの drawImage を毎フレーム実行させないため、ここで一度だけ描いて以降は使い回す。
- * ページが無ければ null。
+ * 構成ファイルを読んで表示用の画像を作る。ファイルが1枚も無ければ null。
+ *
+ * [previous] が使える場合（表紙が同じで、ページが末尾に増えただけ）は帯を継ぎ足して済ませる。
+ * 重ね描きの x 座標は末尾からの位置で決まるので、ページを末尾に足しても既存ページの位置は動かない。
  */
-private fun buildPageStrip(pages: List<BufferedImage>, density: Density): ImageBitmap? {
-    if (pages.isEmpty()) {
+private suspend fun buildCardThumbnails(
+    comic: Comic,
+    previous: CardThumbnails?,
+    files: List<String>,
+    density: Density,
+    revision: Int,
+): CardThumbnails? {
+    if (files.isEmpty()) {
         return null
     }
-    val logicalWidth = PAGE_FIT_SIZE + (pages.size - 1) * PAGE_OVERLAP_STEP
+    val reusable = previous?.takeIf { it.revision == revision && it.files.isAppendPrefixOf(files) }
+    val addedFrom = reusable?.files?.size ?: 0
+    val pages = coroutineScope {
+        files.drop(maxOf(1, addedFrom))
+            .map { filename -> async { comic.loadThumbnail(filename) } }
+            .awaitAll()
+            .filterNotNull()
+    }
+    val cover = reusable?.cover
+        ?: comic.loadThumbnail(files.first())?.toComposeImageBitmap()
+        ?: return null
+    return CardThumbnails(
+        files = files,
+        revision = revision,
+        cover = cover,
+        pageStrip = buildPageStrip(reusable?.pageStrip, pages, density),
+    )
+}
+
+/** 先頭が完全に一致していて、末尾に足されただけかどうか。 */
+private fun List<String>.isAppendPrefixOf(other: List<String>): Boolean =
+    isNotEmpty() && other.size > size && other.subList(0, size) == this
+
+/**
+ * ページを右へ [PAGE_OVERLAP_STEP] ずつずらして重ね描きした帯を1枚へ合成する。
+ * ページ数ぶんの drawImage を毎フレーム実行させないため、ここで一度だけ描いて以降は使い回す。
+ *
+ * [existing] を渡すと、その右側へ [pages] を継ぎ足した帯を作る。継ぎ足すページは既存ページより
+ * 奥（先に描く側）になるため、新しいページを描いた上に既存の帯を重ねる。
+ */
+private fun buildPageStrip(existing: ImageBitmap?, pages: List<BufferedImage>, density: Density): ImageBitmap? {
+    if (existing == null && pages.isEmpty()) {
+        return null
+    }
     val scale = density.density
-    val widthPx = (logicalWidth * scale).roundToInt()
     val heightPx = (PAGE_FIT_SIZE * scale).roundToInt()
+    val existingWidthPx = existing?.width ?: 0
+    val addedWidth = if (existing == null) {
+        PAGE_FIT_SIZE + (pages.size - 1) * PAGE_OVERLAP_STEP
+    } else {
+        pages.size * PAGE_OVERLAP_STEP
+    }
+    val widthPx = existingWidthPx + (addedWidth * scale).roundToInt()
     val strip = ImageBitmap(widthPx, heightPx)
     CanvasDrawScope().draw(
         density = density,
@@ -230,7 +296,8 @@ private fun buildPageStrip(pages: List<BufferedImage>, density: Density): ImageB
         canvas = Canvas(strip),
         size = Size(widthPx.toFloat(), heightPx.toFloat()),
     ) {
-        // ImageBitmap への変換もループ内で行ない、全ページ分を同時に抱えないようにする。
+        // 帯の右端が最後のページ。末尾から数えた位置がそのまま x を決める。
+        val logicalWidth = widthPx / scale
         pages.asReversed().forEachIndexed { index, page ->
             val (pageWidth, pageHeight) = fitSize(page.width, page.height, PAGE_FIT_SIZE, PAGE_FIT_SIZE)
             val logicalX = logicalWidth - PAGE_FIT_SIZE - PAGE_OVERLAP_STEP * index
@@ -245,6 +312,13 @@ private fun buildPageStrip(pages: List<BufferedImage>, density: Density): ImageB
                 start = Offset(edgeX, 0f),
                 end = Offset(edgeX, heightPx.toFloat()),
                 strokeWidth = 1f,
+            )
+        }
+        if (existing != null) {
+            drawImage(
+                image = existing,
+                dstOffset = IntOffset.Zero,
+                dstSize = IntSize(existing.width, existing.height),
             )
         }
     }

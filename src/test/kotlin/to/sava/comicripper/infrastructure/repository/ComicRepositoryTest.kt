@@ -252,8 +252,8 @@ class ComicRepositoryTest : KoinComponent {
         }
 
         @Test
-        fun `複数コミックを並列に読み込んでも記載順とファイル構成が保たれる`() {
-            // 読み込みはコミック単位で並列に走るため、順序の取り違えや取りこぼしが起きないことを見る。
+        fun `複数コミックを読み込んでも記載順とファイル構成が保たれる`() {
+            // 一覧の並び順は構造ファイルの記載順で決まる。取り違えや取りこぼしが起きないことを見る。
             val comicCount = 8
             val pagesPerComic = 12
             repeat(comicCount) { comicIndex ->
