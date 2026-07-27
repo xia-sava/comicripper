@@ -14,14 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
-import kotlinx.coroutines.flow.MutableStateFlow
 import org.koin.compose.koinInject
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
@@ -29,6 +24,7 @@ import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactOutlinedTextField
+import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 
 /**
@@ -38,28 +34,7 @@ import to.sava.comicripper.ui.rememberWindowIconPainter
 fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
     val setting: Setting = koinInject()
 
-    val state = rememberWindowState(
-        size = DpSize(setting.settingWindowWidth.dp, setting.settingWindowHeight.dp),
-        position = if (setting.settingWindowPosX >= 0.0) {
-            WindowPosition.Absolute(setting.settingWindowPosX.dp, setting.settingWindowPosY.dp)
-        } else {
-            WindowPosition.PlatformDefault
-        },
-    )
-    LaunchedEffect(state) {
-        snapshotFlow { state.size }.collect { size ->
-            setting.settingWindowWidth = size.width.value.toDouble()
-            setting.settingWindowHeight = size.height.value.toDouble()
-        }
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.position }.collect { position ->
-            if (position is WindowPosition.Absolute) {
-                setting.settingWindowPosX = position.x.value.toDouble()
-                setting.settingWindowPosY = position.y.value.toDouble()
-            }
-        }
-    }
+    val state = rememberPersistedWindowState(setting.settingWindow)
     ComicRipperWindow(
         onCloseRequest = onCloseRequest,
         state = state,

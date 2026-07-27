@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -40,10 +39,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,6 +59,7 @@ import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.rememberErrorToastState
+import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import java.io.File
@@ -104,28 +101,7 @@ fun showDetailWindow(comic: Comic, owner: java.awt.Window? = null) {
 fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
 
-    val state = rememberWindowState(
-        size = DpSize(setting.detailWindowWidth.dp, setting.detailWindowHeight.dp),
-        position = if (setting.detailWindowPosX >= 0.0) {
-            WindowPosition.Absolute(setting.detailWindowPosX.dp, setting.detailWindowPosY.dp)
-        } else {
-            WindowPosition.PlatformDefault
-        },
-    )
-    LaunchedEffect(state) {
-        snapshotFlow { state.size }.collect { size ->
-            setting.detailWindowWidth = size.width.value.toDouble()
-            setting.detailWindowHeight = size.height.value.toDouble()
-        }
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.position }.collect { position ->
-            if (position is WindowPosition.Absolute) {
-                setting.detailWindowPosX = position.x.value.toDouble()
-                setting.detailWindowPosY = position.y.value.toDouble()
-            }
-        }
-    }
+    val state = rememberPersistedWindowState(setting.detailWindow)
 
     val repos: ComicRepository = koinInject()
     val errorToast = rememberErrorToastState()

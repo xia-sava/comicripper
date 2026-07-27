@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,11 +40,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -63,6 +59,7 @@ import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.detail.showDetailWindow
+import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import kotlin.math.min
 
@@ -96,28 +93,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val setting: Setting = koinInject()
     val cutterScope: ApplicationScope = koinInject()
 
-    val state = rememberWindowState(
-        size = DpSize(setting.cutterWindowWidth.dp, setting.cutterWindowHeight.dp),
-        position = if (setting.cutterWindowPosX >= 0.0) {
-            WindowPosition.Absolute(setting.cutterWindowPosX.dp, setting.cutterWindowPosY.dp)
-        } else {
-            WindowPosition.PlatformDefault
-        },
-    )
-    LaunchedEffect(state) {
-        snapshotFlow { state.size }.collect { size ->
-            setting.cutterWindowWidth = size.width.value.toDouble()
-            setting.cutterWindowHeight = size.height.value.toDouble()
-        }
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.position }.collect { position ->
-            if (position is WindowPosition.Absolute) {
-                setting.cutterWindowPosX = position.x.value.toDouble()
-                setting.cutterWindowPosY = position.y.value.toDouble()
-            }
-        }
-    }
+    val state = rememberPersistedWindowState(setting.cutterWindow)
 
     var leftPercent by remember { mutableStateOf(setting.cutterLeftPercent) }
     var rightPercent by remember { mutableStateOf(setting.cutterRightPercent) }

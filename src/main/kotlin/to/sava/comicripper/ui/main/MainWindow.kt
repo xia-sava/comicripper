@@ -49,10 +49,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPosition
-import androidx.compose.ui.window.rememberWindowState
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
@@ -76,6 +73,7 @@ import to.sava.comicripper.ui.TextAreaOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberErrorToastState
+import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberTextAreaOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
@@ -114,28 +112,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val comicStorage: ComicStorage = koinInject()
     val appTaskScope: ApplicationScope = koinInject()
 
-    val state = rememberWindowState(
-        size = DpSize(setting.mainWindowWidth.dp, setting.mainWindowHeight.dp),
-        position = if (setting.mainWindowPosX >= 0.0) {
-            WindowPosition.Absolute(setting.mainWindowPosX.dp, setting.mainWindowPosY.dp)
-        } else {
-            WindowPosition.PlatformDefault
-        },
-    )
-    LaunchedEffect(state) {
-        snapshotFlow { state.size }.collect { size ->
-            setting.mainWindowWidth = size.width.value.toDouble()
-            setting.mainWindowHeight = size.height.value.toDouble()
-        }
-    }
-    LaunchedEffect(state) {
-        snapshotFlow { state.position }.collect { position ->
-            if (position is WindowPosition.Absolute) {
-                setting.mainWindowPosX = position.x.value.toDouble()
-                setting.mainWindowPosY = position.y.value.toDouble()
-            }
-        }
-    }
+    val state = rememberPersistedWindowState(setting.mainWindow)
 
     val repos: ComicRepository = koinInject()
     val errorToast = rememberErrorToastState()

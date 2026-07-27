@@ -68,32 +68,26 @@ private data class SettingData(
 )
 
 /**
+ * ウィンドウのサイズと位置。位置が負値のときは未設定を表し、配置をプラットフォームへ任せる。
+ */
+class WindowGeometry(width: Double, height: Double) {
+    var width by mutableStateOf(width)
+    var height by mutableStateOf(height)
+    var posX by mutableStateOf(-1.0)
+    var posY by mutableStateOf(-1.0)
+}
+
+/**
  * アプリの設定。
  *
  * 各項目は Compose の snapshot state で保持するため、変更は画面へ自動的に伝わる。
  * 永続化は [SettingData] との相互変換で行なう（項目は 1:1 対応）。
  */
 class Setting {
-    var mainWindowWidth by mutableStateOf(960.0)
-    var mainWindowHeight by mutableStateOf(720.0)
-    var mainWindowPosX by mutableStateOf(-1.0)
-    var mainWindowPosY by mutableStateOf(-1.0)
-
-    var detailWindowWidth by mutableStateOf(1280.0)
-    var detailWindowHeight by mutableStateOf(720.0)
-
-    var detailWindowPosX by mutableStateOf(-1.0)
-    var detailWindowPosY by mutableStateOf(-1.0)
-
-    var cutterWindowWidth by mutableStateOf(1280.0)
-    var cutterWindowHeight by mutableStateOf(720.0)
-    var cutterWindowPosX by mutableStateOf(-1.0)
-    var cutterWindowPosY by mutableStateOf(-1.0)
-
-    var settingWindowWidth by mutableStateOf(720.0)
-    var settingWindowHeight by mutableStateOf(720.0)
-    var settingWindowPosX by mutableStateOf(-1.0)
-    var settingWindowPosY by mutableStateOf(-1.0)
+    val mainWindow = WindowGeometry(960.0, 720.0)
+    val detailWindow = WindowGeometry(1280.0, 720.0)
+    val cutterWindow = WindowGeometry(1280.0, 720.0)
+    val settingWindow = WindowGeometry(720.0, 720.0)
 
     var cutterLeftPercent by mutableStateOf(15.0)
     var cutterRightPercent by mutableStateOf(48.5)
@@ -123,22 +117,22 @@ class Setting {
     val legacyStructureFile get() = File("${workDirectory}/.comicripperStructure")
 
     private fun toData() = SettingData(
-        mainWindowWidth = mainWindowWidth,
-        mainWindowHeight = mainWindowHeight,
-        mainWindowPosX = mainWindowPosX,
-        mainWindowPosY = mainWindowPosY,
-        detailWindowWidth = detailWindowWidth,
-        detailWindowHeight = detailWindowHeight,
-        detailWindowPosX = detailWindowPosX,
-        detailWindowPosY = detailWindowPosY,
-        cutterWindowWidth = cutterWindowWidth,
-        cutterWindowHeight = cutterWindowHeight,
-        cutterWindowPosX = cutterWindowPosX,
-        cutterWindowPosY = cutterWindowPosY,
-        settingWindowWidth = settingWindowWidth,
-        settingWindowHeight = settingWindowHeight,
-        settingWindowPosX = settingWindowPosX,
-        settingWindowPosY = settingWindowPosY,
+        mainWindowWidth = mainWindow.width,
+        mainWindowHeight = mainWindow.height,
+        mainWindowPosX = mainWindow.posX,
+        mainWindowPosY = mainWindow.posY,
+        detailWindowWidth = detailWindow.width,
+        detailWindowHeight = detailWindow.height,
+        detailWindowPosX = detailWindow.posX,
+        detailWindowPosY = detailWindow.posY,
+        cutterWindowWidth = cutterWindow.width,
+        cutterWindowHeight = cutterWindow.height,
+        cutterWindowPosX = cutterWindow.posX,
+        cutterWindowPosY = cutterWindow.posY,
+        settingWindowWidth = settingWindow.width,
+        settingWindowHeight = settingWindow.height,
+        settingWindowPosX = settingWindow.posX,
+        settingWindowPosY = settingWindow.posY,
         cutterLeftPercent = cutterLeftPercent,
         cutterRightPercent = cutterRightPercent,
         workDirectory = workDirectory,
@@ -149,22 +143,30 @@ class Setting {
     )
 
     private fun applyData(data: SettingData) {
-        mainWindowWidth = data.mainWindowWidth
-        mainWindowHeight = data.mainWindowHeight
-        mainWindowPosX = data.mainWindowPosX
-        mainWindowPosY = data.mainWindowPosY
-        detailWindowWidth = data.detailWindowWidth
-        detailWindowHeight = data.detailWindowHeight
-        detailWindowPosX = data.detailWindowPosX
-        detailWindowPosY = data.detailWindowPosY
-        cutterWindowWidth = data.cutterWindowWidth
-        cutterWindowHeight = data.cutterWindowHeight
-        cutterWindowPosX = data.cutterWindowPosX
-        cutterWindowPosY = data.cutterWindowPosY
-        settingWindowWidth = data.settingWindowWidth
-        settingWindowHeight = data.settingWindowHeight
-        settingWindowPosX = data.settingWindowPosX
-        settingWindowPosY = data.settingWindowPosY
+        mainWindow.apply {
+            width = data.mainWindowWidth
+            height = data.mainWindowHeight
+            posX = data.mainWindowPosX
+            posY = data.mainWindowPosY
+        }
+        detailWindow.apply {
+            width = data.detailWindowWidth
+            height = data.detailWindowHeight
+            posX = data.detailWindowPosX
+            posY = data.detailWindowPosY
+        }
+        cutterWindow.apply {
+            width = data.cutterWindowWidth
+            height = data.cutterWindowHeight
+            posX = data.cutterWindowPosX
+            posY = data.cutterWindowPosY
+        }
+        settingWindow.apply {
+            width = data.settingWindowWidth
+            height = data.settingWindowHeight
+            posX = data.settingWindowPosX
+            posY = data.settingWindowPosY
+        }
         cutterLeftPercent = data.cutterLeftPercent
         cutterRightPercent = data.cutterRightPercent
         workDirectory = data.workDirectory
@@ -251,22 +253,22 @@ class Setting {
 
     private fun applyLegacyProperties(props: Properties) {
         val numbers: List<Pair<String, (Double) -> Unit>> = listOf(
-            "mainWindowWidth" to { it -> mainWindowWidth = it },
-            "mainWindowHeight" to { it -> mainWindowHeight = it },
-            "mainWindowPosX" to { it -> mainWindowPosX = it },
-            "mainWindowPosY" to { it -> mainWindowPosY = it },
-            "detailWindowWidth" to { it -> detailWindowWidth = it },
-            "detailWindowHeight" to { it -> detailWindowHeight = it },
-            "detailWindowPosX" to { it -> detailWindowPosX = it },
-            "detailWindowPosY" to { it -> detailWindowPosY = it },
-            "cutterWindowWidth" to { it -> cutterWindowWidth = it },
-            "cutterWindowHeight" to { it -> cutterWindowHeight = it },
-            "cutterWindowPosX" to { it -> cutterWindowPosX = it },
-            "cutterWindowPosY" to { it -> cutterWindowPosY = it },
-            "settingWindowWidth" to { it -> settingWindowWidth = it },
-            "settingWindowHeight" to { it -> settingWindowHeight = it },
-            "settingWindowPosX" to { it -> settingWindowPosX = it },
-            "settingWindowPosY" to { it -> settingWindowPosY = it },
+            "mainWindowWidth" to { it -> mainWindow.width = it },
+            "mainWindowHeight" to { it -> mainWindow.height = it },
+            "mainWindowPosX" to { it -> mainWindow.posX = it },
+            "mainWindowPosY" to { it -> mainWindow.posY = it },
+            "detailWindowWidth" to { it -> detailWindow.width = it },
+            "detailWindowHeight" to { it -> detailWindow.height = it },
+            "detailWindowPosX" to { it -> detailWindow.posX = it },
+            "detailWindowPosY" to { it -> detailWindow.posY = it },
+            "cutterWindowWidth" to { it -> cutterWindow.width = it },
+            "cutterWindowHeight" to { it -> cutterWindow.height = it },
+            "cutterWindowPosX" to { it -> cutterWindow.posX = it },
+            "cutterWindowPosY" to { it -> cutterWindow.posY = it },
+            "settingWindowWidth" to { it -> settingWindow.width = it },
+            "settingWindowHeight" to { it -> settingWindow.height = it },
+            "settingWindowPosX" to { it -> settingWindow.posX = it },
+            "settingWindowPosY" to { it -> settingWindow.posY = it },
             "cutterLeftPercent" to { it -> cutterLeftPercent = it },
             "cutterRightPercent" to { it -> cutterRightPercent = it },
         )

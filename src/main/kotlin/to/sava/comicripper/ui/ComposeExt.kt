@@ -2,16 +2,64 @@ package to.sava.comicripper.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowScope
+import androidx.compose.ui.window.WindowState
+import androidx.compose.ui.window.rememberWindowState
 import to.sava.comicripper.ext.Loader
+import to.sava.comicripper.model.WindowGeometry
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import javax.imageio.ImageIO
 import javax.swing.SwingUtilities
+
+/**
+ * 設定に保存されたサイズ・位置でウィンドウ状態を作り、以降の変更を設定へ書き戻す。
+ * 位置が未設定なら配置をプラットフォームへ任せる。
+ *
+ * 初期値の読み出しはスナップショットの購読から外す。購読してしまうと、書き戻しのたびに
+ * 呼び出し元のコンポジションが無効化され、ウィンドウを動かすだけで画面全体が再コンポーズされる。
+ */
+@Composable
+fun rememberPersistedWindowState(geometry: WindowGeometry): WindowState {
+    val initialSize = remember {
+        Snapshot.withoutReadObservation { DpSize(geometry.width.dp, geometry.height.dp) }
+    }
+    val initialPosition = remember {
+        Snapshot.withoutReadObservation {
+            if (geometry.posX >= 0.0) {
+                WindowPosition.Absolute(geometry.posX.dp, geometry.posY.dp)
+            } else {
+                WindowPosition.PlatformDefault
+            }
+        }
+    }
+    val state = rememberWindowState(size = initialSize, position = initialPosition)
+    LaunchedEffect(state) {
+        snapshotFlow { state.size }.collect { size ->
+            geometry.width = size.width.value.toDouble()
+            geometry.height = size.height.value.toDouble()
+        }
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.position }.collect { position ->
+            if (position is WindowPosition.Absolute) {
+                geometry.posX = position.x.value.toDouble()
+                geometry.posY = position.y.value.toDouble()
+            }
+        }
+    }
+    return state
+}
 
 /**
  * アイコン PNG の Painter を作成する。

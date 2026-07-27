@@ -46,13 +46,13 @@ class SettingTest {
 
     @Test
     fun `saveしてloadでDouble値が復元される`() {
-        setting.mainWindowWidth = 1234.5
+        setting.mainWindow.width = 1234.5
         setting.save()
 
-        setting.mainWindowWidth = 0.0
+        setting.mainWindow.width = 0.0
         setting.load()
 
-        assertEquals(1234.5, setting.mainWindowWidth)
+        assertEquals(1234.5, setting.mainWindow.width)
     }
 
     @Test
@@ -81,26 +81,52 @@ class SettingTest {
 
     @Test
     fun `全設定項目がsaveとloadでラウンドトリップする`() {
-        setting.mainWindowWidth = 111.0
-        setting.mainWindowHeight = 222.0
+        // ウィンドウごとの項目は永続化形式との対応を手で書いているため、
+        // 4ウィンドウ×4項目すべてに異なる値を入れて取り違えを検出できるようにする。
+        val geometries = listOf(setting.mainWindow, setting.detailWindow, setting.cutterWindow, setting.settingWindow)
+        geometries.forEachIndexed { index, geometry ->
+            val base = (index + 1) * 1000.0
+            geometry.width = base + 1
+            geometry.height = base + 2
+            geometry.posX = base + 3
+            geometry.posY = base + 4
+        }
         setting.workDirectory = "/round/trip"
         setting.storeDirectory = "/store/trip"
+        setting.googleBookApi = "https://example.com/books?isbn="
+        setting.YodobashiSearchUrl = "https://example.com/search?word="
+        setting.TesseractExe = "/usr/bin/tesseract"
         setting.cutterLeftPercent = 20.0
         setting.cutterRightPercent = 60.0
         setting.save()
 
-        setting.mainWindowWidth = 0.0
-        setting.mainWindowHeight = 0.0
+        geometries.forEach { geometry ->
+            geometry.width = 0.0
+            geometry.height = 0.0
+            geometry.posX = 0.0
+            geometry.posY = 0.0
+        }
         setting.workDirectory = ""
         setting.storeDirectory = ""
+        setting.googleBookApi = ""
+        setting.YodobashiSearchUrl = ""
+        setting.TesseractExe = ""
         setting.cutterLeftPercent = 0.0
         setting.cutterRightPercent = 0.0
         setting.load()
 
-        assertEquals(111.0, setting.mainWindowWidth)
-        assertEquals(222.0, setting.mainWindowHeight)
+        geometries.forEachIndexed { index, geometry ->
+            val base = (index + 1) * 1000.0
+            assertEquals(base + 1, geometry.width, "ウィンドウ$index の幅")
+            assertEquals(base + 2, geometry.height, "ウィンドウ$index の高さ")
+            assertEquals(base + 3, geometry.posX, "ウィンドウ$index のX位置")
+            assertEquals(base + 4, geometry.posY, "ウィンドウ$index のY位置")
+        }
         assertEquals("/round/trip", setting.workDirectory)
         assertEquals("/store/trip", setting.storeDirectory)
+        assertEquals("https://example.com/books?isbn=", setting.googleBookApi)
+        assertEquals("https://example.com/search?word=", setting.YodobashiSearchUrl)
+        assertEquals("/usr/bin/tesseract", setting.TesseractExe)
         assertEquals(20.0, setting.cutterLeftPercent)
         assertEquals(60.0, setting.cutterRightPercent)
     }
@@ -190,7 +216,7 @@ class SettingTest {
             assertTrue(setting.load())
 
             assertEquals("/legacy/dir", setting.workDirectory)
-            assertEquals(999.0, setting.mainWindowWidth)
+            assertEquals(999.0, setting.mainWindow.width)
             assertTrue(setting.settingFile.exists(), "JSON形式ファイルが作られているはず")
         }
 
