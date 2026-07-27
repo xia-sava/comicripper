@@ -25,7 +25,8 @@ class Comic(filename: String = "") {
         val TARGET_REGEX =
             "^(?:${COVER_ALBUM_PREFIX}|${COVER_FULL_PREFIX}|${COVER_STRIP_PREFIX}|${PAGE_PREFIX}).*\\.jpg$".toRegex()
 
-        private const val THUMBNAIL_MAX_PX = 512
+        /** 一覧のサムネイルは高さ128dpまでで表示するため、DPIスケール2倍までを見込んだ上限とする。 */
+        private const val THUMBNAIL_MAX_PX = 256
         private const val FULL_SIZE_IMAGE_CACHE_CAPACITY = 10
 
         private val defaultThumbnailLoader: (String) -> BufferedImage? = { filename ->

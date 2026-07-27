@@ -1,6 +1,5 @@
 package to.sava.comicripper.ui.main
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,20 +26,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
 import to.sava.comicripper.domain.model.Comic
+import java.awt.image.BufferedImage
 import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
@@ -67,6 +73,12 @@ private const val COVER_FIT_HEIGHT = 128f
 /** 2枚目以降のサムネイルの最大表示サイズと重ね描きのずらし量。 */
 private const val PAGE_FIT_SIZE = 128f
 private const val PAGE_OVERLAP_STEP = 3f
+
+/**
+ * カードに表示するサムネイル。表紙と、2枚目以降を1枚へ合成した帯を持つ。
+ * [pageStrip] は2枚目以降が無い場合 null。
+ */
+private class CardThumbnails(val cover: ImageBitmap, val pageStrip: ImageBitmap?)
 
 /**
  * コミック1件を表すカード。
@@ -102,13 +114,14 @@ fun ComicCard(
     val author = remember(comic, version) { truncateForDisplay(comic.author, MAX_AUTHOR_LENGTH) }
     val title = remember(comic, version) { truncateForDisplay(comic.title, MAX_TITLE_LENGTH) }
 
-    // BufferedImage → ImageBitmap 変換は重いので remember でキャッシュする
+    // BufferedImage → ImageBitmap 変換と帯の合成は重いので remember でキャッシュする
     // （非 Lazy リストで全カードが同時に compose されるため、毎回変換すると全カード分走る）。
     // 画像変換系の例外はホスト全体を道連れにするため runCatching で保護する。
-    val thumbnails = remember(comic, version) {
-        runCatching { comic.thumbnails.map { it.toComposeImageBitmap() } }
+    val density = LocalDensity.current
+    val thumbnails = remember(comic, version, density) {
+        runCatching { buildCardThumbnails(comic.thumbnails, density) }
             .onFailure { logger.warn(it) { "thumbnail convert failed" } }
-            .getOrDefault(emptyList())
+            .getOrNull()
     }
 
     // カード破棄時にドラッグ状態から確実に除去する（stale bounds による誤ヒット防止）。
@@ -161,19 +174,20 @@ fun ComicCard(
             VerticalDivider(modifier = Modifier.height(16.dp).padding(horizontal = 4.dp))
             Text(title, fontWeight = FontWeight.Bold)
         }
-        if (thumbnails.isNotEmpty()) {
+        if (thumbnails != null) {
             ThumbnailStrip(thumbnails)
         }
     }
 }
 
 /**
- * 1枚目を等倍表示し、2枚目以降を右へ 3px ずつずらして重ね描きするサムネイル列。
+ * 表紙を等倍表示し、その右に2枚目以降を重ね描きした帯を並べるサムネイル列。
+ * 帯は合成済みのビットマップ1枚なので、実ピクセルサイズをそのまま表示サイズに使う。
  */
 @Composable
-private fun ThumbnailStrip(thumbnails: List<ImageBitmap>) {
+private fun ThumbnailStrip(thumbnails: CardThumbnails) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        val cover = thumbnails.first()
+        val cover = thumbnails.cover
         val (coverWidth, coverHeight) = fitSize(cover.width, cover.height, COVER_FIT_WIDTH, COVER_FIT_HEIGHT)
         Image(
             bitmap = cover,
@@ -181,34 +195,68 @@ private fun ThumbnailStrip(thumbnails: List<ImageBitmap>) {
             modifier = Modifier.size(coverWidth.dp, coverHeight.dp),
         )
 
-        val pages = thumbnails.drop(1)
-        if (pages.isEmpty()) {
-            return@Row
-        }
+        val pageStrip = thumbnails.pageStrip ?: return@Row
         VerticalDivider(modifier = Modifier.height(PAGE_FIT_SIZE.dp).padding(horizontal = 4.dp))
-
-        val logicalWidth = PAGE_FIT_SIZE + (pages.size - 1) * PAGE_OVERLAP_STEP
-        Canvas(modifier = Modifier.size(logicalWidth.dp, PAGE_FIT_SIZE.dp)) {
-            // dp で確保した論理サイズと実ピクセルの比率。縦横同一（密度スケール）なので高さから求める。
-            val scale = size.height / PAGE_FIT_SIZE
-            pages.reversed().forEachIndexed { index, page ->
-                val (pageWidth, pageHeight) = fitSize(page.width, page.height, PAGE_FIT_SIZE, PAGE_FIT_SIZE)
-                val logicalX = logicalWidth - PAGE_FIT_SIZE - PAGE_OVERLAP_STEP * index
-                drawImage(
-                    image = page,
-                    dstOffset = IntOffset((logicalX * scale).roundToInt(), 0),
-                    dstSize = IntSize((pageWidth * scale).roundToInt(), (pageHeight * scale).roundToInt()),
-                )
-                val edgeX = (logicalX + pageWidth) * scale
-                drawLine(
-                    color = UnselectedBorder,
-                    start = Offset(edgeX, 0f),
-                    end = Offset(edgeX, size.height),
-                    strokeWidth = 1f,
-                )
-            }
+        with(LocalDensity.current) {
+            Image(
+                bitmap = pageStrip,
+                contentDescription = null,
+                modifier = Modifier.size(pageStrip.width.toDp(), pageStrip.height.toDp()),
+            )
         }
     }
+}
+
+/**
+ * サムネイル画像を表示用の [CardThumbnails] へ変換する。画像が1枚も無ければ null。
+ */
+private fun buildCardThumbnails(thumbnails: List<BufferedImage>, density: Density): CardThumbnails? {
+    val cover = thumbnails.firstOrNull() ?: return null
+    return CardThumbnails(
+        cover = cover.toComposeImageBitmap(),
+        pageStrip = buildPageStrip(thumbnails.drop(1), density),
+    )
+}
+
+/**
+ * ページのサムネイルを右へ [PAGE_OVERLAP_STEP] ずつずらして重ね描きした帯を1枚へ合成する。
+ * ページ数ぶんの drawImage を毎フレーム実行させないため、ここで一度だけ描いて以降は使い回す。
+ * ページが無ければ null。
+ */
+private fun buildPageStrip(pages: List<BufferedImage>, density: Density): ImageBitmap? {
+    if (pages.isEmpty()) {
+        return null
+    }
+    val logicalWidth = PAGE_FIT_SIZE + (pages.size - 1) * PAGE_OVERLAP_STEP
+    val scale = density.density
+    val widthPx = (logicalWidth * scale).roundToInt()
+    val heightPx = (PAGE_FIT_SIZE * scale).roundToInt()
+    val strip = ImageBitmap(widthPx, heightPx)
+    CanvasDrawScope().draw(
+        density = density,
+        layoutDirection = LayoutDirection.Ltr,
+        canvas = Canvas(strip),
+        size = Size(widthPx.toFloat(), heightPx.toFloat()),
+    ) {
+        // ImageBitmap への変換もループ内で行ない、全ページ分を同時に抱えないようにする。
+        pages.asReversed().forEachIndexed { index, page ->
+            val (pageWidth, pageHeight) = fitSize(page.width, page.height, PAGE_FIT_SIZE, PAGE_FIT_SIZE)
+            val logicalX = logicalWidth - PAGE_FIT_SIZE - PAGE_OVERLAP_STEP * index
+            drawImage(
+                image = page.toComposeImageBitmap(),
+                dstOffset = IntOffset((logicalX * scale).roundToInt(), 0),
+                dstSize = IntSize((pageWidth * scale).roundToInt(), (pageHeight * scale).roundToInt()),
+            )
+            val edgeX = (logicalX + pageWidth) * scale
+            drawLine(
+                color = UnselectedBorder,
+                start = Offset(edgeX, 0f),
+                end = Offset(edgeX, heightPx.toFloat()),
+                strokeWidth = 1f,
+            )
+        }
+    }
+    return strip
 }
 
 /**
