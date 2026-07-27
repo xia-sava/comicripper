@@ -327,7 +327,15 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     val scrollState = rememberScrollState()
     var viewportHeightPx by remember { mutableStateOf(0) }
+
+    // 選択がどのカードへ移っても矩形を引けるよう、全カードのものを持つ
+    // （選択の移動でカードが再配置されるとは限らず、移動先の再通知は当てにできない）。
     val cardBounds = remember { mutableStateMapOf<String, Rect>() }
+    LaunchedEffect(Unit) {
+        snapshotFlow { comicStorage.all }.collect { current ->
+            cardBounds.keys.retainAll(current.map { it.id }.toSet())
+        }
+    }
 
     // 選択カードが画面外なら見える位置までスクロールする（親=FlowRow 座標系はスクロール非依存）。
     LaunchedEffect(scrollState) {
@@ -454,7 +462,13 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                             dragState = dragState,
                                             onSelect = { selectComic(comic.id) },
                                             onOpen = { openComic(comic, window) },
-                                            onBoundsInParent = { cardBounds[comic.id] = it },
+                                            onBoundsInParent = { bounds ->
+                                                // レイアウトのたびに通知されるので、変化が無ければ書かない
+                                                // （書けば同値でも購読側の再評価を起こす）。
+                                                if (cardBounds[comic.id] != bounds) {
+                                                    cardBounds[comic.id] = bounds
+                                                }
+                                            },
                                             onMerge = { src, dst -> onMerge(src, dst) },
                                         )
                                     }
