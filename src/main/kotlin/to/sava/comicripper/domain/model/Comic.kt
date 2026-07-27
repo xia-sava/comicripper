@@ -1,5 +1,6 @@
 package to.sava.comicripper.domain.model
 
+import androidx.compose.runtime.Stable
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,6 +17,14 @@ import javax.imageio.ImageIO
 
 private val logger = KotlinLogging.logger {}
 
+/**
+ * コミック1件。構成ファイルとそのサムネイルを保持する。
+ *
+ * プロパティは可変だが、変更は [changeFlow] で通知し、UI 側はそれを購読して再コンポーズする。
+ * この通知契約により Compose からは安定型として扱える（[Stable]）ので、
+ * Comic を引数に取る composable も引数比較でスキップできる。
+ */
+@Stable
 class Comic(filename: String = "") {
     companion object {
         const val COVER_ALBUM_PREFIX = "coverA"

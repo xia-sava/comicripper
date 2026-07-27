@@ -1,5 +1,6 @@
 package to.sava.comicripper.ui.main
 
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -18,6 +19,7 @@ import androidx.compose.ui.geometry.Rect
  * - [bounds]: クリップ済み bounds（`boundsInWindow()`）。ヒットテスト対象。
  *   画面外へスクロールしたカードは矩形が縮む/消えるので自然にドロップ対象から外れる。
  */
+@Stable
 class ComicDragState {
     var draggingId by mutableStateOf<String?>(null)
         private set
