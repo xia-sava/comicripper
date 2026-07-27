@@ -95,20 +95,21 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
 
     val state = rememberPersistedWindowState(setting.cutterWindow)
 
-    var leftPercent by remember { mutableStateOf(setting.cutterLeftPercent) }
-    var rightPercent by remember { mutableStateOf(setting.cutterRightPercent) }
+    val leftPercent = setting.cutterLeftPercent
+    val rightPercent = setting.cutterRightPercent
 
     fun updateLeft(value: Double) {
-        val clamped = value.coerceIn(0.0, 100.0)
-        leftPercent = clamped
-        setting.cutterLeftPercent = clamped
+        setting.cutterLeftPercent = value.coerceIn(0.0, 100.0)
     }
 
     fun updateRight(value: Double) {
-        val clamped = value.coerceIn(0.0, 100.0)
-        rightPercent = clamped
-        setting.cutterRightPercent = clamped
+        setting.cutterRightPercent = value.coerceIn(0.0, 100.0)
     }
+
+    // キー操作は連打が再コンポーズより速く届きうるため、コンポジション時の値ではなく現在値からずらす。
+    fun nudgeLeft(delta: Double) = updateLeft(setting.cutterLeftPercent + delta)
+
+    fun nudgeRight(delta: Double) = updateRight(setting.cutterRightPercent + delta)
 
     var coverImage by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(comic) {
@@ -144,8 +145,9 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun cut() {
-        val left = leftPercent
-        val right = rightPercent
+        // 直前のキー操作を取りこぼさないよう、実行時点の値で切り出す。
+        val left = setting.cutterLeftPercent
+        val right = setting.cutterRightPercent
         cutterScope.launch {
             runCatching { repos.cutCover(comic, left, right, 0.0) }
                 .onFailure { logger.warn(it) { "cutCover failed" } }
@@ -174,15 +176,15 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                     }
                     Key.DirectionLeft -> {
                         when (event.isShiftPressed) {
-                            true -> updateRight(rightPercent - CUTTER_KEY_STEP)
-                            false -> updateLeft(leftPercent - CUTTER_KEY_STEP)
+                            true -> nudgeRight(-CUTTER_KEY_STEP)
+                            false -> nudgeLeft(-CUTTER_KEY_STEP)
                         }
                         true
                     }
                     Key.DirectionRight -> {
                         when (event.isShiftPressed) {
-                            true -> updateRight(rightPercent + CUTTER_KEY_STEP)
-                            false -> updateLeft(leftPercent + CUTTER_KEY_STEP)
+                            true -> nudgeRight(CUTTER_KEY_STEP)
+                            false -> nudgeLeft(CUTTER_KEY_STEP)
                         }
                         true
                     }
