@@ -74,9 +74,9 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
                     modifier = Modifier.fillMaxSize().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    SettingTextField("作業ディレクトリ", setting.workDirectoryFlow)
-                    SettingTextField("格納ディレクトリ", setting.storeDirectoryFlow)
-                    SettingTextField("Tesseract 実行ファイル", setting.TesseractExeFlow)
+                    SettingTextField("作業ディレクトリ", setting.workDirectory) { setting.workDirectory = it }
+                    SettingTextField("格納ディレクトリ", setting.storeDirectory) { setting.storeDirectory = it }
+                    SettingTextField("Tesseract 実行ファイル", setting.TesseractExe) { setting.TesseractExe = it }
                     Spacer(modifier = Modifier.weight(1.0f))
                     CompactButton(
                         onClick = onCloseRequest,
@@ -91,14 +91,10 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
 }
 
 @Composable
-private fun SettingTextField(label: String, flow: MutableStateFlow<String>) {
-    var text by remember { mutableStateOf(flow.value) }
+private fun SettingTextField(label: String, value: String, onValueChange: (String) -> Unit) {
     CompactOutlinedTextField(
-        value = text,
-        onValueChange = { newValue ->
-            text = newValue
-            flow.value = newValue
-        },
+        value = value,
+        onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
         label = { Text(label) },
         singleLine = true,

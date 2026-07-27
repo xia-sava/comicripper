@@ -1,5 +1,6 @@
 package to.sava.comicripper.model
 
+import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -59,18 +60,23 @@ class SettingTest {
         assertFalse(setting.load())
     }
 
+    /**
+     * 取得済みスナップショットから変更が見えないことで、設定が snapshot state で保持されている
+     * （= 画面が変更を検知して再コンポーズできる）ことを確かめる。
+     */
     @Test
-    fun `var経由の設定変更がFlowに反映される`() {
-        setting.workDirectory = "/new/path"
+    fun `設定変更は取得済みスナップショットには見えない`() {
+        setting.workDirectory = "/before"
 
-        assertEquals("/new/path", setting.workDirectoryFlow.value)
-    }
+        val snapshot = Snapshot.takeSnapshot()
+        try {
+            setting.workDirectory = "/after"
 
-    @Test
-    fun `Flow経由の設定変更がvarに反映される`() {
-        setting.workDirectoryFlow.value = "/prop/path"
-
-        assertEquals("/prop/path", setting.workDirectory)
+            assertEquals("/before", snapshot.enter { setting.workDirectory })
+            assertEquals("/after", setting.workDirectory)
+        } finally {
+            snapshot.dispose()
+        }
     }
 
     @Test

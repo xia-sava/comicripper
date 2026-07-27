@@ -1,7 +1,9 @@
 package to.sava.comicripper.model
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -65,167 +67,42 @@ private data class SettingData(
     val tesseractExe: String = "C:/Program Files/Tesseract-OCR/tesseract.exe",
 )
 
+/**
+ * アプリの設定。
+ *
+ * 各項目は Compose の snapshot state で保持するため、変更は画面へ自動的に伝わる。
+ * 永続化は [SettingData] との相互変換で行なう（項目は 1:1 対応）。
+ */
 class Setting {
-    val mainWindowWidthFlow = MutableStateFlow(960.0)
-    var mainWindowWidth: Double
-        get() = mainWindowWidthFlow.value
-        set(value) {
-            mainWindowWidthFlow.value = value
-        }
+    var mainWindowWidth by mutableStateOf(960.0)
+    var mainWindowHeight by mutableStateOf(720.0)
+    var mainWindowPosX by mutableStateOf(-1.0)
+    var mainWindowPosY by mutableStateOf(-1.0)
 
-    val mainWindowHeightFlow = MutableStateFlow(720.0)
-    var mainWindowHeight: Double
-        get() = mainWindowHeightFlow.value
-        set(value) {
-            mainWindowHeightFlow.value = value
-        }
+    var detailWindowWidth by mutableStateOf(1280.0)
+    var detailWindowHeight by mutableStateOf(720.0)
 
-    val mainWindowPosXFlow = MutableStateFlow(-1.0)
-    var mainWindowPosX: Double
-        get() = mainWindowPosXFlow.value
-        set(value) {
-            mainWindowPosXFlow.value = value
-        }
+    var detailWindowPosX by mutableStateOf(-1.0)
+    var detailWindowPosY by mutableStateOf(-1.0)
 
-    val mainWindowPosYFlow = MutableStateFlow(-1.0)
-    var mainWindowPosY: Double
-        get() = mainWindowPosYFlow.value
-        set(value) {
-            mainWindowPosYFlow.value = value
-        }
+    var cutterWindowWidth by mutableStateOf(1280.0)
+    var cutterWindowHeight by mutableStateOf(720.0)
+    var cutterWindowPosX by mutableStateOf(-1.0)
+    var cutterWindowPosY by mutableStateOf(-1.0)
 
-    val detailWindowWidthFlow = MutableStateFlow(1280.0)
-    var detailWindowWidth: Double
-        get() = detailWindowWidthFlow.value
-        set(value) {
-            detailWindowWidthFlow.value = value
-        }
+    var settingWindowWidth by mutableStateOf(720.0)
+    var settingWindowHeight by mutableStateOf(720.0)
+    var settingWindowPosX by mutableStateOf(-1.0)
+    var settingWindowPosY by mutableStateOf(-1.0)
 
-    val detailWindowHeightFlow = MutableStateFlow(720.0)
-    var detailWindowHeight: Double
-        get() = detailWindowHeightFlow.value
-        set(value) {
-            detailWindowHeightFlow.value = value
-        }
+    var cutterLeftPercent by mutableStateOf(15.0)
+    var cutterRightPercent by mutableStateOf(48.5)
 
-    val detailWindowPosXFlow = MutableStateFlow(-1.0)
-    var detailWindowPosX: Double
-        get() = detailWindowPosXFlow.value
-        set(value) {
-            detailWindowPosXFlow.value = value
-        }
-
-    val detailWindowPosYFlow = MutableStateFlow(-1.0)
-    var detailWindowPosY: Double
-        get() = detailWindowPosYFlow.value
-        set(value) {
-            detailWindowPosYFlow.value = value
-        }
-
-    val cutterWindowWidthFlow = MutableStateFlow(1280.0)
-    var cutterWindowWidth: Double
-        get() = cutterWindowWidthFlow.value
-        set(value) {
-            cutterWindowWidthFlow.value = value
-        }
-
-    val cutterWindowHeightFlow = MutableStateFlow(720.0)
-    var cutterWindowHeight: Double
-        get() = cutterWindowHeightFlow.value
-        set(value) {
-            cutterWindowHeightFlow.value = value
-        }
-
-    val cutterWindowPosXFlow = MutableStateFlow(-1.0)
-    var cutterWindowPosX: Double
-        get() = cutterWindowPosXFlow.value
-        set(value) {
-            cutterWindowPosXFlow.value = value
-        }
-
-    val cutterWindowPosYFlow = MutableStateFlow(-1.0)
-    var cutterWindowPosY: Double
-        get() = cutterWindowPosYFlow.value
-        set(value) {
-            cutterWindowPosYFlow.value = value
-        }
-
-    val settingWindowWidthFlow = MutableStateFlow(720.0)
-    var settingWindowWidth: Double
-        get() = settingWindowWidthFlow.value
-        set(value) {
-            settingWindowWidthFlow.value = value
-        }
-
-    val settingWindowHeightFlow = MutableStateFlow(720.0)
-    var settingWindowHeight: Double
-        get() = settingWindowHeightFlow.value
-        set(value) {
-            settingWindowHeightFlow.value = value
-        }
-
-    val settingWindowPosXFlow = MutableStateFlow(-1.0)
-    var settingWindowPosX: Double
-        get() = settingWindowPosXFlow.value
-        set(value) {
-            settingWindowPosXFlow.value = value
-        }
-
-    val settingWindowPosYFlow = MutableStateFlow(-1.0)
-    var settingWindowPosY: Double
-        get() = settingWindowPosYFlow.value
-        set(value) {
-            settingWindowPosYFlow.value = value
-        }
-
-    val cutterLeftPercentFlow = MutableStateFlow(15.0)
-    var cutterLeftPercent: Double
-        get() = cutterLeftPercentFlow.value
-        set(value) {
-            cutterLeftPercentFlow.value = value
-        }
-
-    val cutterRightPercentFlow = MutableStateFlow(48.5)
-    var cutterRightPercent: Double
-        get() = cutterRightPercentFlow.value
-        set(value) {
-            cutterRightPercentFlow.value = value
-        }
-
-    val workDirectoryFlow = MutableStateFlow("C:/tmp/C")
-    var workDirectory: String
-        get() = workDirectoryFlow.value
-        set(value) {
-            workDirectoryFlow.value = value
-        }
-
-    val storeDirectoryFlow = MutableStateFlow("C:/tmp/B")
-    var storeDirectory: String
-        get() = storeDirectoryFlow.value
-        set(value) {
-            storeDirectoryFlow.value = value
-        }
-
-    val googleBookApiUrlFlow = MutableStateFlow("https://www.googleapis.com/books/v1/volumes?q=isbn:")
-    var googleBookApi: String
-        get() = googleBookApiUrlFlow.value
-        set(value) {
-            googleBookApiUrlFlow.value = value
-        }
-
-    val YodobashiSearchUrlFlow = MutableStateFlow("https://www.yodobashi.com/?word=")
-    var YodobashiSearchUrl: String
-        get() = YodobashiSearchUrlFlow.value
-        set(value) {
-            YodobashiSearchUrlFlow.value = value
-        }
-
-    val TesseractExeFlow = MutableStateFlow("C:/Program Files/Tesseract-OCR/tesseract.exe")
-    var TesseractExe: String
-        get() = TesseractExeFlow.value
-        set(value) {
-            TesseractExeFlow.value = value
-        }
+    var workDirectory by mutableStateOf("C:/tmp/C")
+    var storeDirectory by mutableStateOf("C:/tmp/B")
+    var googleBookApi by mutableStateOf("https://www.googleapis.com/books/v1/volumes?q=isbn:")
+    var YodobashiSearchUrl by mutableStateOf("https://www.yodobashi.com/?word=")
+    var TesseractExe by mutableStateOf("C:/Program Files/Tesseract-OCR/tesseract.exe")
 
     /** アプリデータの置き場所。テストからは一時ディレクトリに差し替える。 */
     internal var dataDirectory: File = defaultDataDirectory()
@@ -372,41 +249,39 @@ class Setting {
         return true
     }
 
-    @Suppress("UNCHECKED_CAST")
     private fun applyLegacyProperties(props: Properties) {
-        val legacyFlowEntries: List<Pair<String, MutableStateFlow<*>>> = listOf(
-            "mainWindowWidth" to mainWindowWidthFlow,
-            "mainWindowHeight" to mainWindowHeightFlow,
-            "mainWindowPosX" to mainWindowPosXFlow,
-            "mainWindowPosY" to mainWindowPosYFlow,
-            "detailWindowWidth" to detailWindowWidthFlow,
-            "detailWindowHeight" to detailWindowHeightFlow,
-            "detailWindowPosX" to detailWindowPosXFlow,
-            "detailWindowPosY" to detailWindowPosYFlow,
-            "cutterWindowWidth" to cutterWindowWidthFlow,
-            "cutterWindowHeight" to cutterWindowHeightFlow,
-            "cutterWindowPosX" to cutterWindowPosXFlow,
-            "cutterWindowPosY" to cutterWindowPosYFlow,
-            "settingWindowWidth" to settingWindowWidthFlow,
-            "settingWindowHeight" to settingWindowHeightFlow,
-            "settingWindowPosX" to settingWindowPosXFlow,
-            "settingWindowPosY" to settingWindowPosYFlow,
-            "cutterLeftPercent" to cutterLeftPercentFlow,
-            "cutterRightPercent" to cutterRightPercentFlow,
-            "workDirectory" to workDirectoryFlow,
-            "storeDirectory" to storeDirectoryFlow,
-            "googleBookApiUrl" to googleBookApiUrlFlow,
-            "YodobashiSearchUrl" to YodobashiSearchUrlFlow,
-            "TesseractExe" to TesseractExeFlow,
+        val numbers: List<Pair<String, (Double) -> Unit>> = listOf(
+            "mainWindowWidth" to { it -> mainWindowWidth = it },
+            "mainWindowHeight" to { it -> mainWindowHeight = it },
+            "mainWindowPosX" to { it -> mainWindowPosX = it },
+            "mainWindowPosY" to { it -> mainWindowPosY = it },
+            "detailWindowWidth" to { it -> detailWindowWidth = it },
+            "detailWindowHeight" to { it -> detailWindowHeight = it },
+            "detailWindowPosX" to { it -> detailWindowPosX = it },
+            "detailWindowPosY" to { it -> detailWindowPosY = it },
+            "cutterWindowWidth" to { it -> cutterWindowWidth = it },
+            "cutterWindowHeight" to { it -> cutterWindowHeight = it },
+            "cutterWindowPosX" to { it -> cutterWindowPosX = it },
+            "cutterWindowPosY" to { it -> cutterWindowPosY = it },
+            "settingWindowWidth" to { it -> settingWindowWidth = it },
+            "settingWindowHeight" to { it -> settingWindowHeight = it },
+            "settingWindowPosX" to { it -> settingWindowPosX = it },
+            "settingWindowPosY" to { it -> settingWindowPosY = it },
+            "cutterLeftPercent" to { it -> cutterLeftPercent = it },
+            "cutterRightPercent" to { it -> cutterRightPercent = it },
         )
-        legacyFlowEntries.forEach { (name, flow) ->
-            props.getProperty(name)?.let { value ->
-                when (flow.value) {
-                    is String -> (flow as MutableStateFlow<String>).value = value
-                    is Double -> (flow as MutableStateFlow<Double>).value = value.toDouble()
-                    is Int -> (flow as MutableStateFlow<Int>).value = value.toInt()
-                }
-            }
+        val texts: List<Pair<String, (String) -> Unit>> = listOf(
+            "workDirectory" to { it -> workDirectory = it },
+            "storeDirectory" to { it -> storeDirectory = it },
+            "googleBookApiUrl" to { it -> googleBookApi = it },
+            "YodobashiSearchUrl" to { it -> YodobashiSearchUrl = it },
+            "TesseractExe" to { it -> TesseractExe = it },
+        )
+        numbers.forEach { (name, assign) ->
+            props.getProperty(name)?.toDoubleOrNull()?.let(assign)
+        }
+        texts.forEach { (name, assign) ->
+            props.getProperty(name)?.let(assign)
         }
     }
 }
