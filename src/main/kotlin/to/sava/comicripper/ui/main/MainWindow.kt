@@ -169,22 +169,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
-    var headerAuthor by remember { mutableStateOf("") }
-    var headerTitle by remember { mutableStateOf("") }
-    LaunchedEffect(selectedComic) {
-        val comic = selectedComic
-        if (comic == null) {
-            headerAuthor = ""
-            headerTitle = ""
-            return@LaunchedEffect
-        }
-        headerAuthor = comic.author
-        headerTitle = comic.title
-        comic.changeFlow.collect {
-            headerAuthor = comic.author
-            headerTitle = comic.title
-        }
-    }
+    val headerAuthor = selectedComic?.author ?: ""
+    val headerTitle = selectedComic?.title ?: ""
 
     fun moveSelection(direction: Int) {
         val index = comics.indexOfFirst { it.id == selectedId }

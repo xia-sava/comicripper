@@ -252,6 +252,32 @@ class ComicRepositoryTest : KoinComponent {
         }
 
         @Test
+        fun `複数コミックを並列に読み込んでも記載順とファイル構成が保たれる`() {
+            // 読み込みはコミック単位で並列に走るため、順序の取り違えや取りこぼしが起きないことを見る。
+            val comicCount = 8
+            val pagesPerComic = 12
+            repeat(comicCount) { comicIndex ->
+                // 先頭の coverF が新しいコミックを起こし、後続のページがそこへ束ねられる。
+                val filenames = listOf("coverF_%03d.jpg".format(comicIndex)) +
+                    (0 until pagesPerComic).map { "page_%03d.jpg".format(comicIndex * 100 + it) }
+                filenames.forEach { ComicTestHelper.createDummyJpeg(it, workDir) }
+                repository.addFiles(filenames)
+                comicStorage.all.last().let {
+                    it.author = "著者$comicIndex"
+                    it.title = "作品$comicIndex"
+                }
+            }
+            val expected = comicStorage.all.map { it.title to it.files }
+            repository.saveStructure()
+            comicStorage.clear()
+
+            repository.loadStructure()
+
+            assertEquals(comicCount, comicStorage.all.size)
+            assertEquals(expected, comicStorage.all.map { it.title to it.files })
+        }
+
+        @Test
         fun `壊れた構造ファイルはloadStructureがfalseになりbrokenへ退避される`() {
             setting.structureFile.writeText("{ broken json ")
 

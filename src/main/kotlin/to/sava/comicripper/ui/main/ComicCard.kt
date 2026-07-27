@@ -17,11 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -105,21 +101,17 @@ fun ComicCard(
     onBoundsInParent: (Rect) -> Unit,
     onMerge: (srcId: String, dstId: String) -> Unit,
 ) {
-    // changeFlow の発火ごとにインクリメントし、著者名/題名/サムネイルの再計算キーにする。
-    var version by remember { mutableStateOf(0) }
-    LaunchedEffect(comic) {
-        comic.changeFlow.collect { version++ }
-    }
-
-    val author = remember(comic, version) { truncateForDisplay(comic.author, MAX_AUTHOR_LENGTH) }
-    val title = remember(comic, version) { truncateForDisplay(comic.title, MAX_TITLE_LENGTH) }
+    val author = remember(comic.author) { truncateForDisplay(comic.author, MAX_AUTHOR_LENGTH) }
+    val title = remember(comic.title) { truncateForDisplay(comic.title, MAX_TITLE_LENGTH) }
 
     // BufferedImage → ImageBitmap 変換と帯の合成は重いので remember でキャッシュする
     // （非 Lazy リストで全カードが同時に compose されるため、毎回変換すると全カード分走る）。
+    // Comic.thumbnails は中身が変わったときだけ新しいリストになるのでキーとして使える。
     // 画像変換系の例外はホスト全体を道連れにするため runCatching で保護する。
     val density = LocalDensity.current
-    val thumbnails = remember(comic, version, density) {
-        runCatching { buildCardThumbnails(comic.thumbnails, density) }
+    val sourceThumbnails = comic.thumbnails
+    val thumbnails = remember(sourceThumbnails, density) {
+        runCatching { buildCardThumbnails(sourceThumbnails, density) }
             .onFailure { logger.warn(it) { "thumbnail convert failed" } }
             .getOrNull()
     }

@@ -125,34 +125,21 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val uiScope = rememberCoroutineScope()
 
-    var authorText by remember { mutableStateOf(comic.author) }
-    var titleText by remember { mutableStateOf(comic.title) }
     var isbnText by remember { mutableStateOf("") }
 
-    // comic.files は呼び出しごとに新しいスナップショットを返すため、
-    // sizeチェックとインデックスアクセスは必ず同じスナップショットに対して行なうこと
-    // （別々に読むと並行削除でIndexOutOfBoundsExceptionを起こしうる）。
-    val initialFiles = remember { comic.files }
-    var files by remember { mutableStateOf(initialFiles) }
+    // 同じリストに対して size チェックとインデックスアクセスを行なうこと
+    // （別々に読むと並行削除で IndexOutOfBoundsException を起こしうる）。
+    val files = comic.files
     var currentPage by remember {
-        mutableStateOf(if (initialFiles.size > 1 && initialFiles[1] == comic.coverFull) 1 else 0)
+        mutableStateOf(if (files.size > 1 && files[1] == comic.coverFull) 1 else 0)
     }
 
-    LaunchedEffect(comic) {
-        comic.changeFlow.collect {
-            if (authorText != comic.author) {
-                authorText = comic.author
-            }
-            if (titleText != comic.title) {
-                titleText = comic.title
-            }
-            val newFiles = comic.files
-            files = newFiles
-            if (newFiles.isEmpty()) {
-                onCloseRequest()
-            } else if (currentPage >= newFiles.size) {
-                currentPage = newFiles.size - 1
-            }
+    // 表示中のページが削除されて範囲外になったら末尾へ寄せ、全部消えたら画面を閉じる。
+    LaunchedEffect(files) {
+        if (files.isEmpty()) {
+            onCloseRequest()
+        } else if (currentPage >= files.size) {
+            currentPage = files.size - 1
         }
     }
 
@@ -175,12 +162,10 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun updateAuthor(value: String) {
-        authorText = value
         comic.author = value
     }
 
     fun updateTitle(value: String) {
-        titleText = value
         comic.title = value
     }
 
@@ -271,7 +256,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     ComicRipperWindow(
         onCloseRequest = onCloseRequest,
         state = state,
-        title = "$titleText $authorText - $WINDOW_TITLE",
+        title = "${comic.title} ${comic.author} - $WINDOW_TITLE",
         icon = rememberWindowIconPainter(),
         owner = owner,
         onPreviewKeyEvent = { event ->
@@ -318,9 +303,9 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("作者:")
-                            ToolbarTextField(authorText, { updateAuthor(it) }, 150.dp, onEnter = onCloseRequest)
+                            ToolbarTextField(comic.author, { updateAuthor(it) }, 150.dp, onEnter = onCloseRequest)
                             Text("題名:")
-                            ToolbarTextField(titleText, { updateTitle(it) }, 300.dp, onEnter = onCloseRequest)
+                            ToolbarTextField(comic.title, { updateTitle(it) }, 300.dp, onEnter = onCloseRequest)
                             Spacer(modifier = Modifier.weight(1.0f))
                             CompactButton(onClick = { deleteCurrentImage() }) { Text("画像削除") }
                             CompactButton(onClick = { releaseCurrentImage() }) { Text("画像リリース") }

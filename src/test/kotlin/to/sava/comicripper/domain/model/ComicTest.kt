@@ -1,17 +1,21 @@
 package to.sava.comicripper.domain.model
 
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.yield
+import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestFactory
 import java.awt.image.BufferedImage
+
+/** snapshot state の検証ケース。[mutate] で変更し、[read] で観測する対象を指す。 */
+private class Case(
+    val name: String,
+    val mutate: (Comic) -> Unit,
+    val read: (Comic) -> Any?,
+)
 
 class ComicTest {
 
@@ -27,124 +31,53 @@ class ComicTest {
     }
 
     @Nested
-    inner class `changeFlow発火` {
+    inner class `snapshot stateとしての保持` {
 
-        @Test
-        fun `author変更でchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            var fired = false
-            val job = launch {
-                comic.changeFlow.first()
-                fired = true
-            }
-            yield()
+        /**
+         * 取得済みスナップショットから変更が見えないことで、プロパティが snapshot state で
+         * 保持されている（= Compose が変更を検知して再コンポーズできる）ことを確かめる。
+         */
+        @TestFactory
+        fun `プロパティの変更は取得済みスナップショットには見えない`(): List<DynamicTest> = listOf(
+            Case("author", { it.author = "新著者" }, { it.author }),
+            Case("title", { it.title = "新タイトル" }, { it.title }),
+            Case("addFile", { it.addFile("page_001.jpg") }, { it.files }),
+            Case("removeFile", { it.removeFile("page_000.jpg") }, { it.files }),
+            Case("addFiles", { it.addFiles(listOf("page_001.jpg", "page_002.jpg")) }, { it.files }),
+            Case("removeFiles", { it.removeFiles(listOf("page_000.jpg")) }, { it.files }),
+            Case("merge", { it.merge(Comic("page_001.jpg")) }, { it.files }),
+        ).map { case ->
+            DynamicTest.dynamicTest(case.name) {
+                val comic = Comic("page_000.jpg")
+                val before = case.read(comic)
 
-            comic.author = "新著者"
-            job.join()
+                val snapshot = Snapshot.takeSnapshot()
+                try {
+                    case.mutate(comic)
 
-            assertTrue(fired)
-        }
-
-        @Test
-        fun `title変更でchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            var fired = false
-            val job = launch {
-                comic.changeFlow.first()
-                fired = true
-            }
-            yield()
-
-            comic.title = "新タイトル"
-            job.join()
-
-            assertTrue(fired)
-        }
-
-        @Test
-        fun `addFileでchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            var count = 0
-            val job = launch {
-                comic.changeFlow.first()
-                count++
-            }
-            yield()
-
-            comic.addFile("page_000.jpg")
-            job.join()
-
-            assertEquals(1, count)
-        }
-
-        @Test
-        fun `removeFileでchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            comic.addFile("page_000.jpg")
-            var count = 0
-            val job = launch {
-                comic.changeFlow.first()
-                count++
-            }
-            yield()
-
-            comic.removeFile("page_000.jpg")
-            job.join()
-
-            assertEquals(1, count)
-        }
-
-        @Test
-        fun `addFiles複数でchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            var count = 0
-            val job = launch {
-                comic.changeFlow.first()
-                count++
-            }
-            yield()
-
-            val src = Comic()
-            src.addFile("page_000.jpg")
-            src.addFile("page_001.jpg")
-            comic.merge(src)
-            job.join()
-
-            assertEquals(1, count)
-        }
-
-        @Test
-        fun `removeFiles複数でchangeFlowが発火する`() = runTest {
-            val comic = Comic()
-            comic.addFile("page_000.jpg")
-            comic.addFile("page_001.jpg")
-            var count = 0
-            val job = launch {
-                comic.changeFlow.first()
-                count++
-            }
-            yield()
-
-            comic.removeFiles(listOf("page_000.jpg", "page_001.jpg"))
-            job.join()
-
-            assertEquals(1, count)
-        }
-
-        @Test
-        fun `Jobをcancelすると発火しない`() = runTest {
-            val comic = Comic()
-            var fired = false
-            val job = launch {
-                comic.changeFlow.collect {
-                    fired = true
+                    assertEquals(before, snapshot.enter { case.read(comic) }, "取得済みスナップショットには見えないはず")
+                    assertNotEquals(before, case.read(comic), "現在の値としては見えるはず")
+                } finally {
+                    snapshot.dispose()
                 }
             }
-            job.cancel()
+        }
 
-            comic.author = "変更"
+        @Test
+        fun `サムネイルの変更も取得済みスナップショットには見えない`() {
+            Comic.thumbnailLoader = { BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
+            val comic = Comic("page_000.jpg")
+            val before = comic.thumbnails
 
-            assertFalse(fired)
+            val snapshot = Snapshot.takeSnapshot()
+            try {
+                comic.addFile("page_001.jpg")
+
+                assertEquals(before, snapshot.enter { comic.thumbnails })
+                assertEquals(2, comic.thumbnails.size)
+            } finally {
+                snapshot.dispose()
+            }
         }
     }
 

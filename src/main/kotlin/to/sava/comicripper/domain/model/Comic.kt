@@ -1,18 +1,21 @@
 package to.sava.comicripper.domain.model
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.yield
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.IOException
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 import javax.imageio.ImageIO
 
 private val logger = KotlinLogging.logger {}
@@ -20,9 +23,12 @@ private val logger = KotlinLogging.logger {}
 /**
  * コミック1件。構成ファイルとそのサムネイルを保持する。
  *
- * プロパティは可変だが、変更は [changeFlow] で通知し、UI 側はそれを購読して再コンポーズする。
- * この通知契約により Compose からは安定型として扱える（[Stable]）ので、
- * Comic を引数に取る composable も引数比較でスキップできる。
+ * 可変プロパティはすべて Compose の snapshot state で保持するため、変更は購読側へ自動的に伝わる
+ * （[Stable] として扱えるので、Comic を引数に取る composable も引数比較でスキップできる）。
+ *
+ * 書き込みは読み込みの並列化・ファイル監視・画面操作と複数スレッドから起こる。snapshot state の
+ * 更新自体はロックの下で行なわれるため同時変更でも壊れないが、まとめて1回の変更として
+ * 見せたい範囲は [addFiles]・[removeFiles] のようにスナップショットで囲う。
  */
 @Stable
 class Comic(filename: String = "") {
@@ -97,38 +103,44 @@ class Comic(filename: String = "") {
 
     var id = UUID.randomUUID().toString()
 
-    var author = filename.replace(".jpg", "").let {
-        if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
-            it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[0]
-        } else {
-            it
+    var author by mutableStateOf(
+        filename.replace(".jpg", "").let {
+            if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
+                it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[0]
+            } else {
+                it
+            }
         }
+    )
+
+    var title by mutableStateOf(
+        filename.replace(".jpg", "").let {
+            if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
+                it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[1]
+            } else {
+                it
+            }
+        }
+    )
+
+    private val _files = mutableStateListOf<String>()
+
+    /**
+     * ページ番号順に並べた構成ファイル。
+     * 並べ替えの結果が変わったときだけ新しいリストになるので、そのまま remember のキーに使える。
+     */
+    val files: List<String> by derivedStateOf(structuralEqualityPolicy()) {
+        _files.sortedBy { numberFormat(it) }
     }
-        set(value) {
-            field = value
-            invokeListener()
-        }
 
-    var title = filename.replace(".jpg", "").let {
-        if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
-            it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[1]
-        } else {
-            it
-        }
-    }
-        set(value) {
-            field = value
-            invokeListener()
-        }
+    private val _thumbnails = mutableStateMapOf<String, BufferedImage>()
 
-    private val _files = CopyOnWriteArrayList<String>()
-    val files: List<String> get() = _files.sortedBy { numberFormat(it) }
-
-    private val _thumbnails = ConcurrentHashMap<String, BufferedImage>()
-    val thumbnails: List<BufferedImage>
-        get() = _thumbnails.entries
+    /** [files] と同じ並びのサムネイル。 */
+    val thumbnails: List<BufferedImage> by derivedStateOf(structuralEqualityPolicy()) {
+        _thumbnails.entries
             .sortedBy { numberFormat(it.key) }
             .map { it.value }
+    }
 
     private fun numberFormat(filename: String): String {
         return NUMBERED_FILENAME_REGEX.find(filename)?.let {
@@ -137,14 +149,16 @@ class Comic(filename: String = "") {
         } ?: filename
     }
 
+    // 走査対象には並べ替え済みの [files] を使う。可変リストを直接辿ると、
+    // 別スレッドからの追加・削除と重なったときに反復が壊れる。
     val coverAlbum: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_ALBUM_PREFIX) }
+        get() = files.firstOrNull { it.startsWith(COVER_ALBUM_PREFIX) }
 
     val coverFull: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_FULL_PREFIX) }
+        get() = files.firstOrNull { it.startsWith(COVER_FULL_PREFIX) }
 
     val coverStrip: String?
-        get() = _files.firstOrNull { it.startsWith(COVER_STRIP_PREFIX) }
+        get() = files.firstOrNull { it.startsWith(COVER_STRIP_PREFIX) }
 
     val coverFullImage: BufferedImage?
         get() = coverFull?.let { getFullSizeImage(it) }
@@ -153,12 +167,6 @@ class Comic(filename: String = "") {
         get() = coverFull?.let { filename ->
             getFullSizeImage(filename).let { it.width > it.height }
         } ?: false
-
-    private val _changeFlow = MutableSharedFlow<Unit>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST,
-    )
-    val changeFlow: SharedFlow<Unit> = _changeFlow
 
     /** 最終アクセス順で管理するフルサイズ画像キャッシュ。上限を超えると最も長く使われていないものを追い出す。 */
     private val imageCache = Collections.synchronizedMap(
@@ -178,19 +186,16 @@ class Comic(filename: String = "") {
 
     /**
      * 複数ファイルをまとめて追加し、置き換えで外されたファイル名を返す。
-     * 変更通知はファイルごとには出さず、全ファイルの追加後に1回だけ出す。
+     * 1ファイルずつの追加を購読側へ見せると、そのたびにサムネイルの作り直しを誘発するため、
+     * 全ファイルの追加をスナップショットで囲んで1回の変更として適用する。
      */
-    fun addFiles(filenames: List<String>): List<String> {
-        return filenames
-            .mapNotNull { addFile(it, prependListener = true) }
-            .also {
-                invokeListener()
-            }
-    }
+    fun addFiles(filenames: List<String>): List<String> =
+        Snapshot.withMutableSnapshot { filenames.mapNotNull { addFile(it) } }
 
-    fun addFile(filename: String, prependListener: Boolean = false): String? {
+    fun addFile(filename: String): String? {
         var replaced: String? = null
-        if (filename.matches(TARGET_REGEX) && filename !in files) {
+        // 存在判定は並べ替え済みの [files] ではなく実体を見る（要素数ぶんの並べ替えを誘発しないため）。
+        if (filename.matches(TARGET_REGEX) && filename !in _files) {
             when {
                 filename.startsWith(COVER_ALBUM_PREFIX) -> {
                     replaced = coverAlbum
@@ -204,37 +209,39 @@ class Comic(filename: String = "") {
                     replaced = coverStrip
                 }
             }
-            replaced?.let { removeFile(it, prependListener = false) }
+            replaced?.let { removeFile(it) }
             _files.add(filename)
             loadImage(filename)?.let { _thumbnails[filename] = it }
-            if (prependListener.not()) {
-                invokeListener()
-            }
         }
         return replaced
     }
 
+    /** 複数ファイルをまとめて削除する。[addFiles] と同じ理由でスナップショットで囲う。 */
     fun removeFiles(filenames: List<String>) {
-        filenames.forEach { removeFile(it, prependListener = true) }
-        invokeListener()
+        Snapshot.withMutableSnapshot { filenames.forEach { removeFile(it) } }
     }
 
-    fun removeFile(filename: String, prependListener: Boolean = false) {
-        if (filename in files) {
+    fun removeFile(filename: String) {
+        if (filename in _files) {
             _files.remove(filename)
             _thumbnails.remove(filename)
             imageCache.remove(filename)
         }
-        if (prependListener.not()) {
-            invokeListener()
-        }
     }
 
+    /**
+     * サムネイルをすべて読み直す。
+     * 読み込み中の中間状態を購読側へ見せないよう、別のマップへ揃えてから一度に差し替える。
+     */
     suspend fun reloadImages() {
-        (_thumbnails.keys - _files.toSet()).forEach { _thumbnails.remove(it) }
-        _files.forEach { filename ->
-            loadImage(filename)?.let { _thumbnails[filename] = it }
+        val reloaded = mutableMapOf<String, BufferedImage>()
+        files.forEach { filename ->
+            loadImage(filename)?.let { reloaded[filename] = it }
             yield()
+        }
+        Snapshot.withMutableSnapshot {
+            _thumbnails.clear()
+            _thumbnails.putAll(reloaded)
         }
     }
 
@@ -256,9 +263,5 @@ class Comic(filename: String = "") {
         val image = checkNotNull(fullSizeImageLoader(filename)) { "no image for $filename" }
         imageCache[filename] = image
         return image
-    }
-
-    private fun invokeListener() {
-        _changeFlow.tryEmit(Unit)
     }
 }
