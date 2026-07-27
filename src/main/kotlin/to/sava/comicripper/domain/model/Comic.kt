@@ -164,7 +164,11 @@ class Comic(filename: String = "") {
         return loadFullSizeImage(filename)
     }
 
-    private fun addFiles(filenames: List<String>): List<String> {
+    /**
+     * 複数ファイルをまとめて追加し、置き換えで外されたファイル名を返す。
+     * 変更通知はファイルごとには出さず、全ファイルの追加後に1回だけ出す。
+     */
+    fun addFiles(filenames: List<String>): List<String> {
         return filenames
             .mapNotNull { addFile(it, prependListener = true) }
             .also {
