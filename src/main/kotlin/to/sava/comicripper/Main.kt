@@ -21,7 +21,7 @@ import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
 
-const val VERSION = "0.9.0"
+const val VERSION = "0.9.1"
 
 /** プロセスの生存を握るラッチ。メインウィンドウのクローズかホスト終了で解放される。 */
 private val shutdownRequested = CountDownLatch(1)
