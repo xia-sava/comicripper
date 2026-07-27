@@ -105,6 +105,7 @@ private class CardThumbnails(
  * @param isDropTarget 自身がドロップ先候補のとき true（枠を赤にする）。
  * @param onBoundsInParent FlowRow 座標系での自身の矩形を親へ通知する
  *   （選択カードのスクロール補正に使う。スクロール位置に依存しない座標）。
+ *   選択中のときだけ呼ぶ。選択が移ると移動元と移動先が再配置されるため、移動先が必ず通知する。
  * @param onMerge ドロップ確定時に (ドラッグ元 id, ドロップ先 id) を通知する。
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -140,7 +141,9 @@ fun ComicCard(
     Column(
         modifier = Modifier
             .onGloballyPositioned {
-                onBoundsInParent(it.boundsInParent())
+                if (selected) {
+                    onBoundsInParent(it.boundsInParent())
+                }
                 dragState.register(comic.id, it.positionInWindow(), it.boundsInWindow())
             }
             .background(if (selected) SelectedBackground else UnselectedBackground)
