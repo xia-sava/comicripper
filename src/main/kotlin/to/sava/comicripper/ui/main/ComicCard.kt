@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.onClick
 import androidx.compose.material3.Text
@@ -143,7 +145,15 @@ fun ComicCard(
             }
             .background(if (selected) SelectedBackground else UnselectedBackground)
             .border(1.dp, borderColor)
-            .onClick(onDoubleClick = onOpen, onClick = onSelect)
+            // 選択は押した時点で確定させる。onClick へ載せるとダブルクリックの判定時間ぶん
+            // 待ってからの発火になり、キーやホイールでの移動に比べて明らかに遅れる。
+            .pointerInput(comic.id) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    onSelect()
+                }
+            }
+            .onClick(onDoubleClick = onOpen) {}
             .pointerInput(comic.id) {
                 detectDragGestures(
                     onDragStart = { offset ->
