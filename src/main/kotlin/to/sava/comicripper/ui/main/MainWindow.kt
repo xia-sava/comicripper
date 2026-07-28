@@ -404,13 +404,11 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                     }
                                     // verticalScroll より先に消費して、スクロールではなく選択移動に変換する。
                                     event.changes.forEach { it.consume() }
-                                    runCatching {
-                                        val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
-                                        when {
-                                            deltaY > 0f -> moveSelection(1)
-                                            deltaY < 0f -> moveSelection(-1)
-                                        }
-                                    }.onFailure { logger.warn(it) { "wheel select failed" } }
+                                    val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                    when {
+                                        deltaY > 0f -> moveSelection(1)
+                                        deltaY < 0f -> moveSelection(-1)
+                                    }
                                 },
                         ) {
                             FlowRow(

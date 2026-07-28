@@ -267,7 +267,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                         modifier = Modifier
                             .fillMaxSize()
                             .onPointerEvent(PointerEventType.Scroll) { event ->
-                                val deltaY = event.changes.first().scrollDelta.y
+                                val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
                                 when {
                                     deltaY < 0f -> leftImage()
                                     deltaY > 0f -> rightImage()
