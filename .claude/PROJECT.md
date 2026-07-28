@@ -68,6 +68,8 @@ src/test/kotlin/to/sava/comicripper/
 ├── model/SettingTest.kt                      # Setting のsave/load・snapshot stateとしての保持・旧形式からの移行・
 │                                               破損時退避のテスト
 ├── ui/
+│   ├── main/MainWindowTest.kt                # 選択の移動・一覧変更時の選択の付け替え・追従スクロール位置・
+│   │                                           一括命名テキストの読み書き・開く画面の振り分けのテスト
 │   ├── main/ComicCardTest.kt                 # 表示用文字列省略・サイズ計算のテスト
 │   ├── main/ComicDragStateTest.kt            # D&D状態のテスト
 │   └── cutter/CutterWindowTest.kt            # 画像表示矩形計算のテスト
@@ -83,7 +85,10 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計109件。
+テストは計144件。
+
+画面の判断ロジック（選択の付け替え・表示位置の計算・文字列の組み立て等）は composable の外に
+トップレベル関数として置き、そこをテストする。composable 内のローカル関数はテストから呼べない。
 
 ### リソース
 - アイコン: icon.png, icon.ico

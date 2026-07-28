@@ -143,14 +143,9 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         var previousIds = emptySet<String>()
         snapshotFlow { comicStorage.all }.collect { current ->
             runCatching {
-                val added = current.filter { it.id !in previousIds }
-                val target = comicStorage.targetId
-                when {
-                    added.isNotEmpty() -> selectComic(added.last().id)
-                    target != null && current.none { it.id == target } ->
-                        selectComic(current.firstOrNull()?.id)
-                }
-                previousIds = current.map { it.id }.toSet()
+                val currentIds = current.map { it.id }
+                selectComic(selectionAfterChange(previousIds, currentIds, comicStorage.targetId))
+                previousIds = currentIds.toSet()
             }.onFailure { logger.warn(it) { "storage collect failed" } }
         }
     }
@@ -159,24 +154,15 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val headerTitle = selectedComic?.title ?: ""
 
     fun moveSelection(direction: Int) {
-        val index = comics.indexOfFirst { it.id == selectedId }
-        if (index < 0) {
-            return
-        }
-        val next = index + direction
-        if (next in comics.indices) {
-            selectComic(comics[next].id)
-        }
+        selectComic(selectionAfterMove(comics.map { it.id }, selectedId, direction))
     }
 
     fun openComic(comic: Comic?, owner: java.awt.Window?) {
         val target = comic ?: return
         appTaskScope.launch {
             runCatching {
-                val useCutter = target.coverFull.isNullOrEmpty().not() &&
-                    target.coverAlbum.isNullOrEmpty() &&
-                    target.isCoverFullLandscape
-                if (useCutter) {
+                // isCoverFullLandscape は画像の読み込みを伴うため、EDT ではなくこのスコープで判定する。
+                if (shouldUseCutter(target.coverFull, target.coverAlbum, target.isCoverFullLandscape)) {
                     showCutterWindow(target, owner)
                 } else {
                     showDetailWindow(target, owner)
@@ -288,16 +274,12 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     }
 
     fun showNameAll() {
-        val text = repos.getNameList().joinToString("\n") { (id, author, title) -> "$id\t$author\t$title" }
-        nameAll.show("一括命名", "1行を \"id\\t著者名\\t題名\" として編集してください", text) { result ->
-            val nameList = result.lineSequence()
-                .filter { it.isNotBlank() }
-                .mapNotNull { line ->
-                    val parts = line.split("\t", limit = 3)
-                    if (parts.size == 3) Triple(parts[0], parts[1], parts[2]) else null
-                }
-                .toList()
-            repos.setNameList(nameList)
+        nameAll.show(
+            "一括命名",
+            "1行を \"id\\t著者名\\t題名\" として編集してください",
+            formatNameList(repos.getNameList()),
+        ) { result ->
+            repos.setNameList(parseNameList(result))
         }
     }
 
@@ -336,21 +318,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         snapshotFlow { selectedCardBounds to viewportHeightPx }
             .collect { (bounds, viewport) ->
                 runCatching {
-                    if (bounds == null || viewport <= 0) {
-                        return@runCatching
-                    }
-                    val current = scrollState.value
-                    val maxScroll = scrollState.maxValue
-                    val top = bounds.top.roundToInt()
-                    val bottom = bounds.bottom.roundToInt()
-                    val target = when {
-                        top < current -> top
-                        bottom > current + viewport -> bottom - viewport
-                        else -> return@runCatching
-                    }.coerceIn(0, maxScroll)
-                    if (target != current) {
-                        scrollState.animateScrollTo(target, FollowSelectionScrollSpec)
-                    }
+                    followSelectionScrollTarget(bounds, viewport, scrollState.value, scrollState.maxValue)
+                        ?.let { scrollState.animateScrollTo(it, FollowSelectionScrollSpec) }
                 }.onFailure { logger.warn(it) { "scroll adjust failed" } }
             }
     }
@@ -528,3 +497,80 @@ private fun BottomBar(memoryText: String, onOpenSetting: () -> Unit) {
         CompactButton(onClick = onOpenSetting) { Text("設定") }
     }
 }
+
+/**
+ * 選択を [direction] のぶんだけ動かした結果の選択位置を返す。
+ * 端を越える移動と、選択中のコミックが一覧に無い場合は、現在の選択をそのまま返す。
+ */
+internal fun selectionAfterMove(ids: List<String>, currentId: String?, direction: Int): String? {
+    val index = ids.indexOfFirst { it == currentId }
+    if (index < 0) {
+        return currentId
+    }
+    return ids.getOrNull(index + direction) ?: currentId
+}
+
+/**
+ * 一覧の中身が変わった後の選択位置を返す。
+ * 追加があればいちばん後ろの追加分へ移し、選択中のコミックが消えていれば先頭へ移す。
+ * どちらでもなければ現在の選択をそのまま返す。
+ */
+internal fun selectionAfterChange(
+    previousIds: Set<String>,
+    currentIds: List<String>,
+    currentId: String?,
+): String? {
+    val added = currentIds.filterNot { it in previousIds }
+    return when {
+        added.isNotEmpty() -> added.last()
+        currentId != null && currentId !in currentIds -> currentIds.firstOrNull()
+        else -> currentId
+    }
+}
+
+/**
+ * 選択中のカードを表示範囲へ入れるためのスクロール位置を返す。
+ * すでに見えている場合と、カードの矩形やビューポートの高さが未確定の場合は null を返す。
+ *
+ * [bounds] はスクロールしない親（FlowRow）の座標系で受け取るため、スクロール位置と直接比較できる。
+ */
+internal fun followSelectionScrollTarget(
+    bounds: Rect?,
+    viewportHeight: Int,
+    currentScroll: Int,
+    maxScroll: Int,
+): Int? {
+    if (bounds == null || viewportHeight <= 0) {
+        return null
+    }
+    val top = bounds.top.roundToInt()
+    val bottom = bounds.bottom.roundToInt()
+    val target = when {
+        top < currentScroll -> top
+        bottom > currentScroll + viewportHeight -> bottom - viewportHeight
+        else -> return null
+    }.coerceIn(0, maxScroll)
+    return target.takeIf { it != currentScroll }
+}
+
+/** 一括命名の編集用テキストを組み立てる。1行を「id・著者名・題名」のタブ区切りとする。 */
+internal fun formatNameList(nameList: List<Triple<String, String, String>>): String =
+    nameList.joinToString("\n") { (id, author, title) -> "$id\t$author\t$title" }
+
+/** 一括命名の編集結果を読み取る。空行と、3列に分かれない行は捨てる。 */
+internal fun parseNameList(text: String): List<Triple<String, String, String>> =
+    text.lineSequence()
+        .filter { it.isNotBlank() }
+        .mapNotNull { line ->
+            line.split("\t", limit = 3)
+                .takeIf { it.size == 3 }
+                ?.let { (id, author, title) -> Triple(id, author, title) }
+        }
+        .toList()
+
+/**
+ * 開く先が切り出し画面かどうかを返す。
+ * 横長の表紙全体があってアルバム表紙がまだ無い状態は、表紙の切り出しが済んでいないことを表す。
+ */
+internal fun shouldUseCutter(coverFull: String?, coverAlbum: String?, isCoverFullLandscape: Boolean): Boolean =
+    coverFull.isNullOrEmpty().not() && coverAlbum.isNullOrEmpty() && isCoverFullLandscape
