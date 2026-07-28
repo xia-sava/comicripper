@@ -66,6 +66,19 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
             fullSizeImageLoader = defaultFullSizeImageLoader
         }
 
+        /**
+         * `coverF_著者名｜題名.jpg` の形式のファイル名から著者名と題名を取り出す。
+         * その形式でなければ、拡張子を除いたファイル名を著者名・題名の両方に使う。
+         */
+        private fun splitAuthorAndTitle(filename: String): Pair<String, String> {
+            val base = filename.replace(".jpg", "")
+            if (base.startsWith(COVER_FULL_PREFIX).not() || base.contains("｜").not()) {
+                return base to base
+            }
+            val parts = base.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")
+            return parts[0] to parts[1]
+        }
+
         private fun readImageOrNull(filename: String): BufferedImage? {
             return try {
                 ImageIO.read(File("${workDirectoryProvider()}/$filename"))
@@ -102,25 +115,9 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
         }
     }
 
-    var author by mutableStateOf(
-        filename.replace(".jpg", "").let {
-            if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
-                it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[0]
-            } else {
-                it
-            }
-        }
-    )
+    var author by mutableStateOf(splitAuthorAndTitle(filename).first)
 
-    var title by mutableStateOf(
-        filename.replace(".jpg", "").let {
-            if (it.startsWith(COVER_FULL_PREFIX) && it.contains("｜")) {
-                it.removePrefix(COVER_FULL_PREFIX).removePrefix("_").split("｜")[1]
-            } else {
-                it
-            }
-        }
-    )
+    var title by mutableStateOf(splitAuthorAndTitle(filename).second)
 
     private val _files = mutableStateListOf<String>()
 
