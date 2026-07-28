@@ -153,52 +153,6 @@ class ComicRepositoryTest : KoinComponent {
     }
 
     @Nested
-    inner class `タイトル著者の正規化` {
-
-        @Test
-        fun `各種括弧が統一される`() {
-            val (_, title) = repository.normalize(listOf("著者"), "タイトル(1)")
-            assertEquals("タイトル (1)", title)
-        }
-
-        @Test
-        fun `角括弧も統一される`() {
-            val (_, title) = repository.normalize(listOf("著者"), "タイトル[2]")
-            assertEquals("タイトル (2)", title)
-        }
-
-        @Test
-        fun `波括弧も統一される`() {
-            val (_, title) = repository.normalize(listOf("著者"), "タイトル{3}")
-            assertEquals("タイトル (3)", title)
-        }
-
-        @Test
-        fun `第n巻の抽出`() {
-            val (_, title) = repository.normalize(listOf("著者"), "タイトル 第5巻")
-            assertEquals("タイトル (5)", title)
-        }
-
-        @Test
-        fun `NFKC正規化`() {
-            val text = repository.normalizeText("Ａ")
-            assertEquals("A", text)
-        }
-
-        @Test
-        fun `禁止文字の全角化`() {
-            val text = repository.normalizeText("test?file")
-            assertEquals("test？file", text)
-        }
-
-        @Test
-        fun `複数著者のスラッシュ区切り`() {
-            val (author, _) = repository.normalize(listOf("著者A", "著者B"), "タイトル")
-            assertEquals("著者A／著者B", author)
-        }
-    }
-
-    @Nested
     inner class `構造の保存復元` {
 
         @Test

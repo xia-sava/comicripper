@@ -9,21 +9,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.Jsoup
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.ext.workFilename
 import to.sava.comicripper.infrastructure.image.ComicImageStore
+import to.sava.comicripper.infrastructure.service.BookInfoSearcher
+import to.sava.comicripper.infrastructure.text.normalizeText
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.model.quarantineBrokenFile
 import java.awt.Color
@@ -31,12 +26,9 @@ import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.IOException
-import java.io.InputStreamReader
-import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
-import java.text.Normalizer
 import java.util.*
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
@@ -65,46 +57,14 @@ private data class ComicStructureData(
     val comics: List<ComicStructureEntry> = emptyList(),
 )
 
-/** ファイル名・アーカイブ名に使えない半角記号を対応する全角文字へ置き換えるための変換表。 */
-private val FULLWIDTH_CHAR_MAP: Map<Char, Char> = mapOf(
-    Character.codePointOf("FULLWIDTH TILDE").toChar() to '～',
-    Character.codePointOf("WAVE DASH").toChar() to '～',
-    '!' to '！',
-    '\'' to '’',
-    '"' to '”',
-    '%' to '％',
-    '&' to '＆',
-    ':' to '：',
-    '*' to '＊',
-    '?' to '？',
-    '<' to '＜',
-    '>' to '＞',
-    '|' to '｜',
-    '~' to '～',
-    '/' to '／',
-    '\\' to '￥',
-)
-
 /** ファイル名から連番部分を取り出すための正規表現。 */
 private val FILENAME_NUMBER_REGEX = """\d+""".toRegex()
-
-/** タイトル中の各種括弧を `<` `>` へ統一するための変換表。 */
-private val BRACKET_CHAR_MAP: Map<Char, Char> = mapOf(
-    '(' to '<', ')' to '>',
-    '[' to '<', ']' to '>',
-    '{' to '<', '}' to '>',
-    '＜' to '<', '＞' to '>',
-    '「' to '<', '」' to '>',
-    '〔' to '<', '〕' to '>',
-    '【' to '<', '】' to '>',
-    '『' to '<', '』' to '>',
-    '《' to '<', '》' to '>',
-)
 
 class ComicRepository(
     private val setting: Setting,
     private val comicStorage: ComicStorage,
     private val imageStore: ComicImageStore,
+    private val bookInfoSearcher: BookInfoSearcher,
 ) {
 
     fun reScanFiles(targetComic: Comic? = null) {
@@ -312,7 +272,7 @@ class ComicRepository(
                     ?.replace("""\D""".toRegex(), "")
                     ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
                     ?.let { isbn ->
-                        searchISBN(isbn)
+                        bookInfoSearcher.search(isbn)
                     }
                     ?: Pair("エラー", "ISBN不明")
             }
@@ -324,118 +284,6 @@ class ComicRepository(
                 }
             }
         }
-    }
-
-    // 共通の正規化処理
-    internal fun normalizeText(text: String): String {
-        val normalized = Normalizer.normalize(text, Normalizer.Form.NFKC)
-        return FULLWIDTH_CHAR_MAP.entries.fold(normalized) { acc, (from, to) -> acc.replace(from, to) }
-    }
-
-    internal fun normalize(authors: Iterable<String>, title: String): Pair<String, String> {
-        val a = authors.joinToString("／") {
-            normalizeText(it).replace(" ", "")
-        }
-        val bracketsUnified = BRACKET_CHAR_MAP.entries.fold(normalizeText(title)) { acc, (from, to) -> acc.replace(from, to) }
-        val t = bracketsUnified
-            .replace("""<.*?(\d*).*?>""".toRegex(), "<$1>")
-            .replace("""\s+第?\s*(\d+)\s*巻""".toRegex(), " <$1>")
-            .replace("""：\s*(\d+)""".toRegex(), " <$1>")
-            .replace("<>", "")
-            .trimEnd()
-            .replace("""\s*<?(\d+)>?[\d<> ]*$""".toRegex(), " ($1)")
-        return Pair(a, t)
-    }
-
-    /**
-     * ISBN から著者名・題名を引く。Amazon → ヨドバシ → Google Books の順に試し、
-     * ある提供元での失敗（通信不能・タイムアウト・想定外の応答）は次の提供元へ進むために握る。
-     * どこからも引けなければ ISBN そのものを題名として返す。
-     */
-    suspend fun searchISBN(pIsbn: String): Pair<String, String> {
-        // ISBN 10桁→13桁変換
-        val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
-
-        // Amazon.com スクレイピング
-        try {
-            logger.info { "Amazon $isbn start" }
-            Jsoup.connect("https://www.amazon.co.jp/s?k=isbn+$isbn").timeout(10_000).get()
-                .select("#search .s-main-slot a[href]").firstOrNull()
-                ?.absUrl("href")
-                ?.let { Jsoup.connect(it).timeout(10_000).get() }
-                ?.let { page ->
-                    val title = page.select("#productTitle").first()?.text()
-                    val authors =
-                        page.select("#bylineInfo .author a")
-                            .map { it.text() }
-                            .filter { it != "" }
-                            .filter { t -> listOf("原著", "著者ページ", "検索結果").all { it !in t } }
-                            .ifEmpty {
-                                page.select("#bylineInfo .author a")
-                                    .map { it.text() }
-                                    .ifEmpty { listOf("作者不明") }
-                            }
-                    if (title != null) {
-                        logger.info { "Amazon $isbn done" }
-                        return normalize(authors, title)
-                    }
-                }
-        } catch (e: Exception) {
-            logger.warn(e) { "Amazon $isbn error" }
-        }
-
-        // Yodobashi.com スクレイピング
-        try {
-            logger.info { "Yodobashi $isbn start" }
-            Jsoup.connect("${setting.yodobashiSearchUrl}$isbn").timeout(10_000).get()
-                .takeIf { it.select(".noResult").isEmpty() }
-                ?.select(".pListBlock a[href]")?.firstOrNull()
-                ?.absUrl("href")
-                ?.let { Jsoup.connect(it).timeout(10_000).get() }
-                ?.let { page ->
-                    val title = page.select("#products_maintitle").first()?.text()
-                    val authors = page.select("#js_bookAuthor a")
-                        .map { it.text() }
-                        .ifEmpty { listOf("作者不明") }
-                    if (title != null) {
-                        logger.info { "Yodobashi $isbn done" }
-                        return normalize(authors, title)
-                    }
-                }
-        } catch (e: Exception) {
-            logger.warn(e) { "Yodobashi $isbn error" }
-        }
-
-        // Google Book API
-        try {
-            logger.info { "Google $isbn start" }
-            val responseText = withContext(Dispatchers.IO) {
-                InputStreamReader(
-                    URI("${setting.googleBookApi}$isbn")
-                        .toURL()
-                        .openConnection()
-                        .getInputStream(), "utf-8"
-                ).buffered().readText()
-            }
-            val json = Json.parseToJsonElement(responseText).jsonObject
-            val totalItems = json["totalItems"]?.jsonPrimitive?.intOrNull ?: 0
-            if (totalItems > 0) {
-                val info = json["items"]?.jsonArray?.getOrNull(0)?.jsonObject
-                    ?.get("volumeInfo")?.jsonObject
-                val authors = info?.get("authors")?.jsonArray?.map { it.jsonPrimitive.content }
-                val title = info?.get("title")?.jsonPrimitive?.contentOrNull
-                if (authors != null && title != null) {
-                    logger.info { "Google $isbn done" }
-                    return normalize(authors, title)
-                }
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "Google $isbn error" }
-        }
-
-        return Pair("ISBN", isbn)
     }
 
     /**

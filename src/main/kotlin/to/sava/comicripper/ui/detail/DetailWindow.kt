@@ -48,6 +48,7 @@ import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
@@ -106,6 +107,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
 
     val repos: ComicRepository = koinInject()
     val imageStore: ComicImageStore = koinInject()
+    val bookInfoSearcher: BookInfoSearcher = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
 
@@ -208,7 +210,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             return
         }
         progress.launchTask("ISBN検索", "ISBN から著者名/作品名をサーチしてます") {
-            val (searchedAuthor, searchedTitle) = repos.searchISBN(isbn)
+            val (searchedAuthor, searchedTitle) = bookInfoSearcher.search(isbn)
             comic.author = searchedAuthor
             comic.title = searchedTitle
         }
