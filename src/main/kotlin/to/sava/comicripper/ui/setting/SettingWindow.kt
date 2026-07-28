@@ -28,7 +28,7 @@ import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 
 /**
- * 設定画面。ウィンドウ位置・サイズと各設定値を Setting の Flow と同期する。
+ * 設定画面。ウィンドウ位置・サイズと各設定値を Setting へ直接読み書きする。
  */
 @Composable
 fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {

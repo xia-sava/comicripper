@@ -293,7 +293,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         val dst = comicStorage[dstId] ?: return
         // 選択切り替えだけ先に同期で行なう。
         selectComic(dst.id)
-        // merge は同期ディスク I/O（ImageIO.read + スケーリング）を伴うため EDT で直接呼ばない。
+        // reScanFiles はディレクトリの走査を伴うため EDT で直接呼ばない。
         appTaskScope.launch {
             runCatching {
                 dst.merge(src)
