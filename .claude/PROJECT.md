@@ -14,7 +14,7 @@ ComicRipperは、裁断したコミックをScanSnapでスキャンした画像�
 - 操作失敗のトースト通知（ErrorToast）
 
 ### バージョン
-- 現在: 0.9.2
+- 現在: 0.9.3
 
 ## アーキテクチャ
 
@@ -27,10 +27,16 @@ ComicRipperは、裁断したコミックをScanSnapでスキャンした画像�
 src/main/kotlin/to/sava/comicripper/
 ├── domain/                          # ビジネスロジック層（UI非依存）
 │   ├── model/Comic.kt              # ドメインモデル（構成ファイルと著者名/題名を snapshot state で保持。
-│   │                                 サムネイル画像は保持せず読み方だけを持つ。フルサイズ画像はLRUキャッシュ）
+│   │                                 画像は扱わず、差し替えが起きたことを imageRevision で伝えるだけ）
 │   └── service/FileWatcher.kt      # ファイル監視インターフェース
 ├── infrastructure/                  # 外部システム接続層
-│   ├── repository/ComicRepository.kt  # ビジネスロジック + ComicStorage（Koin single）同居
+│   ├── repository/ComicRepository.kt  # ファイルの振り分け・スキャン・表紙切り出し・ZIP作成・OCR・一括命名
+│   ├── repository/ComicStorage.kt     # 読み込み済みコミックの保持（Koin single）
+│   ├── repository/StructureStore.kt   # 構造ファイルのJSON永続化と旧形式からの移行
+│   ├── image/ComicImageStore.kt       # 画像の読み込みとアプリ全体でひとつの原寸画像LRU（Koin single）
+│   ├── service/BookInfoSearcher.kt    # ISBNからの書誌検索（Amazon→ヨドバシ→Google Books）。
+│   │                                    通信は HtmlFetcher / TextFetcher として注入する
+│   ├── text/NameNormalization.kt      # 著者名・題名の表記統一とファイル名の禁止文字の置き換え
 │   └── service/NioFileWatcher.kt   # java.nio.file.WatchService によるファイル監視実装
 ├── application/                     # アプリケーション層
 │   ├── ApplicationScope.kt         # ウィンドウを閉じても完走させる処理用の共有CoroutineScope（Koin single）
@@ -67,6 +73,11 @@ src/test/kotlin/to/sava/comicripper/
 │                                               サムネイル読み込み・画像LRUキャッシュ）
 ├── model/SettingTest.kt                      # Setting のsave/load・snapshot stateとしての保持・旧形式からの移行・
 │                                               破損時退避のテスト
+├── infrastructure/image/ComicImageStoreTest.kt   # 画像の読み込み・原寸画像の保持と追い出し・縮小のテスト
+├── infrastructure/service/BookInfoSearcherTest.kt # 書誌検索のテスト（提供元の優先順・失敗時の後続への移行・
+│                                               ISBNの桁合わせ）。取得口を差し替えて実通信なしで行なう
+├── infrastructure/text/NameNormalizationTest.kt   # 表記統一と禁止文字の置き換えのテスト
+├── infrastructure/repository/StructureStoreTest.kt # 構造ファイルの保存復元・破損時退避・旧形式移行のテスト
 ├── ui/
 │   ├── ProgressOverlayStateTest.kt           # 進捗オーバーレイのテスト（開始・多重起動の抑止・中止・失敗通知）
 │   ├── main/MainWindowTest.kt                # 選択の移動・一覧変更時の選択の付け替え・追従スクロール位置・
@@ -76,9 +87,8 @@ src/test/kotlin/to/sava/comicripper/
 │   └── cutter/CutterWindowTest.kt            # 画像表示矩形計算のテスト
 └── infrastructure/
     ├── repository/
-    │   ├── ComicRepositoryTest.kt             # ComicRepository のテスト（振り分け・正規化・保存復元・
-    │   │                                        merge/release・reScanFiles・cutCover・zipComic・一括命名・
-    │   │                                        構造ファイルの旧形式移行・破損時退避等）
+    │   ├── ComicRepositoryTest.kt             # ComicRepository のテスト（振り分け・merge/release・
+    │   │                                        reScanFiles・cutCover・zipComic・OCRの起動失敗・一括命名）
     │   ├── ComicStorageTest.kt                 # ComicStorage のテスト
     │   └── ComicTestHelper.kt                  # テスト用ダミーJPEG生成・ディレクトリ設定ヘルパ
     └── service/
@@ -86,7 +96,7 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計159件。
+テストは計179件。
 
 画面の判断ロジック（選択の付け替え・表示位置の計算・文字列の組み立て等）は composable の外に
 トップレベル関数として置き、そこをテストする。composable 内のローカル関数はテストから呼べない。
@@ -121,10 +131,18 @@ src/test/kotlin/to/sava/comicripper/
 長生きするラムダが値を掴むと初回コンポジション時の値に固定される（`LaunchedEffect` が再起動しないため）。
 
 ### ComicStorage の設計
-- `infrastructure/repository/ComicRepository.kt` 内に `ComicStorage` クラスが同居し、Koinの`single`として
-  アプリ全体で単一インスタンスを共有する
+- Koinの`single`としてアプリ全体で単一インスタンスを共有する
 - 一覧は `all`、ファイルの振り分け先かつ一覧の選択位置は `targetId`。どちらも snapshot state
 - Koinスコープ内で単一インスタンスのため、テスト時の状態リセットに注意が必要
+
+### 外部との境界の差し替え
+外部（ネットワーク・外部プロセス・ディスク）へ出る処理は、境界を関数型インターフェースで受け取り、
+テストから差し替えられるようにする。
+
+- `BookInfoSearcher` の `HtmlFetcher` / `TextFetcher`。固定のHTML・JSONを返す実装を渡せば、
+  3段フォールバックの分岐と失敗経路を実通信なしで確かめられる
+- `ComicImageStore` の `readImage`。読み取り回数を数える実装を渡せば、保持と追い出しを確かめられる
+- グローバルな可変状態（companion の `var`）で差し替え口を作らない。テスト間で漏れるため
 
 ### 描画コストの考え方
 Compose Desktop にはダーティ領域の概念が無く、状態がひとつ変われば**ウィンドウ全体を描き直す**
@@ -196,9 +214,7 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
 以下は意図的に別ブランチ/別セッションで進める方針の項目（このブランチのスコープには含めない）。
 
 ### 中期
-1. 外部API処理の改善・統合テスト（`searchISBN`/`ocrISBN`のテスト化。外部サイトへの実通信が絡むため
-   HTTPモック基盤の整備が前提）
-2. GitHub ActionsでのMSI自動ビルド＋アプリからの自動更新。バージョニング・署名（未署名だとSmartScreen
+1. GitHub ActionsでのMSI自動ビルド＋アプリからの自動更新。バージョニング・署名（未署名だとSmartScreen
    警告が出る）等の設計が別途必要
 
 ### 長期
@@ -244,6 +260,11 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
   画面側が持っていた写しと`collectAsState`の橋渡しが不要になり、`Comic`と`ComicDragState`の安定宣言により
   選択の移動で再コンポーズされるのは対象カードだけになった（8枚→2枚、実行時のログで確認）。
   4画面で重複していたウィンドウのサイズ・位置の保存も1箇所へ集約した。
+- **外部との境界の分離**: 完了。`ComicRepository` から書誌検索・構造ファイルの永続化・コミック一覧の保持を
+  独立したファイルへ分け、画像の読み込みと保持は `Comic` から `ComicImageStore` へ移した。通信と画像の
+  読み取りを注入できる形にしたことで、実通信なしで書誌検索の3段フォールバックをテストできるようになり、
+  `Comic` の companion にあったグローバル可変状態（ローダー・作業ディレクトリの差し替え口）も撤去した。
+  原寸画像のキャッシュはコミック単位からアプリ全体でひとつになり、常駐量が画面数に依らず一定になった。
 - **永続化のJSON化とアプリデータディレクトリ移行**: 完了。設定・構造ファイルを
   Properties形式から `@Serializable` データクラス経由のJSON形式へ移行し、保存先を
   ホームディレクトリ直下の dotfile から `%LOCALAPPDATA%\ComicRipper\` へ移した。
