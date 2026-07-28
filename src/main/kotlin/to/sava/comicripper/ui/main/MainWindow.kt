@@ -64,6 +64,7 @@ import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
+import to.sava.comicripper.infrastructure.repository.StructureStore
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
 import to.sava.comicripper.ui.ComicRipperTheme
@@ -125,6 +126,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     val repos: ComicRepository = koinInject()
     val imageStore: ComicImageStore = koinInject()
+    val structureStore: StructureStore = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
@@ -178,7 +180,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         appTaskScope.launch {
             runCatching {
                 repos.reScanFiles()
-                repos.saveStructure()
+                structureStore.save()
             }.onFailure {
                 logger.warn(it) { "reScan failed" }
                 errorToast.show("フォルダ再スキャンに失敗しました")

@@ -12,6 +12,7 @@ import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.application.di.applicationModule
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.repository.StructureStore
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.main.MainWindow
@@ -28,6 +29,7 @@ private val shutdownRequested = CountDownLatch(1)
 fun main() {
     startKoin { modules(applicationModule) }
     val repos: ComicRepository = get(ComicRepository::class.java)
+    val structureStore: StructureStore = get(StructureStore::class.java)
     val fileWatcher: FileWatcher = get(FileWatcher::class.java)
     val setting: Setting = get(Setting::class.java)
     val appScope: ApplicationScope = get(ApplicationScope::class.java)
@@ -44,7 +46,7 @@ fun main() {
         })
     }
 
-    repos.loadStructure()
+    structureStore.load()
     repos.reScanFiles()
 
     val autosaveJob = appScope.launch {
@@ -52,7 +54,7 @@ fun main() {
             delay(30_000)
             runCatching {
                 setting.save()
-                repos.saveStructure()
+                structureStore.save()
             }.onFailure { logger.warn(it) { "autosave failed" } }
         }
     }
@@ -69,7 +71,7 @@ fun main() {
     // 保存中のキャンセルによる二重書き込みを避けるため join してから最終保存する。
     runBlocking { autosaveJob.cancelAndJoin() }
     setting.save()
-    repos.saveStructure()
+    structureStore.save()
     stopKoin()
     exitProcess(0)
 }
