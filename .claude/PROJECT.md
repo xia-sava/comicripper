@@ -112,6 +112,9 @@ src/test/kotlin/to/sava/comicripper/
 - 並べ替え済みの一覧（`Comic.files` / `ComicStorage.all`）は `derivedStateOf` で導出し、中身が変わった
   ときだけ新しいリストになるので `remember` のキーに使える
 - まとめて1回の変更として見せたい範囲は `Snapshot.withMutableSnapshot` で囲う（`Comic.addFiles` 等）
+- 画面固有の状態は `@Stable` なクラス（`ErrorToastState`/`ProgressOverlayState`/`TextAreaOverlayState`/
+  `ComicDragState`）へ持たせ、`rememberXxxState()` で生成する。ViewModel 層は設けない
+  （Desktop には Activity の再生成に相当するものが無く、ViewModel による生存管理を必要としないため）
 
 **効果やフローの中で状態を読むときは、コンポジション時に読んだ値ではなく状態を直接読むこと。**
 長生きするラムダが値を掴むと初回コンポジション時の値に固定される（`LaunchedEffect` が再起動しないため）。
@@ -200,9 +203,10 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
 
 ## 完了した移行
 
-- **Compose Desktop 移行**（MVVM + Material3、JavaFX依存を置き換える本丸）: 完了。設定→カッタ→詳細→
-  メイン画面の順に画面単位で置き換え、最後にJavaFXプラグイン・関連コードを除去した。詳細な移行過程・
-  設計判断は`.claude/COMPOSE_MIGRATION.local.md`（gitignore対象）を参照。
+- **Compose Desktop 移行**（Material3 + snapshot state、JavaFX依存を置き換える本丸）: 完了。設定→カッタ→
+  詳細→メイン画面の順に画面単位で置き換え、最後にJavaFXプラグイン・関連コードを除去した。
+  ViewModel 層は設けていない（「状態の持ち方」を参照）。詳細な移行過程・設計判断は
+  `.claude/COMPOSE_MIGRATION.local.md`（gitignore対象）を参照。
 - **javax.json → kotlinx.serialization 置き換え**: 完了。ついでに未使用だったGson依存も除去した。
 - **Koin利用箇所の統一**: 完了。`ComicRepository`を`single`登録していたのにUI層が各々
   `remember { ComicRepository() }`で別インスタンスを生成していた不整合を修正し、全箇所Koin経由の
