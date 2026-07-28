@@ -13,13 +13,11 @@ class ComicStorageTest {
 
     @BeforeEach
     fun setup() {
-        ComicTestHelper.disableImageLoaders()
         comicStorage.clear()
     }
 
     @AfterEach
     fun tearDown() {
-        ComicTestHelper.resetImageLoaders()
         comicStorage.clear()
     }
 

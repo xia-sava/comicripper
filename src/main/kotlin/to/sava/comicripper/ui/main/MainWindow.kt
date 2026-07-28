@@ -61,6 +61,7 @@ import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.model.Setting
@@ -123,6 +124,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val state = rememberPersistedWindowState(setting.mainWindow)
 
     val repos: ComicRepository = koinInject()
+    val imageStore: ComicImageStore = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
@@ -158,8 +160,9 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         val target = comic ?: return
         appTaskScope.launch {
             runCatching {
-                // isCoverFullLandscape は画像の読み込みを伴うため、EDT ではなくこのスコープで判定する。
-                if (shouldUseCutter(target.coverFull, target.coverAlbum, target.isCoverFullLandscape)) {
+                // 横長かどうかの判定は画像の読み込みを伴うため、EDT ではなくこのスコープで行なう。
+                val landscape = target.coverFull?.let { imageStore.isLandscape(it) } ?: false
+                if (shouldUseCutter(target.coverFull, target.coverAlbum, landscape)) {
                     showCutterWindow(target, owner)
                 } else {
                     showDetailWindow(target, owner)

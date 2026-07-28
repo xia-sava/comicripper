@@ -8,18 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.structuralEqualityPolicy
-import io.github.oshai.kotlinlogging.KotlinLogging
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
-import java.io.File
-import java.io.IOException
 import java.util.*
-import javax.imageio.ImageIO
-
-private val logger = KotlinLogging.logger {}
 
 /**
- * コミック1件。構成ファイルとそのサムネイルを保持する。
+ * コミック1件。構成ファイルと著者名・題名を保持する。
  *
  * 可変プロパティはすべて Compose の snapshot state で保持するため、変更は購読側へ自動的に伝わる
  * （[Stable] として扱えるので、Comic を引数に取る composable も引数比較でスキップできる）。
@@ -28,8 +20,8 @@ private val logger = KotlinLogging.logger {}
  * ロックの下で行なわれるため同時変更でも壊れないが、まとめて1回の変更として見せたい範囲は
  * [addFiles]・[removeFiles] のようにスナップショットで囲う。
  *
- * 画像そのものは保持しない（[loadThumbnail]）。ページ数ぶんのサムネイルを抱えると
- * メモリを大きく食うため、表示に必要な形に加工したものを表示側が持つ。
+ * 画像は扱わない。読み込みと保持は infrastructure の ComicImageStore が担い、Comic は
+ * 差し替えが起きたことを [imageRevision] で購読側へ伝えるだけにとどめる。
  */
 @Stable
 class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()) {
@@ -44,28 +36,6 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
         /** `prefix_123.jpg` から並び替え用のキーを組み立てるための正規表現。 */
         private val NUMBERED_FILENAME_REGEX = """^(\w+)_(\d+)\.""".toRegex()
 
-        /** 一覧のサムネイルは高さ128dpまでで表示するため、DPIスケール2倍までを見込んだ上限とする。 */
-        private const val THUMBNAIL_MAX_PX = 256
-        private const val FULL_SIZE_IMAGE_CACHE_CAPACITY = 10
-
-        private val defaultThumbnailLoader: (String) -> BufferedImage? = { filename ->
-            readImageOrNull(filename)?.let { scaleToFit(it, THUMBNAIL_MAX_PX, THUMBNAIL_MAX_PX) }
-        }
-        private val defaultFullSizeImageLoader: (String) -> BufferedImage? = { filename ->
-            readImageOrNull(filename)
-        }
-
-        var thumbnailLoader = defaultThumbnailLoader
-        var fullSizeImageLoader = defaultFullSizeImageLoader
-
-        /** 実行時の作業ディレクトリを解決する。composition rootから起動時に一度配線される。 */
-        var workDirectoryProvider: () -> String = { "" }
-
-        fun resetImageLoaders() {
-            thumbnailLoader = defaultThumbnailLoader
-            fullSizeImageLoader = defaultFullSizeImageLoader
-        }
-
         /**
          * `coverF_著者名｜題名.jpg` の形式のファイル名から著者名と題名を取り出す。
          * その形式でなければ、拡張子を除いたファイル名を著者名・題名の両方に使う。
@@ -79,40 +49,6 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
             return parts[0] to parts[1]
         }
 
-        private fun readImageOrNull(filename: String): BufferedImage? {
-            return try {
-                ImageIO.read(File("${workDirectoryProvider()}/$filename"))
-            } catch (e: IOException) {
-                logger.warn(e) { "image load failed: $filename" }
-                null
-            }
-        }
-
-        /**
-         * maxWidth x maxHeight に収まるサイズへアスペクト比を保って縮小する．
-         * 元がそれ以下のサイズならそのまま返す．
-         */
-        private fun scaleToFit(source: BufferedImage, maxWidth: Int, maxHeight: Int): BufferedImage {
-            val ratio = minOf(
-                maxWidth.toDouble() / source.width,
-                maxHeight.toDouble() / source.height,
-            )
-            if (ratio >= 1.0) {
-                return source
-            }
-            val width = maxOf(1, (source.width * ratio).toInt())
-            val height = maxOf(1, (source.height * ratio).toInt())
-            return BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { scaled ->
-                scaled.createGraphics().apply {
-                    setRenderingHint(
-                        RenderingHints.KEY_INTERPOLATION,
-                        RenderingHints.VALUE_INTERPOLATION_BILINEAR,
-                    )
-                    drawImage(source, 0, 0, width, height, null)
-                    dispose()
-                }
-            }
-        }
     }
 
     var author by mutableStateOf(splitAuthorAndTitle(filename).first)
@@ -154,28 +90,8 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
     val coverStrip: String?
         get() = files.firstOrNull { it.startsWith(COVER_STRIP_PREFIX) }
 
-    val coverFullImage: BufferedImage?
-        get() = coverFull?.let { getFullSizeImage(it) }
-
-    val isCoverFullLandscape: Boolean
-        get() = coverFull?.let { filename ->
-            getFullSizeImage(filename).let { it.width > it.height }
-        } ?: false
-
-    /** 最終アクセス順で管理するフルサイズ画像キャッシュ。上限を超えると最も長く使われていないものを追い出す。 */
-    private val imageCache = Collections.synchronizedMap(
-        object : LinkedHashMap<String, BufferedImage>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, BufferedImage>) =
-                size > FULL_SIZE_IMAGE_CACHE_CAPACITY
-        }
-    )
-
     init {
         addFile(filename)
-    }
-
-    fun getFullSizeImage(filename: String): BufferedImage {
-        return loadFullSizeImage(filename)
     }
 
     /**
@@ -217,16 +133,14 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
     fun removeFile(filename: String) {
         if (filename in _files) {
             _files.remove(filename)
-            imageCache.remove(filename)
         }
     }
 
     /**
-     * 保持している画像を捨てて読み直させる。
+     * 画像を読み直す必要が生じたことを購読側へ知らせる。
      * ディスク上のファイルが外部から差し替えられたときに呼ぶ。
      */
-    fun invalidateImages() {
-        imageCache.clear()
+    fun markImagesChanged() {
         imageRevision += 1
     }
 
@@ -247,16 +161,4 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
                 (src.coverStrip.isNullOrEmpty().not() && coverStrip.isNullOrEmpty().not()))
     }
 
-    /**
-     * 一覧表示用に縮小した画像を読む。読んだ結果は保持しないので、必要な側がキャッシュすること
-     * （全ページ分を抱えるとページ数に比例してメモリを食うため）。
-     */
-    fun loadThumbnail(filename: String): BufferedImage? = thumbnailLoader(filename)
-
-    private fun loadFullSizeImage(filename: String): BufferedImage {
-        imageCache[filename]?.let { return it }
-        val image = checkNotNull(fullSizeImageLoader(filename)) { "no image for $filename" }
-        imageCache[filename] = image
-        return image
-    }
 }

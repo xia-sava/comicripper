@@ -51,6 +51,7 @@ import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
@@ -95,6 +96,7 @@ fun showCutterWindow(comic: Comic, owner: java.awt.Window? = null) {
 fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
     val cutterScope: ApplicationScope = koinInject()
+    val imageStore: ComicImageStore = koinInject()
     val errorToast = rememberErrorToastState()
 
     val state = rememberPersistedWindowState(setting.cutterWindow)
@@ -119,7 +121,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     LaunchedEffect(comic) {
         coverImage = withContext(Dispatchers.IO) {
             try {
-                comic.coverFullImage?.toComposeImageBitmap()
+                comic.coverFull?.let { imageStore.getFullSizeImage(it).toComposeImageBitmap() }
             } catch (e: Exception) {
                 logger.warn(e) { "cutter image load failed" }
                 null

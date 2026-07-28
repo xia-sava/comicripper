@@ -51,7 +51,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.infrastructure.image.ComicImageStore
 import java.awt.image.BufferedImage
 import kotlin.math.roundToInt
 
@@ -227,12 +229,13 @@ private fun ThumbnailStrip(thumbnails: CardThumbnails) {
  */
 @Composable
 private fun rememberCardThumbnails(comic: Comic): CardThumbnails? {
+    val imageStore: ComicImageStore = koinInject()
     val density = LocalDensity.current
     val files = comic.files
     val revision = comic.imageRevision
     return produceState<CardThumbnails?>(null, comic, files, density, revision) {
         value = try {
-            withContext(Dispatchers.Default) { buildCardThumbnails(comic, value, files, density, revision) }
+            withContext(Dispatchers.Default) { buildCardThumbnails(imageStore, value, files, density, revision) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -250,7 +253,7 @@ private fun rememberCardThumbnails(comic: Comic): CardThumbnails? {
  * 重ね描きの x 座標は末尾からの位置で決まるので、ページを末尾に足しても既存ページの位置は動かない。
  */
 private suspend fun buildCardThumbnails(
-    comic: Comic,
+    imageStore: ComicImageStore,
     previous: CardThumbnails?,
     files: List<String>,
     density: Density,
@@ -263,12 +266,12 @@ private suspend fun buildCardThumbnails(
     val addedFrom = reusable?.files?.size ?: 0
     val pages = coroutineScope {
         files.drop(maxOf(1, addedFrom))
-            .map { filename -> async { comic.loadThumbnail(filename) } }
+            .map { filename -> async { imageStore.loadThumbnail(filename) } }
             .awaitAll()
             .filterNotNull()
     }
     val cover = reusable?.cover
-        ?: comic.loadThumbnail(files.first())?.toComposeImageBitmap()
+        ?: imageStore.loadThumbnail(files.first())?.toComposeImageBitmap()
         ?: return null
     return CardThumbnails(
         files = files,

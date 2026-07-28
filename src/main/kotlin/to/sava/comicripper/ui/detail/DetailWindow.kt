@@ -46,6 +46,7 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
+import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnFirstShow
@@ -104,6 +105,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     val state = rememberPersistedWindowState(setting.detailWindow)
 
     val repos: ComicRepository = koinInject()
+    val imageStore: ComicImageStore = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
 
@@ -139,7 +141,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
         withContext(Dispatchers.IO) {
             try {
-                comic.getFullSizeImage(filename).toComposeImageBitmap()
+                imageStore.getFullSizeImage(filename).toComposeImageBitmap()
             } catch (e: Exception) {
                 logger.warn(e) { "detail image load failed: $filename" }
                 null
@@ -197,7 +199,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun reloadImages() {
-        comic.invalidateImages()
+        repos.reloadImages(comic)
     }
 
     fun searchIsbn() {

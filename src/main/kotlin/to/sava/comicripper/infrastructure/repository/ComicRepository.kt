@@ -23,6 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.ext.workFilename
+import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.model.quarantineBrokenFile
 import java.awt.Color
@@ -100,7 +101,11 @@ private val BRACKET_CHAR_MAP: Map<Char, Char> = mapOf(
     '《' to '<', '》' to '>',
 )
 
-class ComicRepository(private val setting: Setting, private val comicStorage: ComicStorage) {
+class ComicRepository(
+    private val setting: Setting,
+    private val comicStorage: ComicStorage,
+    private val imageStore: ComicImageStore,
+) {
 
     fun reScanFiles(targetComic: Comic? = null) {
         val dir = File(setting.workDirectory)
@@ -163,6 +168,14 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
     private fun removeFile(filename: String) {
         comicStorage.all.forEach { it.removeFile(filename) }
         comicStorage.removeEmpty()
+        // 同じ名前で別の画像が置かれても古いものを見せないよう、保持を捨てる。
+        imageStore.invalidate(listOf(filename))
+    }
+
+    /** ディスク上で差し替えられた画像を読み直させる。 */
+    fun reloadImages(comic: Comic) {
+        imageStore.invalidate(comic.files)
+        comic.markImagesChanged()
     }
 
     suspend fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double) {
@@ -172,9 +185,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
 
         withContext(Dispatchers.IO) {
             val coverFull = checkNotNull(comic.coverFull)
-            val coverFullImage = checkNotNull(ImageIO.read(File(workFilename(coverFull, setting.workDirectory)))) {
-                "no image for $coverFull"
-            }
+            val coverFullImage = imageStore.getFullSizeImage(coverFull)
             val imageWidth = coverFullImage.width.toDouble()
             val imageHeight = coverFullImage.height
             val leftX = imageWidth * (leftPercent / 100.0)

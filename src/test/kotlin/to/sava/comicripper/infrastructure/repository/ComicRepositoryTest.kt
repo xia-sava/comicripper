@@ -39,14 +39,12 @@ class ComicRepositoryTest : KoinComponent {
         workDir = tempDir.resolve("work").toFile()
         storeDir = tempDir.resolve("store").toFile()
         ComicTestHelper.setupDirectories(workDir, storeDir, setting)
-        ComicTestHelper.disableImageLoaders()
         comicStorage.clear()
     }
 
     @AfterEach
     fun tearDown() {
         stopKoin()
-        ComicTestHelper.resetImageLoaders()
         comicStorage.clear()
     }
 

@@ -10,7 +10,6 @@ import org.koin.core.context.stopKoin
 import org.koin.java.KoinJavaComponent.get
 import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.application.di.applicationModule
-import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
@@ -34,7 +33,6 @@ fun main() {
     val appScope: ApplicationScope = get(ApplicationScope::class.java)
     setting.load()
     setting.fixStructureDirectory()
-    Comic.workDirectoryProvider = { setting.workDirectory }
 
     // application {} の終了（正常・異常問わず）を生存管理へ直結させ，
     // Compose 側の未捕捉例外時にプロセスがゾンビ化しないようにする。

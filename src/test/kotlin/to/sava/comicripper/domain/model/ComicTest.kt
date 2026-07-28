@@ -1,14 +1,11 @@
 package to.sava.comicripper.domain.model
 
 import androidx.compose.runtime.snapshots.Snapshot
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
-import java.awt.image.BufferedImage
 
 /** snapshot state の検証ケース。[mutate] で変更し、[read] で観測する対象を指す。 */
 private class Case(
@@ -18,17 +15,6 @@ private class Case(
 )
 
 class ComicTest {
-
-    @BeforeEach
-    fun setup() {
-        Comic.thumbnailLoader = { null }
-        Comic.fullSizeImageLoader = { null }
-    }
-
-    @AfterEach
-    fun tearDown() {
-        Comic.resetImageLoaders()
-    }
 
     @Nested
     inner class `snapshot stateとしての保持` {
@@ -70,39 +56,13 @@ class ComicTest {
 
             val snapshot = Snapshot.takeSnapshot()
             try {
-                comic.invalidateImages()
+                comic.markImagesChanged()
 
                 assertEquals(before, snapshot.enter { comic.imageRevision })
                 assertEquals(before + 1, comic.imageRevision)
             } finally {
                 snapshot.dispose()
             }
-        }
-    }
-
-    @Nested
-    inner class `サムネイルの読み込み` {
-
-        @Test
-        fun `loadThumbnailは結果を保持しないので呼ぶたびにローダーへ問い合わせる`() {
-            var loadCount = 0
-            Comic.thumbnailLoader = { loadCount++; BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
-            val comic = Comic("page_000.jpg")
-
-            comic.loadThumbnail("page_000.jpg")
-            comic.loadThumbnail("page_000.jpg")
-
-            assertEquals(2, loadCount)
-        }
-
-        @Test
-        fun `ファイル追加でサムネイルは読まれない`() {
-            var loadCount = 0
-            Comic.thumbnailLoader = { loadCount++; BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB) }
-
-            Comic("page_000.jpg").addFile("page_001.jpg")
-
-            assertEquals(0, loadCount, "画像の読み込みは表示側の要求時まで起こらないはず")
         }
     }
 
@@ -188,67 +148,4 @@ class ComicTest {
         }
     }
 
-    @Nested
-    inner class `フルサイズ画像キャッシュ` {
-
-        private fun dummyImage() = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
-
-        @Test
-        fun `同じファイル名の2回目はキャッシュを使いローダーを再呼び出ししない`() {
-            var loadCount = 0
-            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
-            val comic = Comic("page_000.jpg")
-
-            comic.getFullSizeImage("page_000.jpg")
-            comic.getFullSizeImage("page_000.jpg")
-
-            assertEquals(1, loadCount)
-        }
-
-        @Test
-        fun `容量を超えると最も長くアクセスされていないものが追い出される`() {
-            var loadCount = 0
-            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
-            val comic = Comic()
-            val filenames = (0 until 11).map { "page_%03d.jpg".format(it) }
-            filenames.forEach { comic.addFile(it) }
-
-            // page_000〜page_009 の10件をロードしてキャッシュを満杯にする。
-            filenames.take(10).forEach { comic.getFullSizeImage(it) }
-            // 11件目のロードで、最初にロードした page_000 が追い出されるはず。
-            comic.getFullSizeImage(filenames[10])
-            val countBeforeReload = loadCount
-
-            comic.getFullSizeImage(filenames[0])
-
-            assertEquals(countBeforeReload + 1, loadCount, "追い出された page_000 は再ロードされるはず")
-        }
-
-        @Test
-        fun `invalidateImagesでキャッシュが捨てられ再ロードされる`() {
-            var loadCount = 0
-            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
-            val comic = Comic("page_000.jpg")
-            comic.getFullSizeImage("page_000.jpg")
-
-            comic.invalidateImages()
-            comic.getFullSizeImage("page_000.jpg")
-
-            assertEquals(2, loadCount)
-        }
-
-        @Test
-        fun `removeFileでキャッシュからも削除され再ロードされる`() {
-            var loadCount = 0
-            Comic.fullSizeImageLoader = { loadCount++; dummyImage() }
-            val comic = Comic("page_000.jpg")
-            comic.getFullSizeImage("page_000.jpg")
-            comic.removeFile("page_000.jpg")
-            comic.addFile("page_000.jpg")
-
-            comic.getFullSizeImage("page_000.jpg")
-
-            assertEquals(2, loadCount)
-        }
-    }
 }

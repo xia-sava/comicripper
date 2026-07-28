@@ -1,21 +1,11 @@
 package to.sava.comicripper.infrastructure.repository
 
-import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.model.Setting
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 
 object ComicTestHelper {
-
-    fun disableImageLoaders() {
-        Comic.thumbnailLoader = { null }
-        Comic.fullSizeImageLoader = { null }
-    }
-
-    fun resetImageLoaders() {
-        Comic.resetImageLoaders()
-    }
 
     fun createDummyJpeg(filename: String, workDir: File): File {
         val file = File(workDir, filename)
