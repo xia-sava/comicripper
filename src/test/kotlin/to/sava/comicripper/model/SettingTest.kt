@@ -94,8 +94,8 @@ class SettingTest {
         setting.workDirectory = "/round/trip"
         setting.storeDirectory = "/store/trip"
         setting.googleBookApi = "https://example.com/books?isbn="
-        setting.YodobashiSearchUrl = "https://example.com/search?word="
-        setting.TesseractExe = "/usr/bin/tesseract"
+        setting.yodobashiSearchUrl = "https://example.com/search?word="
+        setting.tesseractExe = "/usr/bin/tesseract"
         setting.cutterLeftPercent = 20.0
         setting.cutterRightPercent = 60.0
         setting.save()
@@ -109,8 +109,8 @@ class SettingTest {
         setting.workDirectory = ""
         setting.storeDirectory = ""
         setting.googleBookApi = ""
-        setting.YodobashiSearchUrl = ""
-        setting.TesseractExe = ""
+        setting.yodobashiSearchUrl = ""
+        setting.tesseractExe = ""
         setting.cutterLeftPercent = 0.0
         setting.cutterRightPercent = 0.0
         setting.load()
@@ -125,8 +125,8 @@ class SettingTest {
         assertEquals("/round/trip", setting.workDirectory)
         assertEquals("/store/trip", setting.storeDirectory)
         assertEquals("https://example.com/books?isbn=", setting.googleBookApi)
-        assertEquals("https://example.com/search?word=", setting.YodobashiSearchUrl)
-        assertEquals("/usr/bin/tesseract", setting.TesseractExe)
+        assertEquals("https://example.com/search?word=", setting.yodobashiSearchUrl)
+        assertEquals("/usr/bin/tesseract", setting.tesseractExe)
         assertEquals(20.0, setting.cutterLeftPercent)
         assertEquals(60.0, setting.cutterRightPercent)
     }

@@ -266,7 +266,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         val exitCode = withContext(Dispatchers.IO) {
             try {
                 ProcessBuilder(
-                    setting.TesseractExe,
+                    setting.tesseractExe,
                     workFilename(coverFull, setting.workDirectory),
                     tmp.toString(),
                     "-l", "jpn",
@@ -276,7 +276,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                     .start()
                     .waitFor()
             } catch (e: IOException) {
-                logger.warn(e) { "tesseract start failed: ${setting.TesseractExe}" }
+                logger.warn(e) { "tesseract start failed: ${setting.tesseractExe}" }
                 null
             }
         }
@@ -368,7 +368,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         // Yodobashi.com スクレイピング
         try {
             logger.info { "Yodobashi $isbn start" }
-            Jsoup.connect("${setting.YodobashiSearchUrl}$isbn").timeout(10_000).get()
+            Jsoup.connect("${setting.yodobashiSearchUrl}$isbn").timeout(10_000).get()
                 .takeIf { it.select(".noResult").isEmpty() }
                 ?.select(".pListBlock a[href]")?.firstOrNull()
                 ?.absUrl("href")

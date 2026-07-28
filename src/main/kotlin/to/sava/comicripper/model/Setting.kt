@@ -95,8 +95,8 @@ class Setting {
     var workDirectory by mutableStateOf("C:/tmp/C")
     var storeDirectory by mutableStateOf("C:/tmp/B")
     var googleBookApi by mutableStateOf("https://www.googleapis.com/books/v1/volumes?q=isbn:")
-    var YodobashiSearchUrl by mutableStateOf("https://www.yodobashi.com/?word=")
-    var TesseractExe by mutableStateOf("C:/Program Files/Tesseract-OCR/tesseract.exe")
+    var yodobashiSearchUrl by mutableStateOf("https://www.yodobashi.com/?word=")
+    var tesseractExe by mutableStateOf("C:/Program Files/Tesseract-OCR/tesseract.exe")
 
     /** アプリデータの置き場所。テストからは一時ディレクトリに差し替える。 */
     internal var dataDirectory: File = defaultDataDirectory()
@@ -138,8 +138,8 @@ class Setting {
         workDirectory = workDirectory,
         storeDirectory = storeDirectory,
         googleBookApiUrl = googleBookApi,
-        yodobashiSearchUrl = YodobashiSearchUrl,
-        tesseractExe = TesseractExe,
+        yodobashiSearchUrl = yodobashiSearchUrl,
+        tesseractExe = tesseractExe,
     )
 
     private fun applyData(data: SettingData) {
@@ -172,8 +172,8 @@ class Setting {
         workDirectory = data.workDirectory
         storeDirectory = data.storeDirectory
         googleBookApi = data.googleBookApiUrl
-        YodobashiSearchUrl = data.yodobashiSearchUrl
-        TesseractExe = data.tesseractExe
+        yodobashiSearchUrl = data.yodobashiSearchUrl
+        tesseractExe = data.tesseractExe
     }
 
     // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
@@ -276,8 +276,8 @@ class Setting {
             "workDirectory" to { it -> workDirectory = it },
             "storeDirectory" to { it -> storeDirectory = it },
             "googleBookApiUrl" to { it -> googleBookApi = it },
-            "YodobashiSearchUrl" to { it -> YodobashiSearchUrl = it },
-            "TesseractExe" to { it -> TesseractExe = it },
+            "YodobashiSearchUrl" to { it -> yodobashiSearchUrl = it },
+            "TesseractExe" to { it -> tesseractExe = it },
         )
         numbers.forEach { (name, assign) ->
             props.getProperty(name)?.toDoubleOrNull()?.let(assign)

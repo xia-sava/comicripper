@@ -51,7 +51,7 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
                 ) {
                     SettingTextField("作業ディレクトリ", setting.workDirectory) { setting.workDirectory = it }
                     SettingTextField("格納ディレクトリ", setting.storeDirectory) { setting.storeDirectory = it }
-                    SettingTextField("Tesseract 実行ファイル", setting.TesseractExe) { setting.TesseractExe = it }
+                    SettingTextField("Tesseract 実行ファイル", setting.tesseractExe) { setting.tesseractExe = it }
                     Spacer(modifier = Modifier.weight(1.0f))
                     CompactButton(
                         onClick = onCloseRequest,

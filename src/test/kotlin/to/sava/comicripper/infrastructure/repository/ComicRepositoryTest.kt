@@ -475,7 +475,7 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `Tesseractを起動できなければ起動失敗を表す結果を返す`() = runTest {
             ComicTestHelper.createDummyJpeg("coverF_000.jpg", workDir)
-            setting.TesseractExe = File(workDir, "no-such-tesseract.exe").path
+            setting.tesseractExe = File(workDir, "no-such-tesseract.exe").path
 
             val result = repository.ocrISBN(Comic("coverF_000.jpg"))
 
@@ -485,7 +485,7 @@ class ComicRepositoryTest : KoinComponent {
         @Test
         fun `Tesseractの起動に失敗しても一時ファイルを残さない`() = runTest {
             ComicTestHelper.createDummyJpeg("coverF_000.jpg", workDir)
-            setting.TesseractExe = File(workDir, "no-such-tesseract.exe").path
+            setting.tesseractExe = File(workDir, "no-such-tesseract.exe").path
 
             repository.ocrISBN(Comic("coverF_000.jpg"))
 
