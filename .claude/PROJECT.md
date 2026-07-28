@@ -68,6 +68,7 @@ src/test/kotlin/to/sava/comicripper/
 ├── model/SettingTest.kt                      # Setting のsave/load・snapshot stateとしての保持・旧形式からの移行・
 │                                               破損時退避のテスト
 ├── ui/
+│   ├── ProgressOverlayStateTest.kt           # 進捗オーバーレイのテスト（開始・多重起動の抑止・中止・失敗通知）
 │   ├── main/MainWindowTest.kt                # 選択の移動・一覧変更時の選択の付け替え・追従スクロール位置・
 │   │                                           一括命名テキストの読み書き・開く画面の振り分けのテスト
 │   ├── main/ComicCardTest.kt                 # 表示用文字列省略・サイズ計算のテスト
@@ -85,7 +86,7 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計144件。
+テストは計159件。
 
 画面の判断ロジック（選択の付け替え・表示位置の計算・文字列の組み立て等）は composable の外に
 トップレベル関数として置き、そこをテストする。composable 内のローカル関数はテストから呼べない。
@@ -157,7 +158,10 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
   書きかけ破損を防ぐ。旧形式（`~/.comicripper.json`、さらに旧い `~/.comicripper` Properties形式）は
   初回ロード時に自動移行して `.bak` を残す
 - 構造ファイル: `<workDirectory>/.comicripperStructure.json`。workDirectoryごとのデータのため
-  作業ディレクトリ直下に置く。旧Properties形式からの自動移行は設定と同方式
+  作業ディレクトリ直下に置く。旧Properties形式からの自動移行は設定と同方式。
+  置き場所は起動時の作業ディレクトリに固定する（`Setting.fixStructureDirectory`）ため、
+  **作業ディレクトリの変更は次回起動時に反映される**。実行中に切り替えると、読み込んだ内容を
+  別のディレクトリへ書き出してしまうため
 - どちらもパース失敗時は該当ファイルを `.broken` へ退避してから既定値で続行する
   （上書き保存による手修復余地の喪失を防ぐ）
 - ログ: `%LOCALAPPDATA%\ComicRipper\logs\comicripper.log`（kotlin-logging + logback、
