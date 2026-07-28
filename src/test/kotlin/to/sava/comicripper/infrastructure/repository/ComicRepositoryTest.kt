@@ -54,6 +54,18 @@ class ComicRepositoryTest : KoinComponent {
     inner class `ファイル振り分け` {
 
         @Test
+        fun `既にコミックに属するファイルは取り込み直さない`() {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            repository.addFiles(listOf(coverF))
+
+            repository.addFiles(listOf(coverF))
+
+            assertEquals(1, comicStorage.all.size)
+            assertEquals(1, comicStorage.files.count { it == coverF })
+        }
+
+        @Test
         fun `coverF追加で新Comicが作成されtargetに設定される`() {
             val coverF = "coverF_000.jpg"
             ComicTestHelper.createDummyJpeg(coverF, workDir)
@@ -557,6 +569,18 @@ class ComicRepositoryTest : KoinComponent {
 
             assertFalse(File("${setting.workDirectory}/coverA_000.jpg").exists())
             assertTrue(File("${setting.workDirectory}/coverA_002.jpg").exists())
+        }
+
+        @Test
+        fun `切り出した表紙が対象のComicへ入る`() = runTest {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, 200, 100, workDir)
+            repository.addFiles(listOf(coverF))
+            val comic = comicStorage.all.first()
+
+            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0)
+
+            assertEquals("coverA_000.jpg", comic.coverAlbum)
         }
     }
 

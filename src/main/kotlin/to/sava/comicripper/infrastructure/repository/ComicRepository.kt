@@ -133,6 +133,11 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
     }
 
     private fun addFile(filename: String) {
+        // 既にどこかのコミックに属していれば何もしない。
+        // 生成した側が先に登録済みの場合に、監視イベントで二重に取り込まないようにする。
+        if (comicStorage.all.any { filename in it.files }) {
+            return
+        }
         if (filename.startsWith(Comic.COVER_FULL_PREFIX)) {
             Comic(filename).let {
                 comicStorage.add(it)
@@ -182,8 +187,10 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                 drawImage(coverFullImage, -leftX.toInt(), 0, null)
                 dispose()
             }
-            val outputFile = File("${setting.workDirectory}/${generateFilename(Comic.COVER_ALBUM_PREFIX)}")
-            ImageIO.write(outputImage, "jpeg", outputFile)
+            val outputFilename = generateFilename(Comic.COVER_ALBUM_PREFIX)
+            ImageIO.write(outputImage, "jpeg", File("${setting.workDirectory}/$outputFilename"))
+            // 監視イベント経由で取り込むと、その時点の選択によっては別のコミックへ入ってしまう。
+            comic.addFile(outputFilename)
         }
     }
 
