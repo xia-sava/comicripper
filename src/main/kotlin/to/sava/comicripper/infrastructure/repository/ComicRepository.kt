@@ -27,6 +27,7 @@ import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.URI
 import java.nio.file.FileSystems
@@ -256,8 +257,8 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         val tmp = withContext(Dispatchers.IO) {
             Files.createTempFile(Paths.get(setting.workDirectory), "_tmp", "")
         }
-        return try {
-            withContext(Dispatchers.IO) {
+        val exitCode = withContext(Dispatchers.IO) {
+            try {
                 ProcessBuilder(
                     setting.TesseractExe,
                     workFilename(coverFull, setting.workDirectory),
@@ -268,22 +269,28 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                     .inheritIO()
                     .start()
                     .waitFor()
+            } catch (e: IOException) {
+                logger.warn(e) { "tesseract start failed: ${setting.TesseractExe}" }
+                null
             }
-
-            File("$tmp.txt").readText()
-                .replace(" ", "")
-                .replace("\n", " ")
-                .replace("-", "")
-                .let { """(978\d{10}|ISBN(?:\d\D*){13})""".toRegex().find(it) }
-                ?.groupValues?.get(1)
-                ?.replace("""\D""".toRegex(), "")
-                ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
-                ?.let { isbn ->
-                    searchISBN(isbn)
-                }
-                ?: Pair("エラー", "ISBN不明")
-        } catch (_: UnsatisfiedLinkError) {
-            Pair("エラー", "cant find Tesseract")
+        }
+        return try {
+            if (exitCode == null) {
+                Pair("エラー", "cant find Tesseract")
+            } else {
+                File("$tmp.txt").readText()
+                    .replace(" ", "")
+                    .replace("\n", " ")
+                    .replace("-", "")
+                    .let { """(978\d{10}|ISBN(?:\d\D*){13})""".toRegex().find(it) }
+                    ?.groupValues?.get(1)
+                    ?.replace("""\D""".toRegex(), "")
+                    ?.replace("""^(\d{13}).*$""".toRegex(), "$1")
+                    ?.let { isbn ->
+                        searchISBN(isbn)
+                    }
+                    ?: Pair("エラー", "ISBN不明")
+            }
         } finally {
             tmp.toFile().delete()
             File("$tmp.txt").let {
