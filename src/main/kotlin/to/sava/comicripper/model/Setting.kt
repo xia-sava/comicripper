@@ -6,6 +6,9 @@ import androidx.compose.runtime.setValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -39,25 +42,22 @@ private fun defaultDataDirectory(): File =
     System.getenv("LOCALAPPDATA")?.let { File(it, "ComicRipper") }
         ?: File(System.getProperty("user.home"), ".local/state/ComicRipper")
 
+/** JSON永続化用のウィンドウのサイズと位置。 */
+@Serializable
+private data class WindowGeometryData(
+    val width: Double,
+    val height: Double,
+    val posX: Double = -1.0,
+    val posY: Double = -1.0,
+)
+
 /** JSON永続化用のスナップショット。Settingの各プロパティと1:1対応する。 */
 @Serializable
 private data class SettingData(
-    val mainWindowWidth: Double = 960.0,
-    val mainWindowHeight: Double = 720.0,
-    val mainWindowPosX: Double = -1.0,
-    val mainWindowPosY: Double = -1.0,
-    val detailWindowWidth: Double = 1280.0,
-    val detailWindowHeight: Double = 720.0,
-    val detailWindowPosX: Double = -1.0,
-    val detailWindowPosY: Double = -1.0,
-    val cutterWindowWidth: Double = 1280.0,
-    val cutterWindowHeight: Double = 720.0,
-    val cutterWindowPosX: Double = -1.0,
-    val cutterWindowPosY: Double = -1.0,
-    val settingWindowWidth: Double = 720.0,
-    val settingWindowHeight: Double = 720.0,
-    val settingWindowPosX: Double = -1.0,
-    val settingWindowPosY: Double = -1.0,
+    val mainWindow: WindowGeometryData = WindowGeometryData(960.0, 720.0),
+    val detailWindow: WindowGeometryData = WindowGeometryData(1280.0, 720.0),
+    val cutterWindow: WindowGeometryData = WindowGeometryData(1280.0, 720.0),
+    val settingWindow: WindowGeometryData = WindowGeometryData(720.0, 720.0),
     val cutterLeftPercent: Double = 15.0,
     val cutterRightPercent: Double = 48.5,
     val workDirectory: String = "C:/tmp/C",
@@ -77,6 +77,15 @@ class WindowGeometry(width: Double, height: Double) {
     var posY by mutableStateOf(-1.0)
 }
 
+private fun WindowGeometry.toData() = WindowGeometryData(width, height, posX, posY)
+
+private fun WindowGeometry.applyData(data: WindowGeometryData) {
+    width = data.width
+    height = data.height
+    posX = data.posX
+    posY = data.posY
+}
+
 /**
  * アプリの設定。
  *
@@ -88,6 +97,14 @@ class Setting {
     val detailWindow = WindowGeometry(1280.0, 720.0)
     val cutterWindow = WindowGeometry(1280.0, 720.0)
     val settingWindow = WindowGeometry(720.0, 720.0)
+
+    /** 永続化で扱うウィンドウの名前と保持先。旧形式の平坦なキーの解釈にも使う。 */
+    private val windowsByName = listOf(
+        "mainWindow" to mainWindow,
+        "detailWindow" to detailWindow,
+        "cutterWindow" to cutterWindow,
+        "settingWindow" to settingWindow,
+    )
 
     var cutterLeftPercent by mutableStateOf(15.0)
     var cutterRightPercent by mutableStateOf(48.5)
@@ -131,22 +148,10 @@ class Setting {
     val legacyStructureFile get() = File("${fixedStructureDirectory ?: workDirectory}/.comicripperStructure")
 
     private fun toData() = SettingData(
-        mainWindowWidth = mainWindow.width,
-        mainWindowHeight = mainWindow.height,
-        mainWindowPosX = mainWindow.posX,
-        mainWindowPosY = mainWindow.posY,
-        detailWindowWidth = detailWindow.width,
-        detailWindowHeight = detailWindow.height,
-        detailWindowPosX = detailWindow.posX,
-        detailWindowPosY = detailWindow.posY,
-        cutterWindowWidth = cutterWindow.width,
-        cutterWindowHeight = cutterWindow.height,
-        cutterWindowPosX = cutterWindow.posX,
-        cutterWindowPosY = cutterWindow.posY,
-        settingWindowWidth = settingWindow.width,
-        settingWindowHeight = settingWindow.height,
-        settingWindowPosX = settingWindow.posX,
-        settingWindowPosY = settingWindow.posY,
+        mainWindow = mainWindow.toData(),
+        detailWindow = detailWindow.toData(),
+        cutterWindow = cutterWindow.toData(),
+        settingWindow = settingWindow.toData(),
         cutterLeftPercent = cutterLeftPercent,
         cutterRightPercent = cutterRightPercent,
         workDirectory = workDirectory,
@@ -157,30 +162,10 @@ class Setting {
     )
 
     private fun applyData(data: SettingData) {
-        mainWindow.apply {
-            width = data.mainWindowWidth
-            height = data.mainWindowHeight
-            posX = data.mainWindowPosX
-            posY = data.mainWindowPosY
-        }
-        detailWindow.apply {
-            width = data.detailWindowWidth
-            height = data.detailWindowHeight
-            posX = data.detailWindowPosX
-            posY = data.detailWindowPosY
-        }
-        cutterWindow.apply {
-            width = data.cutterWindowWidth
-            height = data.cutterWindowHeight
-            posX = data.cutterWindowPosX
-            posY = data.cutterWindowPosY
-        }
-        settingWindow.apply {
-            width = data.settingWindowWidth
-            height = data.settingWindowHeight
-            posX = data.settingWindowPosX
-            posY = data.settingWindowPosY
-        }
+        mainWindow.applyData(data.mainWindow)
+        detailWindow.applyData(data.detailWindow)
+        cutterWindow.applyData(data.cutterWindow)
+        settingWindow.applyData(data.settingWindow)
         cutterLeftPercent = data.cutterLeftPercent
         cutterRightPercent = data.cutterRightPercent
         workDirectory = data.workDirectory
@@ -218,7 +203,9 @@ class Setting {
     fun load(): Boolean {
         if (settingFile.isFile) {
             return runCatching {
-                applyData(json.decodeFromString(SettingData.serializer(), settingFile.readText()))
+                val text = settingFile.readText()
+                applyData(json.decodeFromString(SettingData.serializer(), text))
+                applyLegacyWindowJson(text)
             }.onFailure {
                 logger.error(it) { "setting load failed" }
                 quarantineBrokenFile(settingFile)
@@ -235,7 +222,9 @@ class Setting {
 
     private fun loadHomeJsonAndMigrate(): Boolean {
         val loaded = runCatching {
-            applyData(json.decodeFromString(SettingData.serializer(), homeJsonSettingFile.readText()))
+            val text = homeJsonSettingFile.readText()
+            applyData(json.decodeFromString(SettingData.serializer(), text))
+            applyLegacyWindowJson(text)
         }.onFailure { logger.warn(it) { "home json setting load failed" } }.isSuccess
         if (!loaded) {
             return false
@@ -265,24 +254,31 @@ class Setting {
         return true
     }
 
+    /**
+     * ウィンドウのサイズ・位置を平坦なキー（`mainWindowWidth` 等）で持っていた形式から読み取る。
+     * 旧Properties形式と、ネストする前のJSON形式の双方で使う。
+     */
+    private fun applyFlatWindowValues(lookup: (String) -> Double?) {
+        windowsByName.forEach { (name, geometry) ->
+            lookup("${name}Width")?.let { geometry.width = it }
+            lookup("${name}Height")?.let { geometry.height = it }
+            lookup("${name}PosX")?.let { geometry.posX = it }
+            lookup("${name}PosY")?.let { geometry.posY = it }
+        }
+    }
+
+    /** ウィンドウごとにネストする前のJSON形式で保存された、サイズ・位置を引き継ぐ。 */
+    private fun applyLegacyWindowJson(text: String) {
+        val root = runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() ?: return
+        if ("mainWindow" in root) {
+            return
+        }
+        applyFlatWindowValues { key -> (root[key] as? JsonPrimitive)?.doubleOrNull }
+    }
+
     private fun applyLegacyProperties(props: Properties) {
+        applyFlatWindowValues { props.getProperty(it)?.toDoubleOrNull() }
         val numbers: List<Pair<String, (Double) -> Unit>> = listOf(
-            "mainWindowWidth" to { it -> mainWindow.width = it },
-            "mainWindowHeight" to { it -> mainWindow.height = it },
-            "mainWindowPosX" to { it -> mainWindow.posX = it },
-            "mainWindowPosY" to { it -> mainWindow.posY = it },
-            "detailWindowWidth" to { it -> detailWindow.width = it },
-            "detailWindowHeight" to { it -> detailWindow.height = it },
-            "detailWindowPosX" to { it -> detailWindow.posX = it },
-            "detailWindowPosY" to { it -> detailWindow.posY = it },
-            "cutterWindowWidth" to { it -> cutterWindow.width = it },
-            "cutterWindowHeight" to { it -> cutterWindow.height = it },
-            "cutterWindowPosX" to { it -> cutterWindow.posX = it },
-            "cutterWindowPosY" to { it -> cutterWindow.posY = it },
-            "settingWindowWidth" to { it -> settingWindow.width = it },
-            "settingWindowHeight" to { it -> settingWindow.height = it },
-            "settingWindowPosX" to { it -> settingWindow.posX = it },
-            "settingWindowPosY" to { it -> settingWindow.posY = it },
             "cutterLeftPercent" to { it -> cutterLeftPercent = it },
             "cutterRightPercent" to { it -> cutterRightPercent = it },
         )

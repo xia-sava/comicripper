@@ -159,6 +159,47 @@ class SettingTest {
     }
 
     @Nested
+    inner class `ウィンドウ設定をネストする前のJSONからの移行` {
+
+        @Test
+        fun `平坦なキーで保存されたサイズと位置を引き継ぐ`() {
+            setting.dataDirectory.mkdirs()
+            setting.settingFile.writeText(
+                """{"mainWindowWidth": 1111.0, "mainWindowPosX": 22.0, "cutterWindowHeight": 333.0}"""
+            )
+
+            assertTrue(setting.load())
+
+            assertEquals(1111.0, setting.mainWindow.width)
+            assertEquals(22.0, setting.mainWindow.posX)
+            assertEquals(333.0, setting.cutterWindow.height)
+        }
+
+        @Test
+        fun `平坦なキーに無い項目は既定値のままになる`() {
+            setting.dataDirectory.mkdirs()
+            setting.settingFile.writeText("""{"mainWindowWidth": 1111.0}""")
+
+            assertTrue(setting.load())
+
+            assertEquals(720.0, setting.mainWindow.height)
+            assertEquals(-1.0, setting.mainWindow.posY)
+        }
+
+        @Test
+        fun `ネストした形式があれば平坦なキーは見ない`() {
+            setting.dataDirectory.mkdirs()
+            setting.settingFile.writeText(
+                """{"mainWindow": {"width": 800.0, "height": 600.0}, "mainWindowWidth": 1111.0}"""
+            )
+
+            assertTrue(setting.load())
+
+            assertEquals(800.0, setting.mainWindow.width)
+        }
+    }
+
+    @Nested
     inner class `ホームディレクトリ直下JSONからの自動移行` {
 
         private fun homeJsonFile() = File("$tempDir/.comicripper.json")
