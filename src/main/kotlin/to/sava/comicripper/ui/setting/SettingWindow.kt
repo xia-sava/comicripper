@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     SettingTextField("作業ディレクトリ", setting.workDirectory) { setting.workDirectory = it }
+                    Text("作業ディレクトリの変更は次回起動時に反映されます", style = MaterialTheme.typography.bodySmall)
                     SettingTextField("格納ディレクトリ", setting.storeDirectory) { setting.storeDirectory = it }
                     SettingTextField("Tesseract 実行ファイル", setting.tesseractExe) { setting.tesseractExe = it }
                     Spacer(modifier = Modifier.weight(1.0f))

@@ -33,6 +33,7 @@ fun main() {
     val setting: Setting = get(Setting::class.java)
     val appScope: ApplicationScope = get(ApplicationScope::class.java)
     setting.load()
+    setting.fixStructureDirectory()
     Comic.workDirectoryProvider = { setting.workDirectory }
 
     // application {} の終了（正常・異常問わず）を生存管理へ直結させ，

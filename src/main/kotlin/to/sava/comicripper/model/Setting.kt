@@ -110,11 +110,25 @@ class Setting {
     /** 旧Properties形式の設定ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
     private val legacySettingFile get() = File(System.getProperty("user.home") + "/.comicripper")
 
+    /**
+     * 構造ファイルを読み書きするディレクトリ。[fixStructureDirectory] で固定するまでは作業ディレクトリに従う。
+     */
+    private var fixedStructureDirectory: String? = null
+
+    /**
+     * 構造ファイルの置き場所をこの時点の作業ディレクトリに固定する。
+     * 実行中に作業ディレクトリを変更しても、読み込んだ内容を別のディレクトリへ書き出さないようにする
+     * （作業ディレクトリの変更は次回起動時に反映される）。
+     */
+    fun fixStructureDirectory() {
+        fixedStructureDirectory = workDirectory
+    }
+
     /** JSON形式の構造ファイル。 */
-    val structureFile get() = File("${workDirectory}/.comicripperStructure.json")
+    val structureFile get() = File("${fixedStructureDirectory ?: workDirectory}/.comicripperStructure.json")
 
     /** 旧Properties形式の構造ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
-    val legacyStructureFile get() = File("${workDirectory}/.comicripperStructure")
+    val legacyStructureFile get() = File("${fixedStructureDirectory ?: workDirectory}/.comicripperStructure")
 
     private fun toData() = SettingData(
         mainWindowWidth = mainWindow.width,
