@@ -95,6 +95,9 @@ private val ListBackground = Color(0xFF808080)
 /** 表紙3種だけでページを持たないコミックのファイル数。ZIP一括の対象から外すために使う。 */
 private const val COVER_ONLY_FILE_COUNT = 3
 
+/** 空きメモリ表示を更新する間隔。 */
+private const val MEMORY_TEXT_INTERVAL_MS = 5_000L
+
 /** ドラッグ中に表示する移動カーソル。 */
 private val MoveCursorIcon = PointerIcon(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR))
 
@@ -124,16 +127,6 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
     val comics = comicStorage.all
-
-    var memoryText by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(5_000)
-            val runtime = Runtime.getRuntime()
-            val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-            memoryText = "Free Memory: %dMB".format(free / 1024 / 1024)
-        }
-    }
 
     // 効果やフローの中で選択を見るときは、ここで読んだ値ではなく comicStorage.targetId を直接読むこと。
     // 長生きするラムダがこの値を掴むと、初回コンポジション時の選択に固定されてしまう。
@@ -441,7 +434,6 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                             )
                         }
                         BottomBar(
-                            memoryText = memoryText,
                             onOpenSetting = {
                                 ComposeWindowHost.show(key = "setting") { onClose ->
                                     SettingWindow(onCloseRequest = onClose, owner = window)
@@ -492,9 +484,19 @@ private fun TopToolbar(
 
 /**
  * 下部バー。メモリ表示と設定ボタンを置く。
+ * メモリ表示は定期的に変わるため、無効化がウィンドウ全体へ広がらないよう状態をここで持つ。
  */
 @Composable
-private fun BottomBar(memoryText: String, onOpenSetting: () -> Unit) {
+private fun BottomBar(onOpenSetting: () -> Unit) {
+    var memoryText by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(MEMORY_TEXT_INTERVAL_MS)
+            val runtime = Runtime.getRuntime()
+            val free = runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
+            memoryText = "Free Memory: %dMB".format(free / 1024 / 1024)
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
