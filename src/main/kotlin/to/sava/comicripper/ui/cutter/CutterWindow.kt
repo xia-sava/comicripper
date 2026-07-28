@@ -154,7 +154,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         val right = setting.cutterRightPercent
         cutterScope.launch {
             try {
-                repos.cutCover(comic, left, right, 0.0)
+                repos.cutCover(comic, left, right)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

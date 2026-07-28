@@ -30,14 +30,11 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.URI
-import java.nio.file.FileSystems
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.text.Normalizer
 import java.util.*
-import java.util.stream.Collectors
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -127,15 +124,6 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         }
     }
 
-    @Suppress("unused")
-    fun listFiles(pattern: String): List<Path> {
-        val dirPath = Paths.get(setting.workDirectory)
-        val matcher = FileSystems.getDefault().getPathMatcher("glob:$pattern")
-        return Files.list(dirPath)
-            .filter { path -> Files.isRegularFile(path) && matcher.matches(path.fileName) }
-            .collect(Collectors.toList())
-    }
-
     fun addFiles(filenames: List<String>) {
         filenames.forEach { addFile(it) }
     }
@@ -167,12 +155,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         comicStorage.removeEmpty()
     }
 
-    suspend fun cutCover(
-        comic: Comic,
-        leftPercent: Double,
-        rightPercent: Double,
-        rightMargin: Double
-    ) {
+    suspend fun cutCover(comic: Comic, leftPercent: Double, rightPercent: Double) {
         if (comic.coverAlbum.isNullOrEmpty().not()) {
             File("${setting.workDirectory}/${comic.coverAlbum}").delete()
         }
@@ -185,7 +168,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
             val imageWidth = coverFullImage.width.toDouble()
             val imageHeight = coverFullImage.height
             val leftX = imageWidth * (leftPercent / 100.0)
-            val rightX = imageWidth * (rightPercent / 100.0) + rightMargin
+            val rightX = imageWidth * (rightPercent / 100.0)
             val croppedWidth = rightX - leftX
 
             val outputImage = BufferedImage(croppedWidth.toInt(), imageHeight, BufferedImage.TYPE_INT_RGB)
@@ -256,10 +239,6 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                 comicStorage.remove(it)
             }
     }
-
-//    fun releaseFiles(comic: Comic, filenames: List<String>) {
-//        filenames.forEach { releaseFile(comic, it) }
-//    }
 
     fun releaseFile(comic: Comic, filename: String) {
         if (filename in comic.files) {

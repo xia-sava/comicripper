@@ -532,12 +532,12 @@ class ComicRepositoryTest : KoinComponent {
             repository.addFiles(listOf(coverF))
             val comic = comicStorage.all.first()
 
-            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
+            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0)
 
             val outputFile = File("${setting.workDirectory}/coverA_000.jpg")
             assertTrue(outputFile.exists())
             val outputImage = ImageIO.read(outputFile)
-            assertEquals(110, outputImage.width)
+            assertEquals(100, outputImage.width)
             assertEquals(100, outputImage.height)
         }
 
@@ -553,7 +553,7 @@ class ComicRepositoryTest : KoinComponent {
             // 他Comic由来の連番先取りファイル
             ComicTestHelper.createDummyJpeg("coverA_001.jpg", 10, 10, workDir)
 
-            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0, rightMargin = 10.0)
+            repository.cutCover(comic, leftPercent = 25.0, rightPercent = 75.0)
 
             assertFalse(File("${setting.workDirectory}/coverA_000.jpg").exists())
             assertTrue(File("${setting.workDirectory}/coverA_002.jpg").exists())
