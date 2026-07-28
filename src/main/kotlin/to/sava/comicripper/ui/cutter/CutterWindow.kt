@@ -59,7 +59,9 @@ import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
+import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.detail.showDetailWindow
+import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import kotlin.math.min
@@ -93,6 +95,7 @@ fun showCutterWindow(comic: Comic, owner: java.awt.Window? = null) {
 fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
     val cutterScope: ApplicationScope = koinInject()
+    val errorToast = rememberErrorToastState()
 
     val state = rememberPersistedWindowState(setting.cutterWindow)
 
@@ -155,13 +158,14 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         cutterScope.launch {
             try {
                 repos.cutCover(comic, left, right)
+                openDetail()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.warn(e) { "cutCover failed" }
+                errorToast.show("表紙の切り出しに失敗しました")
             }
         }
-        openDetail()
     }
 
     ComicRipperWindow(
@@ -205,63 +209,66 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         BringToFrontOnFirstShow()
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        Column(
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier
+                                    .width(imageWidthDp)
+                                    .offset(x = imageLeftDp),
+                            ) {
+                                CompactSlider(
+                                    value = leftPercent.toFloat(),
+                                    onValueChange = { updateLeft(it.toDouble()) },
+                                    valueRange = 0f..100f,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                CompactSlider(
+                                    value = rightPercent.toFloat(),
+                                    onValueChange = { updateRight(it.toDouble()) },
+                                    valueRange = 0f..100f,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        Box(
                             modifier = Modifier
-                                .width(imageWidthDp)
-                                .offset(x = imageLeftDp),
+                                .fillMaxWidth()
+                                .weight(1.0f)
+                                .onSizeChanged { imageBoxSize = it },
                         ) {
-                            CompactSlider(
-                                value = leftPercent.toFloat(),
-                                onValueChange = { updateLeft(it.toDouble()) },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                            CompactSlider(
-                                value = rightPercent.toFloat(),
-                                onValueChange = { updateRight(it.toDouble()) },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            coverImage?.let { bitmap ->
+                                Image(
+                                    bitmap = bitmap,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCutterGuides(bitmap, leftPercent, rightPercent)
+                                }
+                            }
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1.0f)
-                            .onSizeChanged { imageBoxSize = it },
-                    ) {
-                        coverImage?.let { bitmap ->
-                            Image(
-                                bitmap = bitmap,
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawCutterGuides(bitmap, leftPercent, rightPercent)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CompactButton(onClick = { cut() }) {
+                                Text("決定")
+                            }
+                            CompactButton(onClick = onCloseRequest) {
+                                Text("キャンセル")
+                            }
+                            if (comic.coverAlbum == null) {
+                                VerticalDivider(modifier = Modifier.height(24.dp))
+                                CompactButton(onClick = { openDetail() }) {
+                                    Text("詳細画面へ")
+                                }
                             }
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CompactButton(onClick = { cut() }) {
-                            Text("決定")
-                        }
-                        CompactButton(onClick = onCloseRequest) {
-                            Text("キャンセル")
-                        }
-                        if (comic.coverAlbum == null) {
-                            VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = { openDetail() }) {
-                                Text("詳細画面へ")
-                            }
-                        }
-                    }
+                    ErrorToast(errorToast)
                 }
             }
         }
