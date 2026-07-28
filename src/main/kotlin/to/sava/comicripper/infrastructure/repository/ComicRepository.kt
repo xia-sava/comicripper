@@ -215,6 +215,8 @@ class ComicRepository(
         val tmp = withContext(Dispatchers.IO) {
             Files.createTempFile(Paths.get(setting.workDirectory), "_tmp", "")
         }
+        // 配布形態によっては標準出力の行き先が無いため、tesseract の出力はファイルへ受けてログへ回す。
+        val processLog = File("$tmp.log")
         val exitCode = withContext(Dispatchers.IO) {
             try {
                 val process = ProcessBuilder(
@@ -224,7 +226,8 @@ class ComicRepository(
                     "-l", "jpn",
                     "--psm", "11"
                 )
-                    .inheritIO()
+                    .redirectErrorStream(true)
+                    .redirectOutput(processLog)
                     .start()
                 try {
                     // ブロッキングで待つと取り消しに応じられないため、中断点のある待ち方をする。
@@ -240,10 +243,14 @@ class ComicRepository(
             }
         }
         return try {
-            if (exitCode == null) {
-                Pair("エラー", "cant find Tesseract")
-            } else {
-                File("$tmp.txt").readText()
+            when {
+                exitCode == null -> Pair("エラー", "cant find Tesseract")
+                exitCode != 0 -> {
+                    val output = processLog.takeIf { it.exists() }?.readText()?.trim().orEmpty()
+                    logger.warn { "tesseract exited with $exitCode: $output" }
+                    Pair("エラー", "OCRに失敗しました")
+                }
+                else -> File("$tmp.txt").readText()
                     .replace(" ", "")
                     .replace("\n", " ")
                     .replace("-", "")
@@ -258,7 +265,7 @@ class ComicRepository(
             }
         } finally {
             tmp.toFile().delete()
-            File("$tmp.txt").let {
+            listOf(File("$tmp.txt"), processLog).forEach {
                 if (it.exists()) {
                     it.delete()
                 }
