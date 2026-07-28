@@ -82,6 +82,9 @@ private val FULLWIDTH_CHAR_MAP: Map<Char, Char> = mapOf(
     '\\' to '￥',
 )
 
+/** ファイル名から連番部分を取り出すための正規表現。 */
+private val FILENAME_NUMBER_REGEX = """\d+""".toRegex()
+
 /** タイトル中の各種括弧を `<` `>` へ統一するための変換表。 */
 private val BRACKET_CHAR_MAP: Map<Char, Char> = mapOf(
     '(' to '<', ')' to '>',
@@ -416,12 +419,13 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
      */
     @Suppress("SameParameterValue")
     private fun generateFilename(prefix: String): String {
+        // 連番は桁数を跨いで比較する必要があるため、ファイル名の文字列順ではなく数値で最大を採る。
         val num = File(setting.workDirectory)
             .list { _, name -> name.startsWith(prefix) }
+            ?.mapNotNull { FILENAME_NUMBER_REGEX.find(it)?.value?.toIntOrNull() }
             ?.maxOrNull()
-            ?.let { filename ->
-                Regex("""\d+""").find(filename)?.value?.toInt()?.let { it + 1 }
-            } ?: 0
+            ?.let { it + 1 }
+            ?: 0
         return "${prefix}_%03d.jpg".format(num)
     }
 
