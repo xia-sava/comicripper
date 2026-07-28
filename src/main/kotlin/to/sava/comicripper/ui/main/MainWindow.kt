@@ -211,13 +211,15 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 targets
                     .map { comic ->
                         launch {
-                            runCatching {
+                            try {
                                 repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
                                     comic.author = ocrAuthor
                                     comic.title = ocrTitle
                                 }
-                            }.onFailure {
-                                logger.warn(it) { "ocrAll failed: ${comic.id}" }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                logger.warn(e) { "ocrAll failed: ${comic.id}" }
                                 failedCount.incrementAndGet()
                             }
                         }

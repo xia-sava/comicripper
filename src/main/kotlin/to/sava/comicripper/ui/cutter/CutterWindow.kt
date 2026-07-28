@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -152,8 +153,13 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         val left = setting.cutterLeftPercent
         val right = setting.cutterRightPercent
         cutterScope.launch {
-            runCatching { repos.cutCover(comic, left, right, 0.0) }
-                .onFailure { logger.warn(it) { "cutCover failed" } }
+            try {
+                repos.cutCover(comic, left, right, 0.0)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn(e) { "cutCover failed" }
+            }
         }
         openDetail()
     }
