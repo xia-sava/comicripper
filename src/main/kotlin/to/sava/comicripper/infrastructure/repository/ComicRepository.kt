@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -17,7 +18,6 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.jsoup.HttpStatusException
 import org.jsoup.Jsoup
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.ext.workFilename
@@ -315,6 +315,11 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         return Pair(a, t)
     }
 
+    /**
+     * ISBN から著者名・題名を引く。Amazon → ヨドバシ → Google Books の順に試し、
+     * ある提供元での失敗（通信不能・タイムアウト・想定外の応答）は次の提供元へ進むために握る。
+     * どこからも引けなければ ISBN そのものを題名として返す。
+     */
     suspend fun searchISBN(pIsbn: String): Pair<String, String> {
         // ISBN 10桁→13桁変換
         val isbn = if (pIsbn.length == 13) pIsbn else "978$pIsbn"
@@ -343,8 +348,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                         return normalize(authors, title)
                     }
                 }
-        } catch (e: HttpStatusException) {
-            // ステータスエラーは握り潰しちゃうよ
+        } catch (e: Exception) {
             logger.warn(e) { "Amazon $isbn error" }
         }
 
@@ -366,8 +370,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                         return normalize(authors, title)
                     }
                 }
-        } catch (e: HttpStatusException) {
-            // ステータスエラーは握り潰しちゃうよ
+        } catch (e: Exception) {
             logger.warn(e) { "Yodobashi $isbn error" }
         }
 
@@ -394,8 +397,9 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                     return normalize(authors, title)
                 }
             }
-        } catch (e: HttpStatusException) {
-            // ステータスエラーは握り潰しちゃうよ
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
             logger.warn(e) { "Google $isbn error" }
         }
 
