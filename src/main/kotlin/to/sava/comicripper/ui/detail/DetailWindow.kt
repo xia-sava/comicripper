@@ -181,7 +181,12 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         // onPreviewKeyEvent 経由の呼び出しは生成時点のクロージャで実行されうるため、
         // currentFilename を直接キャプチャせず、呼び出し時点の files/currentPage から都度求める。
         files.getOrNull(currentPage)?.let { filename ->
-            File("${setting.workDirectory}/$filename").delete()
+            // ファイル監視が動いていない環境でも表示を合わせるため、削除できたら自分でも構成から外す。
+            if (File("${setting.workDirectory}/$filename").delete()) {
+                repos.removeFiles(listOf(filename))
+            } else {
+                errorToast.show("画像を削除できませんでした")
+            }
         }
     }
 
