@@ -128,6 +128,19 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
 選択を動かしただけで体感できるほど遅くなる。一覧のページ重ね描きを1枚のビットマップへ合成しているのは
 このため（`ComicCard`）。描画は「毎フレーム走るもの」として量を一定に保つ。
 
+### 例外の握り方
+操作ひとつの失敗でアプリを落とさないよう、失敗しうる処理はその場で捕まえてログに残す。
+捕まえ方は、そのブロックが中断されうるかで分ける。
+
+- `runCatching` は suspend 関数を含まないブロックにだけ使う。`Throwable` を捕まえるため、
+  取り消し（`CancellationException`）や `OutOfMemoryError` まで握ってしまう
+- suspend 関数を含むなら `try`/`catch` で書き、取り消しは握り潰さず再送出する
+  （`ProgressOverlayState.launchTask`）。取り消しを失敗として扱うと構造化並行性が壊れる
+- 中断されても続けたい処理では、自身の取り消しだけを伝播させる。選択に追従するスクロールは、
+  アニメーションがスクロール操作に割り込まれても追従を続ける必要があるため、
+  `currentCoroutineContext().ensureActive()` で区別する（`MainWindow`）
+- 画像デコードのように大きなメモリを確保する処理は `Exception` だけを捕まえ、`Error` は通す
+
 ### スレッド安全性
 - snapshot state の更新はロックの下で行なわれるため、ファイル監視・画面操作から同時に触れても壊れない
 - Comic.imageCache: 最終アクセス順LRU（LinkedHashMap + Collections.synchronizedMap、容量10）

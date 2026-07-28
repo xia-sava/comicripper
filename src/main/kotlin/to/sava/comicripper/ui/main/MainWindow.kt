@@ -50,7 +50,10 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -142,11 +145,9 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     LaunchedEffect(Unit) {
         var previousIds = emptySet<String>()
         snapshotFlow { comicStorage.all }.collect { current ->
-            runCatching {
-                val currentIds = current.map { it.id }
-                selectComic(selectionAfterChange(previousIds, currentIds, comicStorage.targetId))
-                previousIds = currentIds.toSet()
-            }.onFailure { logger.warn(it) { "storage collect failed" } }
+            val currentIds = current.map { it.id }
+            selectComic(selectionAfterChange(previousIds, currentIds, comicStorage.targetId))
+            previousIds = currentIds.toSet()
         }
     }
 
@@ -317,10 +318,14 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     LaunchedEffect(scrollState) {
         snapshotFlow { selectedCardBounds to viewportHeightPx }
             .collect { (bounds, viewport) ->
-                runCatching {
+                try {
                     followSelectionScrollTarget(bounds, viewport, scrollState.value, scrollState.maxValue)
                         ?.let { scrollState.animateScrollTo(it, FollowSelectionScrollSpec) }
-                }.onFailure { logger.warn(it) { "scroll adjust failed" } }
+                } catch (_: CancellationException) {
+                    // アニメーションがスクロール操作に割り込まれただけなら次の変更を待つ。
+                    // 自身が取り消された場合は伝播させ、この効果を終わらせる。
+                    currentCoroutineContext().ensureActive()
+                }
             }
     }
 

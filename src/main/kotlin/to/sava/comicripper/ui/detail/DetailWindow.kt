@@ -138,9 +138,12 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             return@LaunchedEffect
         }
         withContext(Dispatchers.IO) {
-            runCatching { comic.getFullSizeImage(filename).toComposeImageBitmap() }
-                .onFailure { logger.warn(it) { "detail image load failed: $filename" } }
-                .getOrNull()
+            try {
+                comic.getFullSizeImage(filename).toComposeImageBitmap()
+            } catch (e: Exception) {
+                logger.warn(e) { "detail image load failed: $filename" }
+                null
+            }
         }?.let { loadedImage = DisplayedImage(key, it) }
     }
 

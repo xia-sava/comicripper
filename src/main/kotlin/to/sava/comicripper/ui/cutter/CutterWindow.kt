@@ -114,9 +114,12 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     var coverImage by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(comic) {
         coverImage = withContext(Dispatchers.IO) {
-            runCatching { comic.coverFullImage?.toComposeImageBitmap() }
-                .onFailure { logger.warn(it) { "cutter image load failed" } }
-                .getOrNull()
+            try {
+                comic.coverFullImage?.toComposeImageBitmap()
+            } catch (e: Exception) {
+                logger.warn(e) { "cutter image load failed" }
+                null
+            }
         }
     }
 
