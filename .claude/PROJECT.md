@@ -205,8 +205,7 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
 
 - **Compose Desktop 移行**（Material3 + snapshot state、JavaFX依存を置き換える本丸）: 完了。設定→カッタ→
   詳細→メイン画面の順に画面単位で置き換え、最後にJavaFXプラグイン・関連コードを除去した。
-  ViewModel 層は設けていない（「状態の持ち方」を参照）。詳細な移行過程・設計判断は
-  `.claude/COMPOSE_MIGRATION.local.md`（gitignore対象）を参照。
+  ViewModel 層は設けていない（「状態の持ち方」を参照）。
 - **javax.json → kotlinx.serialization 置き換え**: 完了。ついでに未使用だったGson依存も除去した。
 - **Koin利用箇所の統一**: 完了。`ComicRepository`を`single`登録していたのにUI層が各々
   `remember { ComicRepository() }`で別インスタンスを生成していた不整合を修正し、全箇所Koin経由の
