@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
@@ -432,11 +433,19 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
     // プロセスが書き込み中に強制終了しても壊れたファイルが残らないよう、
     // 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
     fun saveStructure() {
-        val data = ComicStructureData(
-            comics = comicStorage.all.map { comic ->
-                ComicStructureEntry(comic.id, comic.author, comic.title, comic.files)
+        // 別スレッドの操作の途中経過を書かないよう、ある一時点のスナップショットから読み取る。
+        val snapshot = Snapshot.takeSnapshot()
+        val data = try {
+            snapshot.enter {
+                ComicStructureData(
+                    comics = comicStorage.all.map { comic ->
+                        ComicStructureEntry(comic.id, comic.author, comic.title, comic.files)
+                    }
+                )
             }
-        )
+        } finally {
+            snapshot.dispose()
+        }
         val text = structureJson.encodeToString(ComicStructureData.serializer(), data)
         val structureFile = setting.structureFile
         val tempFile = File.createTempFile("comicripperStructure", ".tmp", structureFile.absoluteFile.parentFile)
