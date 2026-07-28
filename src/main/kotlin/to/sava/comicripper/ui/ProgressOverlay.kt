@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import to.sava.comicripper.application.ApplicationScope
@@ -54,6 +55,8 @@ class ProgressOverlayState(
 
     val isActive: Boolean get() = task != null
 
+    private var job: Job? = null
+
     /**
      * タスクを開始してオーバーレイを表示する。実行中は多重起動しない。
      */
@@ -62,7 +65,7 @@ class ProgressOverlayState(
             return
         }
         task = Task(title, text)
-        scope.launch {
+        job = scope.launch {
             try {
                 block()
             } catch (e: CancellationException) {
@@ -72,8 +75,17 @@ class ProgressOverlayState(
                 onError.value(title)
             } finally {
                 task = null
+                job = null
             }
         }
+    }
+
+    /**
+     * 実行中のタスクを取り消す。
+     * 取り消しの伝わり方は block 側の中断点に依るため、実行中の1件は最後まで走りうる。
+     */
+    fun cancel() {
+        job?.cancel()
     }
 }
 
@@ -118,6 +130,7 @@ fun ProgressOverlay(state: ProgressOverlayState) {
                 Text(task.title, style = MaterialTheme.typography.titleMedium)
                 Text(task.text)
                 CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                CompactButton(onClick = { state.cancel() }) { Text("中止") }
             }
         }
     }

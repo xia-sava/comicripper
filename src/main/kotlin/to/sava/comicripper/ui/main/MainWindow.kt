@@ -198,29 +198,36 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         progress.launchTask("OCRしています", "表紙画像から ISBN をまとめて読み取って著者名/作品名をサーチしてます") {
             // 1件の失敗が他のコミックを巻き込まないよう、子ジョブごとに保護し、失敗数を集計して通知する。
             val failedCount = AtomicInteger(0)
+            val doneCount = AtomicInteger(0)
             val targets = comicStorage.all.filter { it.coverFull.isNullOrEmpty().not() }
             if (targets.isEmpty()) {
                 errorToast.show("OCR一括: 対象のコミックがありません")
                 return@launchTask
             }
-            supervisorScope {
-                targets
-                    .map { comic ->
-                        launch {
-                            try {
-                                repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
-                                    comic.author = ocrAuthor
-                                    comic.title = ocrTitle
+            try {
+                supervisorScope {
+                    targets
+                        .map { comic ->
+                            launch {
+                                try {
+                                    repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
+                                        comic.author = ocrAuthor
+                                        comic.title = ocrTitle
+                                    }
+                                    doneCount.incrementAndGet()
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    logger.warn(e) { "ocrAll failed: ${comic.id}" }
+                                    failedCount.incrementAndGet()
                                 }
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                logger.warn(e) { "ocrAll failed: ${comic.id}" }
-                                failedCount.incrementAndGet()
                             }
                         }
-                    }
-                    .joinAll()
+                        .joinAll()
+                }
+            } catch (e: CancellationException) {
+                errorToast.show("OCR一括: ${doneCount.get()}/${targets.size}件で中止しました")
+                throw e
             }
             if (failedCount.get() > 0) {
                 errorToast.show("OCR一括: ${failedCount.get()}/${targets.size}件失敗しました")
@@ -231,23 +238,31 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     fun zipAll() {
         progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
             val failedCount = AtomicInteger(0)
+            val doneCount = AtomicInteger(0)
             val targets = comicStorage.all.filter { it.files.size > COVER_ONLY_FILE_COUNT }
             if (targets.isEmpty()) {
                 errorToast.show("ZIP一括: 対象のコミックがありません")
                 return@launchTask
             }
-            supervisorScope {
-                targets
-                    .map { comic ->
-                        launch {
-                            runCatching { repos.zipComic(comic) }
-                                .onFailure {
-                                    logger.warn(it) { "zipAll failed: ${comic.id}" }
-                                    failedCount.incrementAndGet()
-                                }
+            try {
+                supervisorScope {
+                    targets
+                        .map { comic ->
+                            launch {
+                                runCatching { repos.zipComic(comic) }
+                                    .onSuccess { doneCount.incrementAndGet() }
+                                    .onFailure {
+                                        logger.warn(it) { "zipAll failed: ${comic.id}" }
+                                        failedCount.incrementAndGet()
+                                    }
+                            }
                         }
-                    }
-                    .joinAll()
+                        .joinAll()
+                }
+            } catch (e: CancellationException) {
+                // 中止は取りかかった1件の途中では効かないため、どこまで済んだかを伝える。
+                errorToast.show("ZIP一括: ${doneCount.get()}/${targets.size}件で中止しました")
+                throw e
             }
             if (failedCount.get() > 0) {
                 errorToast.show("ZIP一括: ${failedCount.get()}/${targets.size}件失敗しました")

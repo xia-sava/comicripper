@@ -11,6 +11,7 @@ import androidx.compose.runtime.structuralEqualityPolicy
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -265,7 +266,7 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         }
         val exitCode = withContext(Dispatchers.IO) {
             try {
-                ProcessBuilder(
+                val process = ProcessBuilder(
                     setting.tesseractExe,
                     workFilename(coverFull, setting.workDirectory),
                     tmp.toString(),
@@ -274,7 +275,14 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
                 )
                     .inheritIO()
                     .start()
-                    .waitFor()
+                try {
+                    // ブロッキングで待つと取り消しに応じられないため、中断点のある待ち方をする。
+                    process.onExit().await().exitValue()
+                } finally {
+                    if (process.isAlive) {
+                        process.destroyForcibly()
+                    }
+                }
             } catch (e: IOException) {
                 logger.warn(e) { "tesseract start failed: ${setting.tesseractExe}" }
                 null
