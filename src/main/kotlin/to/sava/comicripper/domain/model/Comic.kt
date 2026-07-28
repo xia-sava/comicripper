@@ -230,9 +230,15 @@ class Comic(filename: String = "", val id: String = UUID.randomUUID().toString()
         imageRevision += 1
     }
 
+    /**
+     * src の構成ファイルをすべて引き取る。
+     * 引き取りと引き渡しの間の状態を購読側や保存処理へ見せないよう、1回の変更として適用する。
+     */
     fun merge(src: Comic) {
-        addFiles(src.files)
-        src.removeFiles(src.files)
+        Snapshot.withMutableSnapshot {
+            addFiles(src.files)
+            src.removeFiles(src.files)
+        }
     }
 
     fun mergeConflict(src: Comic): Boolean {
