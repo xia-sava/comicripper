@@ -92,6 +92,9 @@ private const val WINDOW_TITLE = "comicripper $VERSION"
 /** コミック一覧の背景（common.css の gray に対応）。 */
 private val ListBackground = Color(0xFF808080)
 
+/** 表紙3種だけでページを持たないコミックのファイル数。ZIP一括の対象から外すために使う。 */
+private const val COVER_ONLY_FILE_COUNT = 3
+
 /** ドラッグ中に表示する移動カーソル。 */
 private val MoveCursorIcon = PointerIcon(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR))
 
@@ -235,7 +238,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     fun zipAll() {
         progress.launchTask("ZIPしています", "ページ数の多いコミックをまとめてZIP化しています") {
             val failedCount = AtomicInteger(0)
-            val targets = comicStorage.all.filter { it.files.size > 3 }
+            val targets = comicStorage.all.filter { it.files.size > COVER_ONLY_FILE_COUNT }
             if (targets.isEmpty()) {
                 errorToast.show("ZIP一括: 対象のコミックがありません")
                 return@launchTask
