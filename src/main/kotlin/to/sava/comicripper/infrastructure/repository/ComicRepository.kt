@@ -200,31 +200,47 @@ class ComicRepository(private val setting: Setting, private val comicStorage: Co
         }
     }
 
+    /**
+     * コミックをZIPへまとめ、元の画像ファイルを削除する。
+     * 元を消す操作のため、書き込み途中で失敗しても成果物が壊れないよう、
+     * 同一ディレクトリの一時ファイルへ書いてから rename で置き換える。
+     * 著者名・題名は手入力もできるので、ファイル名に使えない文字を含みうる。
+     */
     fun zipComic(comic: Comic) {
-        val zipFilename = File("${setting.storeDirectory}/${comic.author}/${comic.title}.zip")
-        if (zipFilename.exists()) {
-            zipFilename.delete()
-        }
-        File(zipFilename.parent).mkdirs()
-        ZipOutputStream(BufferedOutputStream(zipFilename.outputStream())).use { zipStream ->
-            var pageNum = 1
-            comic.files.forEach { src ->
-                val name = when {
-                    src.startsWith(Comic.COVER_ALBUM_PREFIX) -> Comic.COVER_ALBUM_PREFIX
-                    src.startsWith(Comic.COVER_FULL_PREFIX) -> Comic.COVER_FULL_PREFIX
-                    src.startsWith(Comic.COVER_STRIP_PREFIX) -> Comic.COVER_STRIP_PREFIX
-                    else -> "page_%03d".format(pageNum++)
-                } + ".jpg"
-                // JPEGは既に圧縮済みのため、DEFLATEでの再圧縮を避けてSTOREDで格納する。
-                val bytes = Files.readAllBytes(Paths.get("${setting.workDirectory}/$src"))
-                val entry = ZipEntry(name).apply {
-                    method = ZipEntry.STORED
-                    size = bytes.size.toLong()
-                    crc = CRC32().apply { update(bytes) }.value
+        val zipFile = File(
+            "${setting.storeDirectory}/${normalizeText(comic.author)}/${normalizeText(comic.title)}.zip"
+        )
+        zipFile.parentFile.mkdirs()
+        val tempFile = File.createTempFile("comicripper", ".tmp", zipFile.absoluteFile.parentFile)
+        try {
+            ZipOutputStream(BufferedOutputStream(tempFile.outputStream())).use { zipStream ->
+                var pageNum = 1
+                comic.files.forEach { src ->
+                    val name = when {
+                        src.startsWith(Comic.COVER_ALBUM_PREFIX) -> Comic.COVER_ALBUM_PREFIX
+                        src.startsWith(Comic.COVER_FULL_PREFIX) -> Comic.COVER_FULL_PREFIX
+                        src.startsWith(Comic.COVER_STRIP_PREFIX) -> Comic.COVER_STRIP_PREFIX
+                        else -> "page_%03d".format(pageNum++)
+                    } + ".jpg"
+                    // JPEGは既に圧縮済みのため、DEFLATEでの再圧縮を避けてSTOREDで格納する。
+                    val bytes = Files.readAllBytes(Paths.get("${setting.workDirectory}/$src"))
+                    val entry = ZipEntry(name).apply {
+                        method = ZipEntry.STORED
+                        size = bytes.size.toLong()
+                        crc = CRC32().apply { update(bytes) }.value
+                    }
+                    zipStream.putNextEntry(entry)
+                    zipStream.write(bytes)
                 }
-                zipStream.putNextEntry(entry)
-                zipStream.write(bytes)
             }
+            Files.move(
+                tempFile.toPath(),
+                zipFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } finally {
+            tempFile.delete()
         }
         comicStorage.remove(comic)
         comic.files

@@ -15,6 +15,7 @@ import to.sava.comicripper.application.di.testModule
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.model.Setting
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import javax.imageio.ImageIO
 
@@ -587,6 +588,62 @@ class ComicRepositoryTest : KoinComponent {
             assertTrue(zipEntries.contains("coverF.jpg"))
             assertTrue(zipEntries.contains("page_001.jpg"))
             assertTrue(zipEntries.contains("page_002.jpg"))
+        }
+
+        @Test
+        fun `ファイル名に使えない文字を含む題名は全角へ置き換えて保存される`() {
+            val coverF = "coverF_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+
+            repository.addFiles(listOf(coverF))
+            val comic = comicStorage.all.first()
+            comic.author = "著者"
+            comic.title = "第1話: 上/下?"
+
+            repository.zipComic(comic)
+
+            assertTrue(File("${setting.storeDirectory}/著者/第1話： 上／下？.zip").exists())
+        }
+
+        @Test
+        fun `書き込みが途中で失敗しても既存のZIPを壊さない`() {
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
+
+            repository.addFiles(listOf(coverF, page))
+            val comic = comicStorage.all.first()
+            comic.author = "著者"
+            comic.title = "タイトル"
+            val zipFile = File("${setting.storeDirectory}/著者/タイトル.zip")
+            zipFile.parentFile.mkdirs()
+            zipFile.writeText("既存のZIP")
+            // 構成ファイルの1枚を読めなくして、書き込みの途中で失敗させる。
+            File(workDir, page).delete()
+
+            assertThrows(IOException::class.java) { repository.zipComic(comic) }
+
+            assertEquals("既存のZIP", zipFile.readText())
+        }
+
+        @Test
+        fun `書き込みが途中で失敗しても一時ファイルを残さない`() {
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
+
+            repository.addFiles(listOf(coverF, page))
+            val comic = comicStorage.all.first()
+            comic.author = "著者"
+            comic.title = "タイトル"
+            File(workDir, page).delete()
+
+            assertThrows(IOException::class.java) { repository.zipComic(comic) }
+
+            val storedNames = File("${setting.storeDirectory}/著者").list()?.toList() ?: emptyList()
+            assertEquals(emptyList<String>(), storedNames)
         }
 
         @Test
