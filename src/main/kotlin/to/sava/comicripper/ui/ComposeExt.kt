@@ -6,6 +6,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -19,6 +20,7 @@ import to.sava.comicripper.ext.Loader
 import to.sava.comicripper.model.WindowGeometry
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
+import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import javax.swing.SwingUtilities
 
@@ -71,6 +73,25 @@ fun rememberWindowIconPainter(): Painter? = remember {
         ?.toComposeImageBitmap()
         ?.let(::BitmapPainter)
 }
+
+/**
+ * 作業ディレクトリの画像を Compose で表示する形へ変換する。
+ *
+ * ImageIO は 8bit グレースケールの画像を、ガンマなしのグレー色空間を持つ TYPE_BYTE_GRAY として読む。
+ * 実際の値はガンマ付きなので、getRGB で sRGB へ変換する [toComposeImageBitmap] に直接渡すと
+ * 中間調が持ち上がって薄く表示される。Java2D の描画はグレーの値をそのまま RGB へ写すため、
+ * 先に TYPE_INT_RGB へ描き直す。
+ */
+fun BufferedImage.toDisplayImageBitmap(): ImageBitmap =
+    (if (type == BufferedImage.TYPE_BYTE_GRAY) toIntRgb() else this).toComposeImageBitmap()
+
+private fun BufferedImage.toIntRgb(): BufferedImage =
+    BufferedImage(width, height, BufferedImage.TYPE_INT_RGB).also { rgb ->
+        rgb.createGraphics().apply {
+            drawImage(this@toIntRgb, 0, 0, null)
+            dispose()
+        }
+    }
 
 /**
  * ウィンドウの初回表示時に最前面化してフォーカスを要求する。

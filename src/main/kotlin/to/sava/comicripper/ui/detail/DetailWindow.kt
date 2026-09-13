@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -64,6 +63,7 @@ import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
+import to.sava.comicripper.ui.toDisplayImageBitmap
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -143,7 +143,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
         withContext(Dispatchers.IO) {
             try {
-                imageStore.getFullSizeImage(filename).toComposeImageBitmap()
+                imageStore.getFullSizeImage(filename).toDisplayImageBitmap()
             } catch (e: Exception) {
                 logger.warn(e) { "detail image load failed: $filename" }
                 null

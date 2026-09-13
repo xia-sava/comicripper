@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -65,6 +64,7 @@ import to.sava.comicripper.ui.detail.showDetailWindow
 import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberWindowIconPainter
+import to.sava.comicripper.ui.toDisplayImageBitmap
 import kotlin.math.min
 
 private val logger = KotlinLogging.logger {}
@@ -121,7 +121,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     LaunchedEffect(comic) {
         coverImage = withContext(Dispatchers.IO) {
             try {
-                comic.coverFull?.let { imageStore.getFullSizeImage(it).toComposeImageBitmap() }
+                comic.coverFull?.let { imageStore.getFullSizeImage(it).toDisplayImageBitmap() }
             } catch (e: Exception) {
                 logger.warn(e) { "cutter image load failed" }
                 null

@@ -31,7 +31,6 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.boundsInWindow
@@ -54,6 +53,7 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
+import to.sava.comicripper.ui.toDisplayImageBitmap
 import java.awt.image.BufferedImage
 import kotlin.math.roundToInt
 
@@ -271,7 +271,7 @@ private suspend fun buildCardThumbnails(
             .filterNotNull()
     }
     val cover = reusable?.cover
-        ?: imageStore.loadThumbnail(files.first())?.toComposeImageBitmap()
+        ?: imageStore.loadThumbnail(files.first())?.toDisplayImageBitmap()
         ?: return null
     return CardThumbnails(
         files = files,
@@ -318,7 +318,7 @@ private fun buildPageStrip(existing: ImageBitmap?, pages: List<BufferedImage>, d
             val (pageWidth, pageHeight) = fitSize(page.width, page.height, PAGE_FIT_SIZE, PAGE_FIT_SIZE)
             val logicalX = logicalWidth - PAGE_FIT_SIZE - PAGE_OVERLAP_STEP * index
             drawImage(
-                image = page.toComposeImageBitmap(),
+                image = page.toDisplayImageBitmap(),
                 dstOffset = IntOffset((logicalX * scale).roundToInt(), 0),
                 dstSize = IntSize((pageWidth * scale).roundToInt(), (pageHeight * scale).roundToInt()),
             )
