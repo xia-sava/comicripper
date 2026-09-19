@@ -3,6 +3,7 @@ package to.sava.comicripper.infrastructure.repository
 import io.github.oshai.kotlinlogging.KotlinLogging
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.model.Setting
+import java.awt.Desktop
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -22,18 +23,29 @@ sealed interface UndoResult {
     data class Failed(val filename: String) : UndoResult
 }
 
+/** OS のごみ箱へ送る。ごみ箱を扱えない環境では送らずに false を返す。 */
+private fun moveToDesktopTrash(file: File): Boolean =
+    Desktop.isDesktopSupported() &&
+        Desktop.getDesktop().isSupported(Desktop.Action.MOVE_TO_TRASH) &&
+        Desktop.getDesktop().moveToTrash(file)
+
 /**
  * 画像の削除を取り消せるようにする。
  *
  * 削除した画像は退避先（[Setting.trashDirectory]）へ移し、新しいものから順に戻せるよう履歴を持つ。
- * 履歴はメモリにだけ持つ。
+ * 履歴はメモリにだけ持つ。退避した画像は起動時と終了時に [purge] / [purgeAll] で OS のごみ箱へ送り、
+ * アプリを閉じた後でもエクスプローラから戻せるようにする。
  *
- * 削除と取り消しは画面から呼ばれ、ファイルの移動と履歴の更新はロックの下でまとめて行なう。
+ * 削除と取り消しは画面から、片付けは起動時・終了時に別のスレッドから呼ばれる。
+ * 片付けが取り消せる画像を送らないよう、ファイルの移動と履歴の更新はロックの下でまとめて行なう。
+ *
+ * @param moveToOsTrash ファイルを OS のごみ箱へ送る処理。送れなければ false を返す。テストから差し替える。
  */
 class ImageTrash(
     private val setting: Setting,
     private val comicStorage: ComicStorage,
     private val repository: ComicRepository,
+    private val moveToOsTrash: (File) -> Boolean = ::moveToDesktopTrash,
 ) {
     /**
      * 削除1件。退避先は削除ごとに別のフォルダにして、同じ名前の画像を何度消しても重ならないようにする
@@ -105,5 +117,38 @@ class ImageTrash(
     private fun addTo(comic: Comic, filename: String) {
         // 表紙は種類ごとに1枚なので、削除の後に同じ種類の表紙ができていれば、そちらを別のコミックへ出す。
         comic.addFile(filename)?.let { comicStorage.add(Comic(it)) }
+    }
+
+    /**
+     * 退避した画像のうち、取り消しの履歴に無いもの（前回までに退避したもの）を OS のごみ箱へ送る。
+     * 送れなかった画像は退避先に残し、次の片付けで改めて送る。
+     */
+    fun purge() {
+        val directories = synchronized(history) {
+            val undoable = history.map { it.trashed.parentFile.name }.toSet()
+            setting.trashDirectory.listFiles { file -> file.isDirectory && file.name !in undoable }.orEmpty()
+        }
+        directories.forEach { directory ->
+            directory.listFiles().orEmpty().forEach(::sendToOsTrash)
+            // 送り残しがあれば空にならず、消えずに残る。
+            directory.delete()
+        }
+        setting.trashDirectory.delete()
+    }
+
+    /** 取り消しの履歴を捨てて、退避した画像をすべて OS のごみ箱へ送る。終了時に呼ぶ。 */
+    fun purgeAll() {
+        synchronized(history) { history.clear() }
+        purge()
+    }
+
+    private fun sendToOsTrash(file: File) {
+        try {
+            if (!moveToOsTrash(file)) {
+                logger.warn { "OS trash unavailable, kept in trash directory: $file" }
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "move to OS trash failed: $file" }
+        }
     }
 }

@@ -30,6 +30,14 @@ class ImageTrashTest : KoinComponent {
     private lateinit var workDir: File
     private lateinit var trash: ImageTrash
 
+    /** OS のごみ箱へ送った画像のファイル名。実際のごみ箱には送らず、消して記録するだけにする。 */
+    private val sentToOsTrash = mutableListOf<String>()
+
+    private fun fakeMoveToOsTrash(file: File): Boolean {
+        sentToOsTrash += file.name
+        return file.delete()
+    }
+
     @BeforeEach
     fun setup() {
         startKoin {
@@ -38,7 +46,7 @@ class ImageTrashTest : KoinComponent {
         workDir = tempDir.resolve("work").toFile()
         ComicTestHelper.setupDirectories(workDir, tempDir.resolve("store").toFile(), setting)
         comicStorage.clear()
-        trash = ImageTrash(setting, comicStorage, repository)
+        trash = ImageTrash(setting, comicStorage, repository, moveToOsTrash = ::fakeMoveToOsTrash)
     }
 
     @AfterEach
@@ -198,6 +206,60 @@ class ImageTrashTest : KoinComponent {
 
             assertEquals("coverA_000.jpg", comic.coverAlbum)
             assertTrue(comicStorage.all.any { it !== comic && "coverA_001.jpg" in it.files })
+        }
+    }
+
+    @Nested
+    inner class `purge` {
+
+        /** 前回までの起動で退避したまま残っている画像を作る。 */
+        private fun trashedInPreviousSession(filename: String): File =
+            File(setting.trashDirectory, "previous").also { it.mkdirs() }.let { directory ->
+                ComicTestHelper.createDummyJpeg(filename, directory)
+            }
+
+        @Test
+        fun `前回までに退避した画像をごみ箱へ送って退避先を片付ける`() {
+            trashedInPreviousSession("page_001.jpg")
+
+            trash.purge()
+
+            assertEquals(listOf("page_001.jpg"), sentToOsTrash)
+            assertFalse(setting.trashDirectory.exists())
+        }
+
+        @Test
+        fun `取り消せる画像はごみ箱へ送らない`() {
+            // 起動時の片付けが終わる前に削除した場合にあたる。
+            val comic = comicWith("coverF_000.jpg", "page_001.jpg")
+            trash.delete(comic, "page_001.jpg")
+
+            trash.purge()
+
+            assertTrue(sentToOsTrash.isEmpty())
+            assertEquals(UndoResult.Restored(comic, "page_001.jpg"), trash.undo())
+        }
+
+        @Test
+        fun `ごみ箱へ送れなかった画像は退避先に残す`() {
+            val file = trashedInPreviousSession("page_001.jpg")
+            val unavailable = ImageTrash(setting, comicStorage, repository, moveToOsTrash = { false })
+
+            unavailable.purge()
+
+            assertTrue(file.exists())
+        }
+
+        @Test
+        fun `purgeAllは取り消せる画像もごみ箱へ送り履歴を捨てる`() {
+            val comic = comicWith("coverF_000.jpg", "page_001.jpg")
+            trash.delete(comic, "page_001.jpg")
+
+            trash.purgeAll()
+
+            assertEquals(listOf("page_001.jpg"), sentToOsTrash)
+            assertFalse(setting.trashDirectory.exists())
+            assertEquals(UndoResult.NothingToUndo, trash.undo())
         }
     }
 }

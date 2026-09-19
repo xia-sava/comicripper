@@ -12,6 +12,7 @@ import to.sava.comicripper.application.ApplicationScope
 import to.sava.comicripper.application.di.applicationModule
 import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.repository.ImageTrash
 import to.sava.comicripper.infrastructure.repository.StructureStore
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.ComposeWindowHost
@@ -30,6 +31,7 @@ fun main() {
     startKoin { modules(applicationModule) }
     val repos: ComicRepository = get(ComicRepository::class.java)
     val structureStore: StructureStore = get(StructureStore::class.java)
+    val imageTrash: ImageTrash = get(ImageTrash::class.java)
     val fileWatcher: FileWatcher = get(FileWatcher::class.java)
     val setting: Setting = get(Setting::class.java)
     val appScope: ApplicationScope = get(ApplicationScope::class.java)
@@ -48,6 +50,9 @@ fun main() {
 
     structureStore.load()
     repos.reScanFiles()
+
+    // 前回までに退避した画像を片付ける。ごみ箱へ送るのは1件ずつ時間がかかるため、起動を待たせない。
+    appScope.launch { imageTrash.purge() }
 
     val autosaveJob = appScope.launch {
         while (true) {
@@ -72,6 +77,8 @@ fun main() {
     runBlocking { autosaveJob.cancelAndJoin() }
     setting.save()
     structureStore.save()
+    // 取り消しの履歴は終了で消えるので、退避した画像はここで片付ける。
+    imageTrash.purgeAll()
     stopKoin()
     exitProcess(0)
 }
