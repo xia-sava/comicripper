@@ -17,7 +17,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +61,7 @@ import to.sava.comicripper.ui.CompactTooltipArea
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.KeyRepeatDetector
+import to.sava.comicripper.ui.ResetOnFocusLost
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.main.selectionAfterMove
@@ -70,8 +70,6 @@ import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.toDisplayImageBitmap
-import java.awt.event.WindowAdapter
-import java.awt.event.WindowEvent
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -357,15 +355,7 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
     ) {
         BringToFrontOnShow()
         LaunchedEffect(window) { ownerWindow = window }
-        DisposableEffect(window) {
-            val listener = object : WindowAdapter() {
-                override fun windowLostFocus(e: WindowEvent) {
-                    keyRepeat.reset()
-                }
-            }
-            window.addWindowFocusListener(listener)
-            onDispose { window.removeWindowFocusListener(listener) }
-        }
+        ResetOnFocusLost(keyRepeat)
         LaunchedEffect(comic) {
             if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
                 isbnFocus.requestFocus()
