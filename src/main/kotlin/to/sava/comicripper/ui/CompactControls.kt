@@ -1,5 +1,7 @@
 package to.sava.comicripper.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
@@ -14,6 +16,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -25,6 +29,8 @@ import androidx.compose.ui.unit.dp
 
 private val CompactButtonHeight = 28.dp
 private val CompactButtonPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+
+private val CompactTooltipPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
 
 /** decoration 内部のテキスト行最小高 24dp + 上下パディング 4dp ずつ */
 private val CompactTextFieldMinHeight = 32.dp
@@ -38,6 +44,7 @@ private val CompactSliderThumbSize = DpSize(4.dp, 24.dp)
 /**
  * デスクトップ密度のボタン。
  * 高さを tight 制約で 28dp に固定して Material3 の最小高 40dp を打ち消す。
+ * [tooltip] を渡すと、マウスを載せたときにそれを表示する（対応するキーを示すのに使う）。
  * ComicRipperTheme（LocalMinimumInteractiveComponentSize = Unspecified）配下で使うこと。
  */
 @Composable
@@ -45,6 +52,23 @@ fun CompactButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    tooltip: String? = null,
+    content: @Composable RowScope.() -> Unit,
+) {
+    if (tooltip == null) {
+        CompactButtonBody(onClick, modifier, enabled, content)
+    } else {
+        CompactTooltipArea(tooltip, modifier) {
+            CompactButtonBody(onClick, Modifier, enabled, content)
+        }
+    }
+}
+
+@Composable
+private fun CompactButtonBody(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
     content: @Composable RowScope.() -> Unit,
 ) {
     Button(
@@ -53,6 +77,36 @@ fun CompactButton(
         enabled = enabled,
         shape = MaterialTheme.shapes.extraSmall,
         contentPadding = CompactButtonPadding,
+        content = content,
+    )
+}
+
+/**
+ * マウスを載せたときに [text] を小さく表示する領域。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun CompactTooltipArea(
+    text: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    TooltipArea(
+        tooltip = {
+            Surface(
+                shape = MaterialTheme.shapes.extraSmall,
+                color = MaterialTheme.colorScheme.inverseSurface,
+                shadowElevation = 2.dp,
+            ) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(CompactTooltipPadding),
+                )
+            }
+        },
+        modifier = modifier,
         content = content,
     )
 }

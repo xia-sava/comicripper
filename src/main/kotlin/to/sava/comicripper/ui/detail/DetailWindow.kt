@@ -58,6 +58,7 @@ import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.CompactSlider
+import to.sava.comicripper.ui.CompactTooltipArea
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.KeyRepeatDetector
@@ -396,7 +397,8 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("作者:")
+                            // 上段にはこの本の書誌と、この本全体への操作を置く。
+                            CompactTooltipArea("F2") { Text("作者:") }
                             ToolbarTextField(
                                 comic.author,
                                 { updateAuthor(it) },
@@ -414,10 +416,6 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                                 onEnter = { leaveTextField() },
                                 modifier = Modifier.trackingFocus(DetailTextField.Title),
                             )
-                            Spacer(modifier = Modifier.weight(1.0f))
-                            CompactButton(onClick = { deleteCurrentImage() }) { Text("画像削除") }
-                            CompactButton(onClick = { releaseCurrentImage() }) { Text("画像リリース") }
-                            CompactButton(onClick = { reloadImages() }) { Text("画像リロード") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
                             ToolbarTextField(
                                 isbnText,
@@ -431,15 +429,19 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                                     .focusRequester(isbnFocus)
                                     .trackingFocus(DetailTextField.Isbn),
                             )
-                            CompactButton(onClick = { searchIsbn() }) { Text("ISBN検索") }
-                            VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = { ocrIsbn() }) { Text("OCR") }
-                            VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = { showCutterWindow(comic, owner = window) }) { Text("表紙カット") }
+                            CompactButton(onClick = { searchIsbn() }, tooltip = "ISBN欄で Enter（欄へは Ctrl+I）") {
+                                Text("ISBN検索")
+                            }
+                            CompactButton(onClick = { ocrIsbn() }, tooltip = "Ctrl+O") { Text("OCR") }
+                            Spacer(modifier = Modifier.weight(1.0f))
+                            CompactButton(onClick = { showCutterWindow(comic, owner = window) }, tooltip = "Ctrl+T") {
+                                Text("表紙カット")
+                            }
+                            CompactButton(onClick = { reloadImages() }, tooltip = "F5") { Text("画像リロード") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
                             CompactButton(onClick = { createZip() }) { Text("ZIP作成") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = onCloseRequest) { Text("閉じる") }
+                            CompactButton(onClick = onCloseRequest, tooltip = "Esc") { Text("閉じる") }
                         }
                         Box(
                             modifier = Modifier
@@ -471,8 +473,9 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            CompactButton(onClick = { firstImage() }) { Text("◀◀") }
-                            CompactButton(onClick = { leftImage() }) { Text("◀") }
+                            // 下段にはページへの操作と、前後の本への移動を置く。
+                            CompactButton(onClick = { firstImage() }, tooltip = "Home / Ctrl+A") { Text("◀◀") }
+                            CompactButton(onClick = { leftImage() }, tooltip = "←") { Text("◀") }
                             Box(
                                 modifier = Modifier.weight(1.0f),
                                 contentAlignment = Alignment.Center,
@@ -491,8 +494,16 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                                 )
                                 Text("${currentPage + 1} / $pageCount (${currentFilename ?: ""})")
                             }
-                            CompactButton(onClick = { rightImage() }) { Text("▶") }
-                            CompactButton(onClick = { lastImage() }) { Text("▶▶") }
+                            CompactButton(onClick = { rightImage() }, tooltip = "→") { Text("▶") }
+                            CompactButton(onClick = { lastImage() }, tooltip = "End / Ctrl+E") { Text("▶▶") }
+                            VerticalDivider(modifier = Modifier.height(24.dp))
+                            CompactButton(onClick = { deleteCurrentImage() }, tooltip = "Ctrl+D") { Text("画像削除") }
+                            CompactButton(onClick = { releaseCurrentImage() }, tooltip = "Ctrl+L") {
+                                Text("画像リリース")
+                            }
+                            VerticalDivider(modifier = Modifier.height(24.dp))
+                            CompactButton(onClick = { moveComic(-1) }, tooltip = "PageUp") { Text("◀ 前の本") }
+                            CompactButton(onClick = { moveComic(1) }, tooltip = "PageDown") { Text("次の本 ▶") }
                         }
                     }
                     ProgressOverlay(progress)
