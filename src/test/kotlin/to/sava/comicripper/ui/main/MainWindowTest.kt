@@ -1,14 +1,39 @@
 package to.sava.comicripper.ui.main
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.key.Key
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import to.sava.comicripper.ui.KeyStroke
 
-class MainWindowTest {
+internal class MainWindowTest {
+
+    @Nested
+    inner class `mainKeyAction` {
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("to.sava.comicripper.ui.main.MainWindowTest#keyActions")
+        fun `各キーに処理を割り当てる`(stroke: KeyStroke, expected: MainKeyAction) {
+            assertEquals(expected, mainKeyAction(stroke.key, stroke.isCtrlPressed))
+        }
+
+        @Test
+        fun `Ctrlを伴わない文字キーには何も割り当てない`() {
+            assertNull(mainKeyAction(Key.A, isCtrlPressed = false))
+        }
+
+        @Test
+        fun `割り当てていないキーには何もしない`() {
+            assertNull(mainKeyAction(Key.Q, isCtrlPressed = true))
+        }
+    }
 
     @Nested
     inner class `selectionAfterMove` {
@@ -272,5 +297,24 @@ class MainWindowTest {
         fun `空文字のアルバム表紙は無いものとして扱う`() {
             assertTrue(shouldUseCutter("coverF_001.jpg", "", isCoverFullLandscape = true))
         }
+    }
+
+    companion object {
+        @JvmStatic
+        fun keyActions(): List<Arguments> = listOf(
+            Arguments.of(KeyStroke("←", Key.DirectionLeft), MainKeyAction.PreviousComic),
+            Arguments.of(KeyStroke("↑", Key.DirectionUp), MainKeyAction.PreviousComic),
+            Arguments.of(KeyStroke("→", Key.DirectionRight), MainKeyAction.NextComic),
+            Arguments.of(KeyStroke("↓", Key.DirectionDown), MainKeyAction.NextComic),
+            Arguments.of(KeyStroke("Home", Key.MoveHome), MainKeyAction.FirstComic),
+            Arguments.of(KeyStroke("Ctrl+A", Key.A, isCtrlPressed = true), MainKeyAction.FirstComic),
+            Arguments.of(KeyStroke("End", Key.MoveEnd), MainKeyAction.LastComic),
+            Arguments.of(KeyStroke("Ctrl+E", Key.E, isCtrlPressed = true), MainKeyAction.LastComic),
+            Arguments.of(KeyStroke("Enter", Key.Enter), MainKeyAction.Open),
+            Arguments.of(KeyStroke("テンキーのEnter", Key.NumPadEnter), MainKeyAction.Open),
+            Arguments.of(KeyStroke("Space", Key.Spacebar), MainKeyAction.Open),
+            Arguments.of(KeyStroke("F5", Key.F5), MainKeyAction.ReScan),
+            Arguments.of(KeyStroke("Ctrl+,", Key.Comma, isCtrlPressed = true), MainKeyAction.OpenSetting),
+        )
     }
 }

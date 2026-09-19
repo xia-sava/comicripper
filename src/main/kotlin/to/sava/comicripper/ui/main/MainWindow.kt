@@ -39,6 +39,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -72,7 +73,9 @@ import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ErrorToast
+import to.sava.comicripper.ui.KeyRepeatDetector
 import to.sava.comicripper.ui.ProgressOverlay
+import to.sava.comicripper.ui.ResetOnFocusLost
 import to.sava.comicripper.ui.TextAreaOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.detail.showDetailWindow
@@ -156,6 +159,14 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     fun moveSelection(direction: Int) {
         selectComic(selectionAfterMove(comics.map { it.id }, selectedId, direction))
+    }
+
+    fun selectFirst() {
+        comics.firstOrNull()?.let { selectComic(it.id) }
+    }
+
+    fun selectLast() {
+        comics.lastOrNull()?.let { selectComic(it.id) }
     }
 
     fun openComic(comic: Comic?, owner: java.awt.Window?) {
@@ -292,6 +303,12 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    fun openSetting(owner: java.awt.Window?) {
+        ComposeWindowHost.show(key = "setting") { onClose ->
+            SettingWindow(onCloseRequest = onClose, owner = owner)
+        }
+    }
+
     fun showNameAll() {
         nameAll.show(
             "一括命名",
@@ -324,6 +341,20 @@ fun MainWindow(onCloseRequest: () -> Unit) {
 
     // キー入力から openComic を起動する際の owner（自ウィンドウ）。content 側で確定させる。
     var ownerWindow by remember { mutableStateOf<java.awt.Window?>(null) }
+
+    fun runKeyAction(action: MainKeyAction) {
+        when (action) {
+            MainKeyAction.PreviousComic -> moveSelection(-1)
+            MainKeyAction.NextComic -> moveSelection(1)
+            MainKeyAction.FirstComic -> selectFirst()
+            MainKeyAction.LastComic -> selectLast()
+            MainKeyAction.Open -> openComic(selectedComic, ownerWindow)
+            MainKeyAction.ReScan -> reScan()
+            MainKeyAction.OpenSetting -> openSetting(ownerWindow)
+        }
+    }
+
+    val keyRepeat = remember { KeyRepeatDetector() }
 
     val scrollState = rememberScrollState()
     var viewportHeightPx by remember { mutableStateOf(0) }
@@ -359,6 +390,8 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         title = windowTitle,
         icon = rememberWindowIconPainter(),
         onPreviewKeyEvent = { event ->
+            // 遮断中に離したキーも取りこぼさないよう、遮断より先に押下状態を追う。
+            val isRepeat = keyRepeat.onKeyEvent(event.type, event.key)
             when {
                 // 進捗中は全キー遮断。
                 progress.isActive -> true
@@ -366,26 +399,20 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                 // ウィンドウレベルでキーを奪わない。
                 nameAll.isActive -> false
                 event.type != KeyEventType.KeyDown -> false
-                else -> when (event.key) {
-                    Key.DirectionRight, Key.DirectionDown -> {
-                        moveSelection(1)
+                else -> mainKeyAction(event.key, event.isCtrlPressed)
+                    ?.let { action ->
+                        if (action.repeatable || !isRepeat) {
+                            runKeyAction(action)
+                        }
                         true
                     }
-                    Key.DirectionLeft, Key.DirectionUp -> {
-                        moveSelection(-1)
-                        true
-                    }
-                    Key.Enter, Key.NumPadEnter -> {
-                        openComic(selectedComic, ownerWindow)
-                        true
-                    }
-                    else -> false
-                }
+                    ?: false
             }
         },
     ) {
         BringToFrontOnShow()
         LaunchedEffect(window) { ownerWindow = window }
+        ResetOnFocusLost(keyRepeat)
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -453,13 +480,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
                                 modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
                             )
                         }
-                        BottomBar(
-                            onOpenSetting = {
-                                ComposeWindowHost.show(key = "setting") { onClose ->
-                                    SettingWindow(onCloseRequest = onClose, owner = window)
-                                }
-                            },
-                        )
+                        BottomBar(onOpenSetting = { openSetting(window) })
                     }
                     ProgressOverlay(progress)
                     TextAreaOverlay(nameAll)
@@ -496,7 +517,7 @@ private fun TopToolbar(
         CompactButton(onClick = onOcrAll) { Text("OCR") }
         CompactButton(onClick = onZipAll) { Text("ZIP作成＆全削除") }
         CompactButton(onClick = onPagesToComic) { Text("全pageを集約") }
-        CompactButton(onClick = onReScan) { Text("フォルダ再スキャン") }
+        CompactButton(onClick = onReScan, tooltip = "F5") { Text("フォルダ再スキャン") }
         CompactButton(onClick = onNameAll) { Text("一括命名") }
         CompactButton(onClick = onEpubExtract) { Text("epub展開") }
     }
@@ -524,9 +545,44 @@ private fun BottomBar(onOpenSetting: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.weight(1.0f))
         Text(memoryText)
-        CompactButton(onClick = onOpenSetting) { Text("設定") }
+        CompactButton(onClick = onOpenSetting, tooltip = "Ctrl+,") { Text("設定") }
     }
 }
+
+/**
+ * メイン画面のキー操作で行なう処理。
+ * [repeatable] でないものは、キーを押したままにしても最初の1回しか行なわない。
+ */
+internal enum class MainKeyAction(val repeatable: Boolean = false) {
+    PreviousComic(repeatable = true),
+    NextComic(repeatable = true),
+    FirstComic,
+    LastComic,
+    Open,
+    ReScan,
+    OpenSetting,
+}
+
+/** メイン画面で押されたキーに対応する処理を返す。対応する処理が無ければ null を返す。 */
+internal fun mainKeyAction(key: Key, isCtrlPressed: Boolean): MainKeyAction? =
+    if (isCtrlPressed) {
+        when (key) {
+            Key.A -> MainKeyAction.FirstComic
+            Key.E -> MainKeyAction.LastComic
+            Key.Comma -> MainKeyAction.OpenSetting
+            else -> null
+        }
+    } else {
+        when (key) {
+            Key.DirectionLeft, Key.DirectionUp -> MainKeyAction.PreviousComic
+            Key.DirectionRight, Key.DirectionDown -> MainKeyAction.NextComic
+            Key.MoveHome -> MainKeyAction.FirstComic
+            Key.MoveEnd -> MainKeyAction.LastComic
+            Key.Enter, Key.NumPadEnter, Key.Spacebar -> MainKeyAction.Open
+            Key.F5 -> MainKeyAction.ReScan
+            else -> null
+        }
+    }
 
 /**
  * 選択を [direction] のぶんだけ動かした結果の選択位置を返す。

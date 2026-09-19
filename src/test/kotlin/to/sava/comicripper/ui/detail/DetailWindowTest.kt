@@ -8,14 +8,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
-
-/**
- * 押したキーと Ctrl の有無。
- * [Key] は value class なので、テストの引数に直接取ると JVM 上の型が合わず JUnit から渡せない。
- */
-internal class KeyStroke(private val label: String, val key: Key, val isCtrlPressed: Boolean = false) {
-    override fun toString() = label
-}
+import to.sava.comicripper.ui.KeyStroke
 
 internal class DetailWindowTest {
 
