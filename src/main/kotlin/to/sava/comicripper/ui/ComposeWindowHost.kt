@@ -38,7 +38,7 @@ internal val LocalBringToFrontRequests = staticCompositionLocalOf<IntState> { mu
  */
 object ComposeWindowHost {
     private class WindowEntry(
-        val key: String,
+        var key: String,
         val content: @Composable (onCloseRequest: () -> Unit) -> Unit,
     ) {
         val bringToFrontRequests = mutableIntStateOf(0)
@@ -119,6 +119,20 @@ object ComposeWindowHost {
                 opened.bringToFrontRequests.intValue += 1
             }
         }
+    }
+
+    /**
+     * 開いているウィンドウの key を付け替える。ウィンドウが表示する対象を切り替えたときに呼ぶ。
+     * [to] のウィンドウが既に開いていれば付け替えずに false を返す。
+     * [show] と順序が入れ替わらないよう EDT から呼ぶこと。
+     */
+    fun rekey(from: String, to: String): Boolean {
+        check(SwingUtilities.isEventDispatchThread()) { "rekey must be called on the EDT" }
+        if (windows.any { it.key == to }) {
+            return false
+        }
+        windows.firstOrNull { it.key == from }?.key = to
+        return true
     }
 
     private fun close(entry: WindowEntry) {

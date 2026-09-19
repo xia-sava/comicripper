@@ -49,6 +49,7 @@ import to.sava.comicripper.VERSION
 import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
+import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnShow
@@ -62,6 +63,7 @@ import to.sava.comicripper.ui.ErrorToast
 import to.sava.comicripper.ui.KeyRepeatDetector
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
+import to.sava.comicripper.ui.main.selectionAfterMove
 import to.sava.comicripper.ui.rememberErrorToastState
 import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
@@ -86,15 +88,20 @@ private class DisplayedImage(val key: String, val bitmap: ImageBitmap) {
     }
 }
 
+/** ホイールを止めていたとみなす間隔。これ以上の間を空けて回したときだけ、端を越えて前後の本へ移る。 */
+private const val WHEEL_REST_MILLIS = 500L
+
+private fun detailWindowKey(comic: Comic) = "detail:${comic.id}"
+
 /**
  * Detail ウィンドウを開く。
- * Comic ごとに1枚まで（同一 Comic で既に開いていれば何もしない）。
+ * Comic ごとに1枚まで（同一 Comic で既に開いていればそれを前面へ出す）。
  * 任意のスレッドから呼び出せる。
  * owner を渡すとそのウィンドウのオーナー付きダイアログとして開き、owner が背面に固定される。
  */
 fun showDetailWindow(comic: Comic, owner: java.awt.Window? = null) {
-    ComposeWindowHost.show(key = "detail:${comic.id}") { onCloseRequest ->
-        DetailWindow(comic = comic, owner = owner, onCloseRequest = onCloseRequest)
+    ComposeWindowHost.show(key = detailWindowKey(comic)) { onCloseRequest ->
+        DetailWindow(initialComic = comic, owner = owner, onCloseRequest = onCloseRequest)
     }
 }
 
@@ -102,26 +109,31 @@ fun showDetailWindow(comic: Comic, owner: java.awt.Window? = null) {
  * 詳細画面。
  * ページ画像のビューアと、作者名・題名・ISBN の編集、
  * 画像の削除/リリース/リロード、ISBN検索・OCR・表紙カット・ZIP作成を行なう。
+ * 一覧の前後の本へは、ウィンドウを開き直さずに表示を切り替えて移る。
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
-fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
+fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Unit) {
     val setting: Setting = koinInject()
 
     val state = rememberPersistedWindowState(setting.detailWindow)
 
     val repos: ComicRepository = koinInject()
+    val comicStorage: ComicStorage = koinInject()
     val imageStore: ComicImageStore = koinInject()
     val bookInfoSearcher: BookInfoSearcher = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
 
-    var isbnText by remember { mutableStateOf("") }
+    // 表示中の本。本ごとの表示状態は、これをキーに remember して本が替わったら作り直す。
+    var comic by remember { mutableStateOf(initialComic) }
+
+    var isbnText by remember(comic) { mutableStateOf("") }
 
     // 同じリストに対して size チェックとインデックスアクセスを行なうこと
     // （別々に読むと並行削除で IndexOutOfBoundsException を起こしうる）。
     val files = comic.files
-    var currentPage by remember {
+    var currentPage by remember(comic) {
         mutableStateOf(if (files.size > 1 && files[1] == comic.coverFull) 1 else 0)
     }
 
@@ -139,7 +151,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
 
     // 直前に表示した1枚を保持する。
     // フルサイズ BufferedImage 自体は Comic.imageCache が保持するので、ここは変換結果のみ。
-    var loadedImage by remember { mutableStateOf<DisplayedImage?>(null) }
+    var loadedImage by remember(comic) { mutableStateOf<DisplayedImage?>(null) }
     LaunchedEffect(currentFilename, comic.imageRevision) {
         val filename = currentFilename ?: return@LaunchedEffect
         val key = DisplayedImage.keyOf(comic.imageRevision, filename)
@@ -210,37 +222,70 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         repos.reloadImages(comic)
     }
 
+    // 時間のかかる処理は、始めた時点の本を対象に最後まで行なう。
     fun searchIsbn() {
+        val target = comic
         val isbn = isbnText
         if (isbn.isEmpty()) {
             return
         }
         progress.launchTask("ISBN検索", "ISBN から著者名/作品名をサーチしてます") {
             val (searchedAuthor, searchedTitle) = bookInfoSearcher.search(isbn)
-            comic.author = searchedAuthor
-            comic.title = searchedTitle
+            target.author = searchedAuthor
+            target.title = searchedTitle
         }
     }
 
     fun ocrIsbn() {
-        if (comic.coverFull.isNullOrEmpty()) {
+        val target = comic
+        if (target.coverFull.isNullOrEmpty()) {
             errorToast.show("OCR対象の表紙画像がありません")
             return
         }
         progress.launchTask("OCRしています", "画像から ISBN を読み取って著者名/作品名をサーチしてます") {
-            repos.ocrISBN(comic)?.let { (ocrAuthor, ocrTitle) ->
-                comic.author = ocrAuthor
-                comic.title = ocrTitle
+            repos.ocrISBN(target)?.let { (ocrAuthor, ocrTitle) ->
+                target.author = ocrAuthor
+                target.title = ocrTitle
             }
         }
     }
 
     fun createZip() {
+        val target = comic
         progress.launchTask("ZIPしています", "コミックをZIP化しています") {
-            repos.zipComic(comic)
+            repos.zipComic(target)
             onCloseRequest()
         }
     }
+
+    /**
+     * 一覧で [direction] 側の隣の本へ移り、一覧の選択もそこへ移す。
+     * 移る先の本が別の詳細画面で開いていれば、そちらを前面へ出してこの画面を閉じる。
+     */
+    fun moveComic(direction: Int) {
+        val current = comic
+        val next = comicStorage[selectionAfterMove(comicStorage.all.map { it.id }, current.id, direction)]
+            ?.takeIf { it.id != current.id }
+            ?: return
+        if (ComposeWindowHost.rekey(from = detailWindowKey(current), to = detailWindowKey(next))) {
+            comic = next
+        } else {
+            showDetailWindow(next)
+            onCloseRequest()
+        }
+        comicStorage.targetId = next.id
+    }
+
+    fun movePage(direction: Int, canCrossComic: Boolean) {
+        when (val move = pageMove(currentPage, files.size, direction, canCrossComic)) {
+            is PageMove.ToPage -> currentPage = move.page
+            PageMove.ToPreviousComic -> moveComic(-1)
+            PageMove.ToNextComic -> moveComic(1)
+            PageMove.Stay -> Unit
+        }
+    }
+
+    var lastWheelMillis by remember { mutableStateOf<Long?>(null) }
 
     // 入力欄の外ではページ表示のスライダーにフォーカスを置く。
     val sliderFocus = remember { FocusRequester() }
@@ -263,10 +308,13 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     // キー入力から表紙カット画面を開く際の owner（自ウィンドウ）。content 側で確定させる。
     var ownerWindow by remember { mutableStateOf<java.awt.Window?>(null) }
 
-    fun runKeyAction(action: DetailKeyAction) {
+    fun runKeyAction(action: DetailKeyAction, isRepeat: Boolean) {
         when (action) {
-            DetailKeyAction.PreviousPage -> leftImage()
-            DetailKeyAction.NextPage -> rightImage()
+            // 押したままでは端で止め、押し直したときに前後の本へ移る。
+            DetailKeyAction.PreviousPage -> movePage(-1, canCrossComic = !isRepeat)
+            DetailKeyAction.NextPage -> movePage(1, canCrossComic = !isRepeat)
+            DetailKeyAction.PreviousComic -> moveComic(-1)
+            DetailKeyAction.NextComic -> moveComic(1)
             DetailKeyAction.FirstPage -> firstImage()
             DetailKeyAction.LastPage -> lastImage()
             DetailKeyAction.DeleteImage -> deleteCurrentImage()
@@ -298,7 +346,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                 else -> detailKeyAction(event.key, event.isCtrlPressed, isEditingText = focusedTextField != null)
                     ?.let { action ->
                         if (action.repeatable || !isRepeat) {
-                            runKeyAction(action)
+                            runKeyAction(action, isRepeat)
                         }
                         true
                     }
@@ -317,7 +365,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             window.addWindowFocusListener(listener)
             onDispose { window.removeWindowFocusListener(listener) }
         }
-        LaunchedEffect(Unit) {
+        LaunchedEffect(comic) {
             if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
                 isbnFocus.requestFocus()
             } else {
@@ -331,10 +379,15 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                         modifier = Modifier
                             .fillMaxSize()
                             .onPointerEvent(PointerEventType.Scroll) { event ->
-                                val deltaY = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                val change = event.changes.firstOrNull() ?: return@onPointerEvent
+                                // 回し続けている間は端で止め、いったん止めてから回したときに前後の本へ移る。
+                                val canCrossComic = lastWheelMillis
+                                    ?.let { change.uptimeMillis - it >= WHEEL_REST_MILLIS }
+                                    ?: true
+                                lastWheelMillis = change.uptimeMillis
                                 when {
-                                    deltaY < 0f -> leftImage()
-                                    deltaY > 0f -> rightImage()
+                                    change.scrollDelta.y < 0f -> movePage(-1, canCrossComic)
+                                    change.scrollDelta.y > 0f -> movePage(1, canCrossComic)
                                 }
                             },
                     ) {
@@ -491,6 +544,8 @@ private enum class DetailTextField { Author, Title, Isbn }
 internal enum class DetailKeyAction(val repeatable: Boolean = false) {
     PreviousPage(repeatable = true),
     NextPage(repeatable = true),
+    PreviousComic,
+    NextComic,
     FirstPage,
     LastPage,
     DeleteImage,
@@ -543,10 +598,35 @@ internal fun detailKeyAction(key: Key, isCtrlPressed: Boolean, isEditingText: Bo
             Key.DirectionRight -> DetailKeyAction.NextPage
             Key.MoveHome -> DetailKeyAction.FirstPage
             Key.MoveEnd -> DetailKeyAction.LastPage
+            Key.PageUp -> DetailKeyAction.PreviousComic
+            Key.PageDown -> DetailKeyAction.NextComic
             Key.F2 -> DetailKeyAction.FocusAuthor
             Key.F5 -> DetailKeyAction.ReloadImages
             Key.Escape -> if (isEditingText) DetailKeyAction.LeaveTextField else DetailKeyAction.Close
             else -> null
         }
+    }
+}
+
+/** ページ送りの行き先。 */
+internal sealed interface PageMove {
+    data class ToPage(val page: Int) : PageMove
+    data object ToPreviousComic : PageMove
+    data object ToNextComic : PageMove
+    data object Stay : PageMove
+}
+
+/**
+ * ページを [direction] のぶんだけ送った行き先を返す。
+ * 端を越える送りは前後の本へ移る。ただし [canCrossComic] が false のとき
+ * （キーを押したまま・ホイールを回し続けている間）は、本を飛ばしていかないよう端に留まる。
+ */
+internal fun pageMove(currentPage: Int, pageCount: Int, direction: Int, canCrossComic: Boolean): PageMove {
+    val destination = currentPage + direction
+    return when {
+        destination in 0 until pageCount -> PageMove.ToPage(destination)
+        !canCrossComic -> PageMove.Stay
+        destination < 0 -> PageMove.ToPreviousComic
+        else -> PageMove.ToNextComic
     }
 }

@@ -40,6 +40,15 @@ internal class DetailWindowTest {
         }
 
         @Test
+        fun `入力欄の編集中でも本の移動は効く`() {
+            // 1行の入力欄では PageDown を使わないため、入力欄へ譲らない。
+            assertEquals(
+                DetailKeyAction.NextComic,
+                detailKeyAction(Key.PageDown, isCtrlPressed = false, isEditingText = true),
+            )
+        }
+
+        @Test
         fun `入力欄の編集中のEscは画面を閉じずに入力欄から抜ける`() {
             assertEquals(
                 DetailKeyAction.LeaveTextField,
@@ -59,6 +68,49 @@ internal class DetailWindowTest {
         }
     }
 
+    @Nested
+    inner class `pageMove` {
+
+        @Test
+        fun `次のページへ送る`() {
+            assertEquals(PageMove.ToPage(3), pageMove(currentPage = 2, pageCount = 10, direction = 1, canCrossComic = true))
+        }
+
+        @Test
+        fun `前のページへ戻る`() {
+            assertEquals(PageMove.ToPage(1), pageMove(currentPage = 2, pageCount = 10, direction = -1, canCrossComic = true))
+        }
+
+        @Test
+        fun `最終ページから送ると次の本へ移る`() {
+            assertEquals(PageMove.ToNextComic, pageMove(currentPage = 9, pageCount = 10, direction = 1, canCrossComic = true))
+        }
+
+        @Test
+        fun `先頭ページから戻ると前の本へ移る`() {
+            assertEquals(
+                PageMove.ToPreviousComic,
+                pageMove(currentPage = 0, pageCount = 10, direction = -1, canCrossComic = true),
+            )
+        }
+
+        @Test
+        fun `本を越えられないときは最終ページに留まる`() {
+            assertEquals(PageMove.Stay, pageMove(currentPage = 9, pageCount = 10, direction = 1, canCrossComic = false))
+        }
+
+        @Test
+        fun `本を越えられないときは先頭ページに留まる`() {
+            assertEquals(PageMove.Stay, pageMove(currentPage = 0, pageCount = 10, direction = -1, canCrossComic = false))
+        }
+
+        @Test
+        fun `本を越えられないときでも端でなければページは送る`() {
+            // キーを押したままでも、端に着くまではページを送り続ける。
+            assertEquals(PageMove.ToPage(9), pageMove(currentPage = 8, pageCount = 10, direction = 1, canCrossComic = false))
+        }
+    }
+
     companion object {
         @JvmStatic
         fun keyActions(): List<Arguments> = listOf(
@@ -68,6 +120,8 @@ internal class DetailWindowTest {
             Arguments.of(KeyStroke("Ctrl+A", Key.A, isCtrlPressed = true), DetailKeyAction.FirstPage),
             Arguments.of(KeyStroke("End", Key.MoveEnd), DetailKeyAction.LastPage),
             Arguments.of(KeyStroke("Ctrl+E", Key.E, isCtrlPressed = true), DetailKeyAction.LastPage),
+            Arguments.of(KeyStroke("PageUp", Key.PageUp), DetailKeyAction.PreviousComic),
+            Arguments.of(KeyStroke("PageDown", Key.PageDown), DetailKeyAction.NextComic),
             Arguments.of(KeyStroke("Ctrl+D", Key.D, isCtrlPressed = true), DetailKeyAction.DeleteImage),
             Arguments.of(KeyStroke("Ctrl+L", Key.L, isCtrlPressed = true), DetailKeyAction.ReleaseImage),
             Arguments.of(KeyStroke("F5", Key.F5), DetailKeyAction.ReloadImages),
