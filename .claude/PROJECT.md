@@ -13,6 +13,7 @@ ComicRipperは、裁断したコミックをScanSnapでスキャンした画像�
 - epub2comic.py によるEPUB展開（外部ユーティリティ）
 - 操作失敗のトースト通知（ErrorToast）
 - 一括処理（OCR/ZIP）の中止と、中止時点までの進み具合の通知
+- 詳細画面から一覧の前後の本への移動と、各操作のキー割り当て（「キー操作」を参照）
 
 ### バージョン
 - 現在: 1.0.1
@@ -50,8 +51,10 @@ src/main/kotlin/to/sava/comicripper/
 │   │                                  表示時の前面化と Compose コンテンツへのフォーカス付与、
 │   │                                  グレースケール画像の濃さを保った ImageBitmap 変換など）
 │   ├── ComicRipperTheme.kt          # 共通テーマ（高密度化・グリーン系配色）
-│   ├── CompactControls.kt           # 高密度な共通コントロール（CompactButton/CompactOutlinedTextField/CompactSlider）
+│   ├── CompactControls.kt           # 高密度な共通コントロール（CompactButton/CompactOutlinedTextField/CompactSlider/
+│   │                                  CompactTooltipArea）。ボタンにはツールチップで対応するキーを示せる
 │   ├── ComicRipperWindow.kt         # owner有無でトップレベルWindow/非モーダルオーナー付きDialogWindowを切り替える共通ウィンドウ
+│   ├── KeyRepeatDetector.kt         # キーリピートの判定（押下と解放の対応から判断）と、フォーカスを失ったときの押下状態の破棄
 │   ├── ProgressOverlay.kt           # ウィンドウ内に被せる進捗オーバーレイの共通部品
 │   ├── TextAreaOverlay.kt           # ウィンドウ内に被せる複数行テキスト入力オーバーレイの共通部品
 │   ├── ErrorToast.kt                # 操作失敗を知らせるトースト（画面下部・自動消滅）の共通部品
@@ -61,7 +64,8 @@ src/main/kotlin/to/sava/comicripper/
 │   ├── main/ComicDragState.kt       # カード間ドラッグ&ドロップの状態（ウィンドウ座標系でのヒットテスト）
 │   ├── setting/SettingWindow.kt     # 設定画面
 │   ├── cutter/CutterWindow.kt       # カバー切り出しツール
-│   └── detail/DetailWindow.kt       # 画像ビューア・メタデータ編集
+│   └── detail/DetailWindow.kt       # 画像ビューア・メタデータ編集。一覧の前後の本へは、ウィンドウを開き直さず
+│                                      表示を切り替えて移る（ComposeWindowHost の key も付け替える）
 ├── model/Setting.kt                # アプリ設定（snapshot state、Koin single、JSON永続化と旧形式からの自動移行）
 ├── ext/ExtFunc.kt                  # 拡張関数（Loader、workFilename のみ）
 └── Main.kt                         # エントリポイント（トップレベル fun main()。Koin初期化・
@@ -82,11 +86,15 @@ src/test/kotlin/to/sava/comicripper/
 ├── infrastructure/text/NameNormalizationTest.kt   # 表記統一と禁止文字の置き換えのテスト
 ├── infrastructure/repository/StructureStoreTest.kt # 構造ファイルの保存復元・破損時退避・旧形式移行のテスト
 ├── ui/
+│   ├── ComposeExtTest.kt                     # 表示用 ImageBitmap 変換のテスト（グレースケールの濃さの保持）
 │   ├── ProgressOverlayStateTest.kt           # 進捗オーバーレイのテスト（開始・多重起動の抑止・中止・失敗通知）
-│   ├── main/MainWindowTest.kt                # 選択の移動・一覧変更時の選択の付け替え・追従スクロール位置・
+│   ├── KeyRepeatDetectorTest.kt              # キーリピート判定のテスト
+│   ├── KeyStroke.kt                          # キー割り当てのパラメタライズテストに渡す、キーと Ctrl の有無
+│   ├── main/MainWindowTest.kt                # キーの割り当て・選択の移動・一覧変更時の選択の付け替え・追従スクロール位置・
 │   │                                           一括命名テキストの読み書き・開く画面の振り分けのテスト
 │   ├── main/ComicCardTest.kt                 # 表示用文字列省略・サイズ計算のテスト
 │   ├── main/ComicDragStateTest.kt            # D&D状態のテスト
+│   ├── detail/DetailWindowTest.kt            # キーの割り当て（入力欄の編集中に譲るキーを含む）・ページ送りの行き先のテスト
 │   └── cutter/CutterWindowTest.kt            # 画像表示矩形計算のテスト
 └── infrastructure/
     ├── repository/
@@ -99,7 +107,7 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計179件。
+テストは計240件（パラメタライズテストは値ごとに1件と数える）。
 
 画面の判断ロジック（選択の付け替え・表示位置の計算・文字列の組み立て等）は composable の外に
 トップレベル関数として置き、そこをテストする。composable 内のローカル関数はテストから呼べない。
@@ -175,6 +183,33 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
   削除→再作成が同じ200msに入ると「追加（重複なので無視）→削除」に化け、ディスクにあるファイルが
   一覧から消える。外部ツールがファイルを高速に置き直した場合に起こりうる。
   「フォルダ再スキャン」で実態と合わせ直せる
+
+## キー操作
+
+キーはウィンドウの `onPreviewKeyEvent` で受け、フォーカスがどこにあっても効く。どのキーで何をするかは
+`mainKeyAction` / `detailKeyAction` にまとめてあり、そこをテストする。両手をキーボードに置いても、
+右手でマウスを持ったままでも使えるよう、主な操作には左手の届くキーも割り当てる。
+
+| 操作 | メイン画面 | 詳細画面 |
+|---|---|---|
+| 前後へ移る | ←→↑↓・ホイール（本） | ←→・ホイール（ページ）、PageUp/PageDown（本） |
+| 先頭・末尾へ | Home/End・Ctrl+A/Ctrl+E（本） | Home/End・Ctrl+A/Ctrl+E（ページ） |
+| 開く・閉じる | Enter・Space で開く | Esc で閉じる |
+| 画像削除・画像リリース | | Ctrl+D・Ctrl+L |
+| 読み直し | F5（フォルダ再スキャン） | F5（画像リロード） |
+| OCR・表紙カット | | Ctrl+O・Ctrl+T |
+| 入力欄へ | | F2（作者）・Ctrl+I（ISBN） |
+| 設定 | Ctrl+, | |
+
+- 詳細画面の入力欄の編集中は、カーソル移動と全選択に使うキー（←→、Home/End、Ctrl+A/Ctrl+E）を入力欄へ譲る。
+  Esc と Enter はまず入力欄から抜ける（ISBN 欄の Enter は検索してから抜ける）。入力欄の外で Esc を押すと閉じる
+- キーリピートで繰り返すのは選択・ページの移動だけで、それ以外は押したままでも1回しか行なわない
+  （`KeyRepeatDetector`）
+- 詳細画面でページを端から越えて送ると、一覧の前後の本へ移って表紙を表示する。本を飛ばしていかないよう、
+  キーを押したまま・ホイールを回し続けている間は端で止まり、押し直す・ホイールを止めてから回すと移る。
+  移ると一覧の選択（＝取り込み先）もその本へ移る
+- 画像削除はごみ箱を通らずに消すため、押し間違えやすい単独のキー（Del）には割り当てない。
+  ZIP作成は元の画像を消し、同名の ZIP を上書きするためキーを割り当てない
 
 ## 永続化・ログ
 
