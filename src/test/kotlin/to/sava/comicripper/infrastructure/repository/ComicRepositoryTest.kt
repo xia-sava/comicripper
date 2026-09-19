@@ -243,6 +243,35 @@ class ComicRepositoryTest : KoinComponent {
             assertEquals(1, comicStorage.all.size)
             assertTrue(comicStorage.all.first().files.contains(coverF2))
         }
+
+        @Test
+        fun `removeDeletedFilesはディスクから消えたファイルを取り除く`() {
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir).delete()
+            repository.addFiles(listOf(coverF, page))
+            val comic = comicStorage.all.first()
+
+            repository.removeDeletedFiles(listOf(page))
+
+            assertFalse(comic.files.contains(page))
+        }
+
+        @Test
+        fun `removeDeletedFilesはディスクに残っているファイルを取り除かない`() {
+            // 削除の直後に同じ名前で置き直され、削除と作成の通知がまとめて届いた場合にあたる。
+            val coverF = "coverF_000.jpg"
+            val page = "page_000.jpg"
+            ComicTestHelper.createDummyJpeg(coverF, workDir)
+            ComicTestHelper.createDummyJpeg(page, workDir)
+            repository.addFiles(listOf(coverF, page))
+            val comic = comicStorage.all.first()
+
+            repository.removeDeletedFiles(listOf(page))
+
+            assertTrue(comic.files.contains(page))
+        }
     }
 
     @Nested

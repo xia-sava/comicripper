@@ -105,6 +105,15 @@ class ComicRepository(
         filenames.forEach(::removeFile)
     }
 
+    /**
+     * ファイル監視が削除を知らせてきたファイルを構成から外す。
+     * 通知はまとめて届くため、削除の直後に同じ名前で置き直されたファイルも削除として知らされる。
+     * それを外すとディスクにあるファイルが一覧から消えるので、ディスクに残っているものは外さない。
+     */
+    fun removeDeletedFiles(filenames: List<String>) {
+        removeFiles(filenames.filterNot { File("${setting.workDirectory}/$it").exists() })
+    }
+
     private fun removeFile(filename: String) {
         comicStorage.all.forEach { it.removeFile(filename) }
         comicStorage.removeEmpty()

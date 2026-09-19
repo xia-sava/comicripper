@@ -62,7 +62,7 @@ fun main() {
     fileWatcher.start(
         setting.workDirectory,
         onFilesAdded = { filenames -> repos.addFiles(filenames) },
-        onFilesDeleted = { filenames -> repos.removeFiles(filenames) },
+        onFilesDeleted = { filenames -> repos.removeDeletedFiles(filenames) },
     )
 
     shutdownRequested.await()
