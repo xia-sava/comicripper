@@ -49,6 +49,7 @@ import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
+import to.sava.comicripper.infrastructure.repository.ImageTrash
 import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnShow
@@ -70,7 +71,6 @@ import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.toDisplayImageBitmap
-import java.io.File
 import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
@@ -119,6 +119,7 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
 
     val repos: ComicRepository = koinInject()
     val comicStorage: ComicStorage = koinInject()
+    val imageTrash: ImageTrash = koinInject()
     val imageStore: ComicImageStore = koinInject()
     val bookInfoSearcher: BookInfoSearcher = koinInject()
     val errorToast = rememberErrorToastState()
@@ -201,10 +202,7 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
         // onPreviewKeyEvent 経由の呼び出しは生成時点のクロージャで実行されうるため、
         // currentFilename を直接キャプチャせず、呼び出し時点の files/currentPage から都度求める。
         files.getOrNull(currentPage)?.let { filename ->
-            // ファイル監視が動いていない環境でも表示を合わせるため、削除できたら自分でも構成から外す。
-            if (File("${setting.workDirectory}/$filename").delete()) {
-                repos.removeFiles(listOf(filename))
-            } else {
+            if (!imageTrash.delete(comic, filename)) {
                 errorToast.show("画像を削除できませんでした")
             }
         }

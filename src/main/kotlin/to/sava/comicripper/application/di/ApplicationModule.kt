@@ -6,6 +6,7 @@ import to.sava.comicripper.domain.service.FileWatcher
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
+import to.sava.comicripper.infrastructure.repository.ImageTrash
 import to.sava.comicripper.infrastructure.repository.StructureStore
 import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.infrastructure.service.NioFileWatcher
@@ -31,4 +32,5 @@ val applicationModule = module {
     // リポジトリ層
     single { ComicRepository(get(), get(), get(), get()) }
     single { StructureStore(get(), get()) }
+    single { ImageTrash(get(), get(), get()) }
 }

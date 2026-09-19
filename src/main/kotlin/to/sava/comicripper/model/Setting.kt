@@ -147,6 +147,12 @@ class Setting {
     /** 旧Properties形式の構造ファイル。存在すれば起動時に読み込んでJSON形式へ自動移行する。 */
     val legacyStructureFile get() = File("${fixedStructureDirectory ?: workDirectory}/.comicripperStructure")
 
+    /**
+     * 削除した画像の退避先。構造ファイルと同じく、実行中に作業ディレクトリを変更しても動かさない。
+     * 作業ディレクトリ直下のファイルではないため、再スキャンにもファイル監視にも現れない。
+     */
+    val trashDirectory get() = File("${fixedStructureDirectory ?: workDirectory}/.comicripperTrash")
+
     private fun toData() = SettingData(
         mainWindow = mainWindow.toData(),
         detailWindow = detailWindow.toData(),
