@@ -153,7 +153,7 @@ class ImageTrashTest : KoinComponent {
 
         @Test
         fun `画像を残したまま一覧から外れたコミックへは戻さず画像だけのコミックにする`() {
-            // ZIP 作成で片付いたコミックにあたる。
+            // ZIP 作成を終えたコミックにあたる。
             val comic = comicWith("coverF_000.jpg", "page_001.jpg")
             trash.delete(comic, "page_001.jpg")
             comicStorage.remove(comic)
