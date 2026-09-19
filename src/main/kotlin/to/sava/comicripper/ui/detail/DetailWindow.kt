@@ -50,6 +50,7 @@ import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.infrastructure.repository.ImageTrash
+import to.sava.comicripper.infrastructure.repository.UndoResult
 import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnShow
@@ -127,6 +128,8 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
 
     // 表示中の本。本ごとの表示状態は、これをキーに remember して本が替わったら作り直す。
     var comic by remember { mutableStateOf(initialComic) }
+    // 本を切り替えたときに表示するページ。無ければ表紙を表示する。
+    var pageOnSwitch by remember { mutableStateOf<String?>(null) }
 
     var isbnText by remember(comic) { mutableStateOf("") }
 
@@ -134,7 +137,10 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
     // （別々に読むと並行削除で IndexOutOfBoundsException を起こしうる）。
     val files = comic.files
     var currentPage by remember(comic) {
-        mutableStateOf(if (files.size > 1 && files[1] == comic.coverFull) 1 else 0)
+        mutableStateOf(
+            pageOnSwitch?.let { files.indexOf(it) }?.takeIf { it >= 0 }
+                ?: if (files.size > 1 && files[1] == comic.coverFull) 1 else 0
+        )
     }
 
     // 表示中のページが削除されて範囲外になったら末尾へ寄せ、全部消えたら画面を閉じる。
@@ -256,21 +262,38 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
     }
 
     /**
-     * 一覧で [direction] 側の隣の本へ移り、一覧の選択もそこへ移す。
-     * 移る先の本が別の詳細画面で開いていれば、そちらを前面へ出してこの画面を閉じる。
+     * [target] の [page] を表示し、一覧の選択もその本へ移す。[page] が無ければ表紙を表示する。
+     * [target] が別の詳細画面で開いていれば、そちらを前面へ出してこの画面を閉じる。
      */
-    fun moveComic(direction: Int) {
+    fun showComic(target: Comic, page: String? = null) {
         val current = comic
-        val next = comicStorage[selectionAfterMove(comicStorage.all.map { it.id }, current.id, direction)]
-            ?.takeIf { it.id != current.id }
-            ?: return
-        if (ComposeWindowHost.rekey(from = detailWindowKey(current), to = detailWindowKey(next))) {
-            comic = next
+        if (target.id == current.id) {
+            page?.let { current.files.indexOf(it) }?.takeIf { it >= 0 }?.let { currentPage = it }
+        } else if (ComposeWindowHost.rekey(from = detailWindowKey(current), to = detailWindowKey(target))) {
+            pageOnSwitch = page
+            comic = target
         } else {
-            showDetailWindow(next)
+            showDetailWindow(target)
             onCloseRequest()
         }
-        comicStorage.targetId = next.id
+        comicStorage.targetId = target.id
+    }
+
+    /** 一覧で [direction] 側の隣の本へ移る。 */
+    fun moveComic(direction: Int) {
+        val current = comic
+        comicStorage[selectionAfterMove(comicStorage.all.map { it.id }, current.id, direction)]
+            ?.takeIf { it.id != current.id }
+            ?.let { showComic(it) }
+    }
+
+    /** 最後に削除した画像を戻して表示する。 */
+    fun undoDelete() {
+        when (val result = imageTrash.undo()) {
+            is UndoResult.Restored -> showComic(result.comic, result.filename)
+            is UndoResult.Failed -> errorToast.show("${result.filename} を戻せませんでした")
+            UndoResult.NothingToUndo -> Unit
+        }
     }
 
     fun movePage(direction: Int, canCrossComic: Boolean) {
@@ -315,6 +338,7 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
             DetailKeyAction.FirstPage -> firstImage()
             DetailKeyAction.LastPage -> lastImage()
             DetailKeyAction.DeleteImage -> deleteCurrentImage()
+            DetailKeyAction.UndoDelete -> undoDelete()
             DetailKeyAction.ReleaseImage -> releaseCurrentImage()
             DetailKeyAction.ReloadImages -> reloadImages()
             DetailKeyAction.Ocr -> ocrIsbn()
@@ -485,7 +509,9 @@ fun DetailWindow(initialComic: Comic, owner: java.awt.Window?, onCloseRequest: (
                             CompactButton(onClick = { rightImage() }, tooltip = "→") { Text("▶") }
                             CompactButton(onClick = { lastImage() }, tooltip = "End / Ctrl+E") { Text("▶▶") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
-                            CompactButton(onClick = { deleteCurrentImage() }, tooltip = "Ctrl+D") { Text("画像削除") }
+                            CompactButton(onClick = { deleteCurrentImage() }, tooltip = "Del / Ctrl+D（Ctrl+Z で戻す）") {
+                                Text("画像削除")
+                            }
                             CompactButton(onClick = { releaseCurrentImage() }, tooltip = "Ctrl+L") {
                                 Text("画像リリース")
                             }
@@ -548,6 +574,7 @@ internal enum class DetailKeyAction(val repeatable: Boolean = false) {
     FirstPage,
     LastPage,
     DeleteImage,
+    UndoDelete,
     ReleaseImage,
     ReloadImages,
     Ocr,
@@ -558,7 +585,7 @@ internal enum class DetailKeyAction(val repeatable: Boolean = false) {
     Close,
 }
 
-/** 入力欄の編集中は、入力欄のカーソル移動に譲るキー。 */
+/** 入力欄の編集中は、入力欄のカーソル移動と文字の削除に譲るキー。 */
 private val TextEditingKeys = setOf(
     Key.DirectionLeft,
     Key.DirectionRight,
@@ -566,10 +593,11 @@ private val TextEditingKeys = setOf(
     Key.DirectionDown,
     Key.MoveHome,
     Key.MoveEnd,
+    Key.Delete,
 )
 
-/** 入力欄の編集中は、入力欄の操作（全選択など）に譲る Ctrl 付きのキー。 */
-private val TextEditingCtrlKeys = setOf(Key.A, Key.E)
+/** 入力欄の編集中は、入力欄の操作（全選択・取り消しなど）に譲る Ctrl 付きのキー。 */
+private val TextEditingCtrlKeys = setOf(Key.A, Key.E, Key.Z)
 
 /**
  * 詳細画面で押されたキーに対応する処理を返す。対応する処理が無ければ null を返す。
@@ -585,6 +613,7 @@ internal fun detailKeyAction(key: Key, isCtrlPressed: Boolean, isEditingText: Bo
             Key.A -> DetailKeyAction.FirstPage
             Key.E -> DetailKeyAction.LastPage
             Key.D -> DetailKeyAction.DeleteImage
+            Key.Z -> DetailKeyAction.UndoDelete
             Key.L -> DetailKeyAction.ReleaseImage
             Key.O -> DetailKeyAction.Ocr
             Key.T -> DetailKeyAction.CutCover
@@ -599,6 +628,7 @@ internal fun detailKeyAction(key: Key, isCtrlPressed: Boolean, isEditingText: Bo
             Key.MoveEnd -> DetailKeyAction.LastPage
             Key.PageUp -> DetailKeyAction.PreviousComic
             Key.PageDown -> DetailKeyAction.NextComic
+            Key.Delete -> DetailKeyAction.DeleteImage
             Key.F2 -> DetailKeyAction.FocusAuthor
             Key.F5 -> DetailKeyAction.ReloadImages
             Key.Escape -> if (isEditingText) DetailKeyAction.LeaveTextField else DetailKeyAction.Close

@@ -314,6 +314,7 @@ internal class MainWindowTest {
             Arguments.of(KeyStroke("テンキーのEnter", Key.NumPadEnter), MainKeyAction.Open),
             Arguments.of(KeyStroke("Space", Key.Spacebar), MainKeyAction.Open),
             Arguments.of(KeyStroke("F5", Key.F5), MainKeyAction.ReScan),
+            Arguments.of(KeyStroke("Ctrl+Z", Key.Z, isCtrlPressed = true), MainKeyAction.UndoDelete),
             Arguments.of(KeyStroke("Ctrl+,", Key.Comma, isCtrlPressed = true), MainKeyAction.OpenSetting),
         )
     }

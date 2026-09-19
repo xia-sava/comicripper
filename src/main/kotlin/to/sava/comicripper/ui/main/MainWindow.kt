@@ -65,7 +65,9 @@ import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
+import to.sava.comicripper.infrastructure.repository.ImageTrash
 import to.sava.comicripper.infrastructure.repository.StructureStore
+import to.sava.comicripper.infrastructure.repository.UndoResult
 import to.sava.comicripper.model.Setting
 import to.sava.comicripper.ui.BringToFrontOnShow
 import to.sava.comicripper.ui.ComicRipperTheme
@@ -130,6 +132,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
     val repos: ComicRepository = koinInject()
     val imageStore: ComicImageStore = koinInject()
     val structureStore: StructureStore = koinInject()
+    val imageTrash: ImageTrash = koinInject()
     val errorToast = rememberErrorToastState()
     val progress = rememberProgressOverlayState(onError = { title -> errorToast.show("${title}に失敗しました") })
     val nameAll = rememberTextAreaOverlayState()
@@ -303,6 +306,15 @@ fun MainWindow(onCloseRequest: () -> Unit) {
         }
     }
 
+    /** 最後に削除した画像を戻し、戻した先のコミックを選択する。 */
+    fun undoDelete() {
+        when (val result = imageTrash.undo()) {
+            is UndoResult.Restored -> selectComic(result.comic.id)
+            is UndoResult.Failed -> errorToast.show("${result.filename} を戻せませんでした")
+            UndoResult.NothingToUndo -> Unit
+        }
+    }
+
     fun openSetting(owner: java.awt.Window?) {
         ComposeWindowHost.show(key = "setting") { onClose ->
             SettingWindow(onCloseRequest = onClose, owner = owner)
@@ -350,6 +362,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
             MainKeyAction.LastComic -> selectLast()
             MainKeyAction.Open -> openComic(selectedComic, ownerWindow)
             MainKeyAction.ReScan -> reScan()
+            MainKeyAction.UndoDelete -> undoDelete()
             MainKeyAction.OpenSetting -> openSetting(ownerWindow)
         }
     }
@@ -560,6 +573,7 @@ internal enum class MainKeyAction(val repeatable: Boolean = false) {
     LastComic,
     Open,
     ReScan,
+    UndoDelete,
     OpenSetting,
 }
 
@@ -569,6 +583,7 @@ internal fun mainKeyAction(key: Key, isCtrlPressed: Boolean): MainKeyAction? =
         when (key) {
             Key.A -> MainKeyAction.FirstComic
             Key.E -> MainKeyAction.LastComic
+            Key.Z -> MainKeyAction.UndoDelete
             Key.Comma -> MainKeyAction.OpenSetting
             else -> null
         }

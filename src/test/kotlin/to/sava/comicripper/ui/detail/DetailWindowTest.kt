@@ -23,7 +23,7 @@ internal class DetailWindowTest {
 
         @ParameterizedTest(name = "{0}")
         @MethodSource("to.sava.comicripper.ui.detail.DetailWindowTest#textEditingKeys")
-        fun `入力欄の編集中はカーソル移動と全選択のキーを入力欄へ譲る`(stroke: KeyStroke) {
+        fun `入力欄の編集中は入力欄の操作に使うキーを入力欄へ譲る`(stroke: KeyStroke) {
             assertNull(detailKeyAction(stroke.key, stroke.isCtrlPressed, isEditingText = true))
         }
 
@@ -116,6 +116,8 @@ internal class DetailWindowTest {
             Arguments.of(KeyStroke("PageUp", Key.PageUp), DetailKeyAction.PreviousComic),
             Arguments.of(KeyStroke("PageDown", Key.PageDown), DetailKeyAction.NextComic),
             Arguments.of(KeyStroke("Ctrl+D", Key.D, isCtrlPressed = true), DetailKeyAction.DeleteImage),
+            Arguments.of(KeyStroke("Del", Key.Delete), DetailKeyAction.DeleteImage),
+            Arguments.of(KeyStroke("Ctrl+Z", Key.Z, isCtrlPressed = true), DetailKeyAction.UndoDelete),
             Arguments.of(KeyStroke("Ctrl+L", Key.L, isCtrlPressed = true), DetailKeyAction.ReleaseImage),
             Arguments.of(KeyStroke("F5", Key.F5), DetailKeyAction.ReloadImages),
             Arguments.of(KeyStroke("Ctrl+O", Key.O, isCtrlPressed = true), DetailKeyAction.Ocr),
@@ -134,6 +136,8 @@ internal class DetailWindowTest {
             KeyStroke("End", Key.MoveEnd),
             KeyStroke("Ctrl+A", Key.A, isCtrlPressed = true),
             KeyStroke("Ctrl+E", Key.E, isCtrlPressed = true),
+            KeyStroke("Del", Key.Delete),
+            KeyStroke("Ctrl+Z", Key.Z, isCtrlPressed = true),
         )
     }
 }
