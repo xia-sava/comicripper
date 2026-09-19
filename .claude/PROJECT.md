@@ -14,6 +14,7 @@ ComicRipperは、裁断したコミックをScanSnapでスキャンした画像�
 - 操作失敗のトースト通知（ErrorToast）
 - 一括処理（OCR/ZIP）の中止と、中止時点までの進み具合の通知
 - 詳細画面から一覧の前後の本への移動と、各操作のキー割り当て（「キー操作」を参照）
+- 画像削除の取り消し（「削除の取り消し」を参照）
 
 ### バージョン
 - 現在: 1.0.1
@@ -34,6 +35,7 @@ src/main/kotlin/to/sava/comicripper/
 ├── infrastructure/                  # 外部システム接続層
 │   ├── repository/ComicRepository.kt  # ファイルの振り分け・スキャン・表紙切り出し・ZIP作成・OCR・一括命名
 │   ├── repository/ComicStorage.kt     # 読み込み済みコミックの保持（Koin single）
+│   ├── repository/ImageTrash.kt       # 削除した画像の退避と取り消し、退避分の OS のごみ箱への片付け（Koin single）
 │   ├── repository/StructureStore.kt   # 構造ファイルのJSON永続化と旧形式からの移行
 │   ├── image/ComicImageStore.kt       # 画像の読み込みとアプリ全体でひとつの原寸画像LRU（Koin single）
 │   ├── service/BookInfoSearcher.kt    # ISBNからの書誌検索（Amazon→ヨドバシ→Google Books）。
@@ -98,8 +100,10 @@ src/test/kotlin/to/sava/comicripper/
 │   └── cutter/CutterWindowTest.kt            # 画像表示矩形計算のテスト
 └── infrastructure/
     ├── repository/
-    │   ├── ComicRepositoryTest.kt             # ComicRepository のテスト（振り分け・merge/release・
+    │   ├── ComicRepositoryTest.kt             # ComicRepository のテスト（振り分け・merge/release・削除の通知・
     │   │                                        reScanFiles・cutCover・zipComic・OCRの起動失敗・一括命名）
+    │   ├── ImageTrashTest.kt                   # 削除した画像の退避・取り消し（戻す先の決め方・戻せない場合）・
+    │   │                                        退避分の片付けのテスト。ごみ箱へ送る処理は差し替える
     │   ├── ComicStorageTest.kt                 # ComicStorage のテスト
     │   └── ComicTestHelper.kt                  # テスト用ダミーJPEG生成・ディレクトリ設定ヘルパ
     └── service/
@@ -107,7 +111,7 @@ src/test/kotlin/to/sava/comicripper/
         ├── NioFileWatcherTest.kt              # 実ファイルシステムに対するWatchService統合テスト
         └── TestFileWatcher.kt                 # FileWatcher のテスト用モック実装
 ```
-テストは計240件（パラメタライズテストは値ごとに1件と数える）。
+テストは計262件（パラメタライズテストは値ごとに1件と数える）。
 
 画面の判断ロジック（選択の付け替え・表示位置の計算・文字列の組み立て等）は composable の外に
 トップレベル関数として置き、そこをテストする。composable 内のローカル関数はテストから呼べない。
@@ -195,21 +199,39 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
 | 前後へ移る | ←→↑↓・ホイール（本） | ←→・ホイール（ページ）、PageUp/PageDown（本） |
 | 先頭・末尾へ | Home/End・Ctrl+A/Ctrl+E（本） | Home/End・Ctrl+A/Ctrl+E（ページ） |
 | 開く・閉じる | Enter・Space で開く | Esc で閉じる |
-| 画像削除・画像リリース | | Ctrl+D・Ctrl+L |
+| 画像削除・画像リリース | | Del/Ctrl+D・Ctrl+L |
+| 削除の取り消し | Ctrl+Z | Ctrl+Z |
 | 読み直し | F5（フォルダ再スキャン） | F5（画像リロード） |
 | OCR・表紙カット | | Ctrl+O・Ctrl+T |
 | 入力欄へ | | F2（作者）・Ctrl+I（ISBN） |
 | 設定 | Ctrl+, | |
 
-- 詳細画面の入力欄の編集中は、カーソル移動と全選択に使うキー（←→、Home/End、Ctrl+A/Ctrl+E）を入力欄へ譲る。
+- 詳細画面の入力欄の編集中は、入力欄の操作に使うキー（←→、Home/End、Del、Ctrl+A/Ctrl+E/Ctrl+Z）を入力欄へ譲る。
   Esc と Enter はまず入力欄から抜ける（ISBN 欄の Enter は検索してから抜ける）。入力欄の外で Esc を押すと閉じる
 - キーリピートで繰り返すのは選択・ページの移動だけで、それ以外は押したままでも1回しか行なわない
   （`KeyRepeatDetector`）
 - 詳細画面でページを端から越えて送ると、一覧の前後の本へ移って表紙を表示する。本を飛ばしていかないよう、
   キーを押したまま・ホイールを回し続けている間は端で止まり、押し直す・ホイールを止めてから回すと移る。
   移ると一覧の選択（＝取り込み先）もその本へ移る
-- 画像削除はごみ箱を通らずに消すため、押し間違えやすい単独のキー（Del）には割り当てない。
-  ZIP作成は元の画像を消し、同名の ZIP を上書きするためキーを割り当てない
+- 削除の取り消しは、どの画面から削除したかに関わらず新しい削除から順に戻す（「削除の取り消し」を参照）。
+  詳細画面では戻したページを表示し、別の本のページならその本へ表示を切り替える。
+  メイン画面では戻した先の本を選択する
+- ZIP作成は元の画像を消し、同名の ZIP を上書きするためキーを割り当てない
+
+## 削除の取り消し
+
+削除した画像は消さずに退避先（`Setting.trashDirectory`）へ移し、`ImageTrash` が取り消しの履歴を持つ。
+
+- 退避先は削除ごとに別のフォルダにし、ファイル名は元のまま残す。スキャンし直すと同じ名前の画像が
+  また作られるため、同じ名前を何度消しても重ならないようにしている
+- 戻すときは先に構成へ入れてからファイルを戻す。ファイル監視の追加通知は、取り込み済みのファイルとして
+  無視される（`ComicRepository.addFiles`）
+- 戻す先は元のコミック。画像が1枚も残っていない（最後の1枚を消した）コミックは作者名・題名ごと一覧へ戻し、
+  画像を残したまま一覧から外れた（ZIP作成を終えた）コミックへは戻さず、その画像だけのコミックにする。
+  元の場所に同じ名前のファイルができていれば上書きせず、戻せなかったと知らせる
+- 履歴はメモリにだけ持つ。退避した画像は起動時（前回までの分）と終了時（すべて）に OS のごみ箱へ送り、
+  アプリを閉じた後でもエクスプローラから戻せるようにする。作業ディレクトリがごみ箱を持たないドライブ
+  （ネットワークドライブなど）にあると、ごみ箱へは入らずに消える
 
 ## 永続化・ログ
 
@@ -222,6 +244,8 @@ Compose Desktop にはダーティ領域の概念が無く、状態がひとつ�
   置き場所は起動時の作業ディレクトリに固定する（`Setting.fixStructureDirectory`）ため、
   **作業ディレクトリの変更は次回起動時に反映される**。実行中に切り替えると、読み込んだ内容を
   別のディレクトリへ書き出してしまうため
+- 削除した画像の退避先: `<workDirectory>/.comicripperTrash/`。構造ファイルと同じく起動時の作業ディレクトリに
+  固定する。作業ディレクトリ直下のファイルではないため、再スキャンにもファイル監視にも現れない
 - どちらもパース失敗時は該当ファイルを `.broken` へ退避してから既定値で続行する
   （上書き保存による手修復余地の喪失を防ぐ）
 - ログ: `%LOCALAPPDATA%\ComicRipper\logs\comicripper.log`（kotlin-logging + logback、
