@@ -2,9 +2,12 @@ package to.sava.comicripper.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.IntState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.LocalWindowExceptionHandlerFactory
 import androidx.compose.ui.window.WindowExceptionHandler
@@ -17,6 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 
+private val logger = KotlinLogging.logger {}
+
+/**
+ * ウィンドウが前面化を求められた回数。[BringToFrontOnShow] がこれの増加を見て前面へ出る。
+ * [ComposeWindowHost] の外で開いたウィンドウでは増えない。
+ */
+internal val LocalBringToFrontRequests = staticCompositionLocalOf<IntState> { mutableIntStateOf(0) }
+
 /**
  * JVM 中に1つだけ常駐する Compose Desktop の application スコープを保持し、
  * key を指定して Compose ウィンドウの開閉を行なうためのホスト。
@@ -25,13 +36,13 @@ import kotlin.concurrent.thread
  * 個々のウィンドウの表示状態のみを windows リストで管理する。
  * プロセス終了は Main.kt の exitProcess() が担う。
  */
-private val logger = KotlinLogging.logger {}
-
 object ComposeWindowHost {
     private class WindowEntry(
         val key: String,
         val content: @Composable (onCloseRequest: () -> Unit) -> Unit,
-    )
+    ) {
+        val bringToFrontRequests = mutableIntStateOf(0)
+    }
 
     private val windows = mutableStateListOf<WindowEntry>()
     private val started = AtomicBoolean(false)
@@ -66,7 +77,11 @@ object ComposeWindowHost {
                     ) {
                         for (entry in windows) {
                             key(entry) {
-                                entry.content { close(entry) }
+                                CompositionLocalProvider(
+                                    LocalBringToFrontRequests provides entry.bringToFrontRequests,
+                                ) {
+                                    entry.content { close(entry) }
+                                }
                             }
                         }
                     }
@@ -89,15 +104,19 @@ object ComposeWindowHost {
     }
 
     /**
-     * Compose ウィンドウを開く。同じ key のウィンドウが開いている間は no-op。
+     * Compose ウィンドウを開く。同じ key のウィンドウが開いている間は，新たには開かずそれを前面へ出す
+     * （content の先頭で [BringToFrontOnShow] を呼んでいるウィンドウに限る）。
      * content には閉じるためのコールバックが渡されるので，
      * Window(onCloseRequest = ...) と閉じるボタンの両方に配線すること。
      */
     fun show(key: String, content: @Composable (onCloseRequest: () -> Unit) -> Unit) {
         start()
         SwingUtilities.invokeLater {
-            if (windows.none { it.key == key }) {
+            val opened = windows.firstOrNull { it.key == key }
+            if (opened == null) {
                 windows.add(WindowEntry(key, content))
+            } else {
+                opened.bringToFrontRequests.intValue += 1
             }
         }
     }

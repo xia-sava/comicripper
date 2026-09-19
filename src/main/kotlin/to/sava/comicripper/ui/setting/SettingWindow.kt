@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.koin.compose.koinInject
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.BringToFrontOnShow
 import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
@@ -43,7 +43,7 @@ fun SettingWindow(onCloseRequest: () -> Unit, owner: java.awt.Window? = null) {
         icon = rememberWindowIconPainter(),
         owner = owner,
     ) {
-        BringToFrontOnFirstShow()
+        BringToFrontOnShow()
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Column(

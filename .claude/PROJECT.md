@@ -44,9 +44,10 @@ src/main/kotlin/to/sava/comicripper/
 │   └── di/ApplicationModule.kt     # Koin DI設定
 ├── ui/                               # Compose Desktop プレゼンテーション層（アプリの全画面）
 │   ├── ComposeWindowHost.kt         # JVM常駐の Compose application スコープを保持し、key指定でウィンドウの開閉を仲介するホスト。
+│   │                                  開いているウィンドウを再び開こうとすると前面へ出す。
 │   │                                  ウィンドウ単位の未捕捉例外を隔離する例外ハンドラと、ホスト終了通知(onTerminated)を持つ
 │   ├── ComposeExt.kt                # Compose 用拡張関数（設定と連動するウィンドウ状態、アイコン Painter 生成、
-│   │                                  初回表示時の前面化と Compose コンテンツへのフォーカス付与、
+│   │                                  表示時の前面化と Compose コンテンツへのフォーカス付与、
 │   │                                  グレースケール画像の濃さを保った ImageBitmap 変換など）
 │   ├── ComicRipperTheme.kt          # 共通テーマ（高密度化・グリーン系配色）
 │   ├── CompactControls.kt           # 高密度な共通コントロール（CompactButton/CompactOutlinedTextField/CompactSlider）

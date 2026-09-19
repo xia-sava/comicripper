@@ -49,7 +49,7 @@ import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.service.BookInfoSearcher
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.BringToFrontOnShow
 import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
@@ -261,7 +261,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             }
         },
     ) {
-        BringToFrontOnFirstShow()
+        BringToFrontOnShow()
         LaunchedEffect(Unit) {
             if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
                 isbnFocus.requestFocus()

@@ -66,7 +66,7 @@ import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.infrastructure.repository.ComicStorage
 import to.sava.comicripper.infrastructure.repository.StructureStore
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.BringToFrontOnShow
 import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
@@ -384,7 +384,7 @@ fun MainWindow(onCloseRequest: () -> Unit) {
             }
         },
     ) {
-        BringToFrontOnFirstShow()
+        BringToFrontOnShow()
         LaunchedEffect(window) { ownerWindow = window }
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {

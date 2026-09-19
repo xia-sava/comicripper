@@ -53,7 +53,7 @@ import to.sava.comicripper.domain.model.Comic
 import to.sava.comicripper.infrastructure.image.ComicImageStore
 import to.sava.comicripper.infrastructure.repository.ComicRepository
 import to.sava.comicripper.model.Setting
-import to.sava.comicripper.ui.BringToFrontOnFirstShow
+import to.sava.comicripper.ui.BringToFrontOnShow
 import to.sava.comicripper.ui.ComicRipperTheme
 import to.sava.comicripper.ui.ComicRipperWindow
 import to.sava.comicripper.ui.CompactButton
@@ -208,7 +208,7 @@ fun CutterWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
             }
         },
     ) {
-        BringToFrontOnFirstShow()
+        BringToFrontOnShow()
         ComicRipperTheme {
             Surface(modifier = Modifier.fillMaxSize()) {
                 Box(modifier = Modifier.fillMaxSize()) {

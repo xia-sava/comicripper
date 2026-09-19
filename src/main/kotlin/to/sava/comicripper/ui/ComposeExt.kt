@@ -16,6 +16,7 @@ import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowScope
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.rememberWindowState
+import kotlinx.coroutines.flow.drop
 import to.sava.comicripper.ext.Loader
 import to.sava.comicripper.model.WindowGeometry
 import java.awt.event.WindowAdapter
@@ -94,14 +95,19 @@ private fun BufferedImage.toIntRgb(): BufferedImage =
     }
 
 /**
- * ウィンドウの初回表示時に最前面化してフォーカスを要求する。
+ * ウィンドウの初回表示時と、[ComposeWindowHost.show] で同じウィンドウが再び求められたときに、
+ * 最前面化してフォーカスを要求する。
  * Compose Desktop の Window は表示時に isVisible = true を設定するだけで前面化を行なわず、
  * 他のウィンドウ（オーナーウィンドウ等）がフォアグラウンドを持っていると
  * OS が新規ウィンドウのアクティベーションを拒否して背面に出ることがあるため、
  * Window の content 先頭で呼んで明示的に前面化する。
  */
 @Composable
-fun WindowScope.BringToFrontOnFirstShow() {
+fun WindowScope.BringToFrontOnShow() {
+    val requests = LocalBringToFrontRequests.current
+    LaunchedEffect(window, requests) {
+        snapshotFlow { requests.intValue }.drop(1).collect { window.forceToFront() }
+    }
     DisposableEffect(window) {
         if (window.isVisible) {
             SwingUtilities.invokeLater { window.forceToFront() }
