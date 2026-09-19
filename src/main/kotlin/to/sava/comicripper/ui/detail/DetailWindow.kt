@@ -17,6 +17,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -57,6 +59,7 @@ import to.sava.comicripper.ui.CompactOutlinedTextField
 import to.sava.comicripper.ui.CompactSlider
 import to.sava.comicripper.ui.ComposeWindowHost
 import to.sava.comicripper.ui.ErrorToast
+import to.sava.comicripper.ui.KeyRepeatDetector
 import to.sava.comicripper.ui.ProgressOverlay
 import to.sava.comicripper.ui.cutter.showCutterWindow
 import to.sava.comicripper.ui.rememberErrorToastState
@@ -64,6 +67,8 @@ import to.sava.comicripper.ui.rememberPersistedWindowState
 import to.sava.comicripper.ui.rememberProgressOverlayState
 import to.sava.comicripper.ui.rememberWindowIconPainter
 import to.sava.comicripper.ui.toDisplayImageBitmap
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -195,7 +200,8 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
     }
 
     fun releaseCurrentImage() {
-        currentFilename?.let { filename ->
+        // deleteCurrentImage と同じく、呼び出し時点の files/currentPage から求める。
+        files.getOrNull(currentPage)?.let { filename ->
             repos.releaseFile(comic, filename)
         }
     }
@@ -236,8 +242,46 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         }
     }
 
+    // 入力欄の外ではページ表示のスライダーにフォーカスを置く。
     val sliderFocus = remember { FocusRequester() }
+    val authorFocus = remember { FocusRequester() }
     val isbnFocus = remember { FocusRequester() }
+    var focusedTextField by remember { mutableStateOf<DetailTextField?>(null) }
+
+    fun Modifier.trackingFocus(field: DetailTextField) = onFocusChanged { focusState ->
+        if (focusState.hasFocus) {
+            focusedTextField = field
+        } else if (focusedTextField == field) {
+            focusedTextField = null
+        }
+    }
+
+    fun leaveTextField() {
+        sliderFocus.requestFocus()
+    }
+
+    // キー入力から表紙カット画面を開く際の owner（自ウィンドウ）。content 側で確定させる。
+    var ownerWindow by remember { mutableStateOf<java.awt.Window?>(null) }
+
+    fun runKeyAction(action: DetailKeyAction) {
+        when (action) {
+            DetailKeyAction.PreviousPage -> leftImage()
+            DetailKeyAction.NextPage -> rightImage()
+            DetailKeyAction.FirstPage -> firstImage()
+            DetailKeyAction.LastPage -> lastImage()
+            DetailKeyAction.DeleteImage -> deleteCurrentImage()
+            DetailKeyAction.ReleaseImage -> releaseCurrentImage()
+            DetailKeyAction.ReloadImages -> reloadImages()
+            DetailKeyAction.Ocr -> ocrIsbn()
+            DetailKeyAction.CutCover -> showCutterWindow(comic, owner = ownerWindow)
+            DetailKeyAction.FocusAuthor -> authorFocus.requestFocus()
+            DetailKeyAction.FocusIsbn -> isbnFocus.requestFocus()
+            DetailKeyAction.LeaveTextField -> leaveTextField()
+            DetailKeyAction.Close -> onCloseRequest()
+        }
+    }
+
+    val keyRepeat = remember { KeyRepeatDetector() }
 
     ComicRipperWindow(
         onCloseRequest = onCloseRequest,
@@ -246,22 +290,33 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
         icon = rememberWindowIconPainter(),
         owner = owner,
         onPreviewKeyEvent = { event ->
+            // 進捗中に離したキーも取りこぼさないよう、遮断より先に押下状態を追う。
+            val isRepeat = keyRepeat.onKeyEvent(event.type, event.key)
             when {
                 progress.isActive -> true
                 event.type != KeyEventType.KeyDown -> false
-                event.key == Key.Escape -> {
-                    onCloseRequest()
-                    true
-                }
-                event.isCtrlPressed && event.key == Key.D -> {
-                    deleteCurrentImage()
-                    true
-                }
-                else -> false
+                else -> detailKeyAction(event.key, event.isCtrlPressed, isEditingText = focusedTextField != null)
+                    ?.let { action ->
+                        if (action.repeatable || !isRepeat) {
+                            runKeyAction(action)
+                        }
+                        true
+                    }
+                    ?: false
             }
         },
     ) {
         BringToFrontOnShow()
+        LaunchedEffect(window) { ownerWindow = window }
+        DisposableEffect(window) {
+            val listener = object : WindowAdapter() {
+                override fun windowLostFocus(e: WindowEvent) {
+                    keyRepeat.reset()
+                }
+            }
+            window.addWindowFocusListener(listener)
+            onDispose { window.removeWindowFocusListener(listener) }
+        }
         LaunchedEffect(Unit) {
             if (comic.author.startsWith("coverF_") || comic.author == "ISBN不明") {
                 isbnFocus.requestFocus()
@@ -289,9 +344,23 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text("作者:")
-                            ToolbarTextField(comic.author, { updateAuthor(it) }, 150.dp, onEnter = onCloseRequest)
+                            ToolbarTextField(
+                                comic.author,
+                                { updateAuthor(it) },
+                                150.dp,
+                                onEnter = { leaveTextField() },
+                                modifier = Modifier
+                                    .focusRequester(authorFocus)
+                                    .trackingFocus(DetailTextField.Author),
+                            )
                             Text("題名:")
-                            ToolbarTextField(comic.title, { updateTitle(it) }, 300.dp, onEnter = onCloseRequest)
+                            ToolbarTextField(
+                                comic.title,
+                                { updateTitle(it) },
+                                300.dp,
+                                onEnter = { leaveTextField() },
+                                modifier = Modifier.trackingFocus(DetailTextField.Title),
+                            )
                             Spacer(modifier = Modifier.weight(1.0f))
                             CompactButton(onClick = { deleteCurrentImage() }) { Text("画像削除") }
                             CompactButton(onClick = { releaseCurrentImage() }) { Text("画像リリース") }
@@ -301,8 +370,13 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                                 isbnText,
                                 { isbnText = it },
                                 100.dp,
-                                onEnter = { searchIsbn() },
-                                modifier = Modifier.focusRequester(isbnFocus),
+                                onEnter = {
+                                    searchIsbn()
+                                    leaveTextField()
+                                },
+                                modifier = Modifier
+                                    .focusRequester(isbnFocus)
+                                    .trackingFocus(DetailTextField.Isbn),
                             )
                             CompactButton(onClick = { searchIsbn() }) { Text("ISBN検索") }
                             VerticalDivider(modifier = Modifier.height(24.dp))
@@ -360,21 +434,7 @@ fun DetailWindow(comic: Comic, owner: java.awt.Window?, onCloseRequest: () -> Un
                                     steps = 0,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .focusRequester(sliderFocus)
-                                        .onPreviewKeyEvent { event ->
-                                            when {
-                                                event.type != KeyEventType.KeyDown -> false
-                                                event.key == Key.DirectionLeft -> {
-                                                    leftImage()
-                                                    true
-                                                }
-                                                event.key == Key.DirectionRight -> {
-                                                    rightImage()
-                                                    true
-                                                }
-                                                else -> false
-                                            }
-                                        },
+                                        .focusRequester(sliderFocus),
                                 )
                                 Text("${currentPage + 1} / $pageCount (${currentFilename ?: ""})")
                             }
@@ -419,4 +479,74 @@ private fun ToolbarTextField(
                 }
             },
     )
+}
+
+/** 詳細画面の入力欄。 */
+private enum class DetailTextField { Author, Title, Isbn }
+
+/**
+ * 詳細画面のキー操作で行なう処理。
+ * [repeatable] でないものは、キーを押したままにしても最初の1回しか行なわない。
+ */
+internal enum class DetailKeyAction(val repeatable: Boolean = false) {
+    PreviousPage(repeatable = true),
+    NextPage(repeatable = true),
+    FirstPage,
+    LastPage,
+    DeleteImage,
+    ReleaseImage,
+    ReloadImages,
+    Ocr,
+    CutCover,
+    FocusAuthor,
+    FocusIsbn,
+    LeaveTextField,
+    Close,
+}
+
+/** 入力欄の編集中は、入力欄のカーソル移動に譲るキー。 */
+private val TextEditingKeys = setOf(
+    Key.DirectionLeft,
+    Key.DirectionRight,
+    Key.DirectionUp,
+    Key.DirectionDown,
+    Key.MoveHome,
+    Key.MoveEnd,
+)
+
+/** 入力欄の編集中は、入力欄の操作（全選択など）に譲る Ctrl 付きのキー。 */
+private val TextEditingCtrlKeys = setOf(Key.A, Key.E)
+
+/**
+ * 詳細画面で押されたキーに対応する処理を返す。対応する処理が無ければ null を返す。
+ * 入力欄の編集中は、入力欄の操作に使うキーには null を返して入力欄へ譲り、
+ * Esc は画面を閉じずに入力欄から抜ける。
+ */
+internal fun detailKeyAction(key: Key, isCtrlPressed: Boolean, isEditingText: Boolean): DetailKeyAction? {
+    if (isEditingText && (key in TextEditingKeys || (isCtrlPressed && key in TextEditingCtrlKeys))) {
+        return null
+    }
+    return if (isCtrlPressed) {
+        when (key) {
+            Key.A -> DetailKeyAction.FirstPage
+            Key.E -> DetailKeyAction.LastPage
+            Key.D -> DetailKeyAction.DeleteImage
+            Key.L -> DetailKeyAction.ReleaseImage
+            Key.O -> DetailKeyAction.Ocr
+            Key.T -> DetailKeyAction.CutCover
+            Key.I -> DetailKeyAction.FocusIsbn
+            else -> null
+        }
+    } else {
+        when (key) {
+            Key.DirectionLeft -> DetailKeyAction.PreviousPage
+            Key.DirectionRight -> DetailKeyAction.NextPage
+            Key.MoveHome -> DetailKeyAction.FirstPage
+            Key.MoveEnd -> DetailKeyAction.LastPage
+            Key.F2 -> DetailKeyAction.FocusAuthor
+            Key.F5 -> DetailKeyAction.ReloadImages
+            Key.Escape -> if (isEditingText) DetailKeyAction.LeaveTextField else DetailKeyAction.Close
+            else -> null
+        }
+    }
 }
