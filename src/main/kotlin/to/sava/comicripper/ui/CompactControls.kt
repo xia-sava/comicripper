@@ -2,6 +2,7 @@ package to.sava.comicripper.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.TooltipArea
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
@@ -21,16 +22,29 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 
 private val CompactButtonHeight = 28.dp
 private val CompactButtonPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
 
 private val CompactTooltipPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+
+/** ツールチップと対象との間隔 */
+private val CompactTooltipGap = 4.dp
+
+/** ツールチップを窓の縁から離す幅 */
+private val CompactTooltipWindowMargin = 4.dp
 
 /** decoration 内部のテキスト行最小高 24dp + 上下パディング 4dp ずつ */
 private val CompactTextFieldMinHeight = 32.dp
@@ -107,8 +121,45 @@ fun CompactTooltipArea(
             }
         },
         modifier = modifier,
+        tooltipPlacement = OutsideAnchorTooltipPlacement,
         content = content,
     )
+}
+
+/**
+ * ツールチップを対象の真下に、収まらなければ真上に出す。
+ * 対象に重ならないので、ツールチップがクリックを遮ることがない。
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private object OutsideAnchorTooltipPlacement : TooltipPlacement {
+    @Composable
+    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider {
+        val density = LocalDensity.current
+        val gapPx = with(density) { CompactTooltipGap.roundToPx() }
+        val windowMarginPx = with(density) { CompactTooltipWindowMargin.roundToPx() }
+        return remember(gapPx, windowMarginPx) {
+            OutsideAnchorPositionProvider(gapPx, windowMarginPx)
+        }
+    }
+}
+
+private class OutsideAnchorPositionProvider(
+    private val gapPx: Int,
+    private val windowMarginPx: Int,
+) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val maxX = (windowSize.width - windowMarginPx - popupContentSize.width).coerceAtLeast(windowMarginPx)
+        val x = (anchorBounds.center.x - popupContentSize.width / 2).coerceIn(windowMarginPx, maxX)
+        val below = anchorBounds.bottom + gapPx
+        val fitsBelow = below + popupContentSize.height <= windowSize.height - windowMarginPx
+        val y = if (fitsBelow) below else anchorBounds.top - gapPx - popupContentSize.height
+        return IntOffset(x, y.coerceAtLeast(windowMarginPx))
+    }
 }
 
 /**
